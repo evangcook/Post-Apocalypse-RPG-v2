@@ -10,7 +10,7 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
+  namespace = "com.aistudio.wastelandrpg.asdfhj"
   compileSdk = 34
 
   defaultConfig {
