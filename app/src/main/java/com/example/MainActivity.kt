@@ -1056,6 +1056,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val crashPrefs = getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
         val crashLog = crashPrefs.getString("crash_log", null)
+        crashPrefs.edit().remove("crash_log").apply()
+        
         if (crashLog != null) {
             super.onCreate(savedInstanceState)
             setContent {
@@ -1064,7 +1066,7 @@ class MainActivity : AppCompatActivity() {
                         LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                             item {
                                 Text(
-                                    text = "APP CRASHED:\n\n$crashLog",
+                                    text = "APP CRASHED:\n\n${crashLog.take(1500)}...",
                                     color = Color.White,
                                     fontSize = 12.sp,
                                     fontFamily = FontFamily.Monospace
@@ -1834,8 +1836,8 @@ fun CombatArena(
                 }
 
                 if (entity.entityType == EntityType.BRUISER) {
-                    AsyncImage(
-                        model = R.drawable.hero_bruiser,
+                    Image(
+                        painter = androidx.compose.ui.res.painterResource(id = R.drawable.hero_bruiser),
                         contentDescription = "Scrap Bruiser",
                         modifier = Modifier
                             .fillMaxSize(),
