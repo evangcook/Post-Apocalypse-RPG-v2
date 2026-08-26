@@ -3,6 +3,9 @@ package com.example
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
+import android.content.SharedPreferences
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -11,8 +14,10 @@ import androidx.compose.animation.core.InfiniteRepeatableSpec
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,8 +49,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -83,8 +91,15 @@ val StunYellow = Color(0xFFB8860B)
 val CyanGlow = Color(0xFF00CED1)
 
 // --- MODELS ---
-enum class GameState { MAIN_MENU, MAP, COMBAT, CAMP, REWARD, GAME_OVER, CAMPAIGN_VICTORY }
-enum class NodeType { COMBAT, SCAVENGE, CAMP, BOSS }
+enum class GameState { MAIN_MENU, MAP, COMBAT, CAMP, REWARD, GAME_OVER, CAMPAIGN_VICTORY, EVENT }
+enum class NodeType { COMBAT, SCAVENGE, CAMP, BOSS, EVENT }
+
+data class EventState(
+    val title: String = "Wasteland Anomaly",
+    val description: String = "You discover a rusted medical transport rigged with tripwires.",
+    val resolved: Boolean = false,
+    val outcome: String = ""
+)
 
 data class MapNode(
     val id: String,
@@ -93,6 +108,9 @@ data class MapNode(
     val x: Float,
     val nextNodes: List<String> = emptyList()
 )
+
+enum class IntentType { ATTACK, DEBUFF, BUFF, AOE_ATTACK }
+data class EnemyIntent(val type: IntentType, val value: Int = 0, val targetId: String? = null, val desc: String)
 
 enum class EntityType { BRUISER, MEDIC, SCAVENGER, MUTANT, RAIDER, DRONE, BOSS }
 enum class EffectType { RADIATION, STUN, ADRENALINE }
@@ -110,11 +128,36 @@ data class Entity(
     val rank: Int,
     val entityType: EntityType,
     val statusEffects: List<StatusEffect> = emptyList(),
-    val isDead: Boolean = false
+    val isDead: Boolean = false,
+    val intent: EnemyIntent? = null
 )
 
-enum class TurnPhase { PLAYER_ACTION, PLAYER_TARGET_ENEMY, PLAYER_TARGET_ALLY, ENEMY_TURN }
-enum class PlayerAction { HEAVY_WRENCH, IRON_GUARD, CAUTERIZE, RAD_SHOT, PIPE_RIFLE, FLASHBANG, NONE }
+enum class TurnPhase { PLAYER_ACTION, PLAYER_TARGET_ENEMY, PLAYER_TARGET_ALLY, PLAYER_TARGET_REPOSITION, ENEMY_TURN }
+enum class PlayerAction { HEAVY_WRENCH, IRON_GUARD, CAUTERIZE, RAD_SHOT, PIPE_RIFLE, FLASHBANG, BATTERING_RAM, TACTICAL_RETREAT, REPOSITION, NONE }
+
+fun isValidTarget(action: PlayerAction, targetRank: Int): Boolean {
+    return when (action) {
+        PlayerAction.HEAVY_WRENCH -> targetRank in 1..2
+        PlayerAction.BATTERING_RAM -> targetRank in 1..2
+        PlayerAction.RAD_SHOT -> targetRank in 2..3
+        PlayerAction.PIPE_RIFLE -> targetRank in 2..3
+        PlayerAction.FLASHBANG -> targetRank in 1..2
+        else -> true
+    }
+}
+
+fun canCast(action: PlayerAction, casterRank: Int): Boolean {
+    return when (action) {
+        PlayerAction.HEAVY_WRENCH -> casterRank in 1..2
+        PlayerAction.BATTERING_RAM -> casterRank in 1..2
+        PlayerAction.CAUTERIZE -> casterRank in 2..3
+        PlayerAction.RAD_SHOT -> casterRank in 2..3
+        PlayerAction.PIPE_RIFLE -> casterRank == 3
+        PlayerAction.FLASHBANG -> casterRank in 2..3
+        PlayerAction.TACTICAL_RETREAT -> casterRank in 1..2
+        else -> true
+    }
+}
 
 data class FloatingText(val id: String, val entityId: String, val text: String, val color: Color)
 
@@ -163,12 +206,19 @@ data class CampaignState(
     val rewardRelic: Relic? = null,
     val relics: Set<Relic> = emptySet(),
     val combatState: CombatState = CombatState(),
+    val eventState: EventState? = null,
     val hapticSignal: HapticSignal = HapticSignal(HapticType.NONE)
 )
 
 // --- VIEWMODEL ---
 class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences("citadel_meta", Context.MODE_PRIVATE)
+    private val savePrefs = application.getSharedPreferences("citadel_save", Context.MODE_PRIVATE)
+    private val gson = Gson()
+    
+    private val _hasSavedGame = MutableStateFlow(savePrefs.contains("campaign_data"))
+    val hasSavedGame: StateFlow<Boolean> = _hasSavedGame.asStateFlow()
+
     
     private val _metaState = MutableStateFlow(
         MetaState(
@@ -194,6 +244,30 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             apply()
         }
         _metaState.value = state
+    }
+
+    private fun saveGame() {
+        if (_campaignState.value.gameState == GameState.MAIN_MENU || _campaignState.value.gameState == GameState.GAME_OVER) return
+        val json = gson.toJson(_campaignState.value)
+        savePrefs.edit().putString("campaign_data", json).apply()
+        _hasSavedGame.value = true
+    }
+
+    fun loadGame() {
+        val json = savePrefs.getString("campaign_data", null)
+        if (json != null) {
+            try {
+                val state = gson.fromJson(json, CampaignState::class.java)
+                _campaignState.value = state
+            } catch (e: Exception) {
+                deleteSaveGame()
+            }
+        }
+    }
+
+    private fun deleteSaveGame() {
+        savePrefs.edit().remove("campaign_data").apply()
+        _hasSavedGame.value = false
     }
 
     fun upgradeScrap() {
@@ -226,7 +300,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             MapNode("2_1", NodeType.COMBAT, 2, 0.3f, listOf("3_1", "3_2")),
             MapNode("2_2", NodeType.CAMP, 2, 0.5f, listOf("3_2")),
             MapNode("2_3", NodeType.COMBAT, 2, 0.7f, listOf("3_2", "3_3")),
-            MapNode("3_1", NodeType.SCAVENGE, 3, 0.25f, listOf("4_1")),
+            MapNode("3_1", NodeType.EVENT, 3, 0.25f, listOf("4_1")),
             MapNode("3_2", NodeType.COMBAT, 3, 0.5f, listOf("4_1")),
             MapNode("3_3", NodeType.CAMP, 3, 0.75f, listOf("4_1")),
             MapNode("4_1", NodeType.BOSS, 4, 0.5f, emptyList())
@@ -258,6 +332,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             visitedNodes = emptySet(),
             relics = emptySet()
         )
+        saveGame()
     }
 
     fun returnToCitadel() {
@@ -298,7 +373,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 )}
             }
             NodeType.CAMP -> _campaignState.update { it.copy(gameState = GameState.CAMP) }
+            NodeType.EVENT -> {
+                _campaignState.update { it.copy(
+                    gameState = GameState.EVENT,
+                    eventState = EventState()
+                )}
+            }
         }
+        saveGame()
     }
 
     private fun startCombat(isBoss: Boolean) {
@@ -322,7 +404,102 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             gameState = GameState.COMBAT,
             combatState = CombatState(wave = waveNum, entities = combatEntities, log = listOf("COMBAT INITIATED."), currentTurnIndex = -1, bossTurnCount = 0)
         )}
+        generateIntents()
         advanceTurn()
+    }
+    
+    private fun generateIntents() {
+        val s = _campaignState.value
+        val c = s.combatState
+        val wave = c.wave
+        
+        val players = c.entities.filter { it.isPlayer && !it.isDead }
+        if (players.isEmpty()) return
+
+        val newEntities = c.entities.map { enemy ->
+            if (enemy.isPlayer || enemy.isDead || enemy.intent != null) return@map enemy
+            
+            var chosenType = IntentType.ATTACK
+            var chosenValue = 0
+            var chosenTargetId: String? = players.random().id
+            var desc = ""
+            
+            // Randomly stop attacking? The prompt asked for: "Enemies must stop attacking at random."
+            if (kotlin.random.Random.nextFloat() < 0.15f) {
+                chosenType = IntentType.BUFF
+                desc = "🛡️ Wait"
+                chosenTargetId = enemy.id
+            } else {
+                when (enemy.entityType) {
+                    EntityType.MUTANT -> {
+                        val unradiated = players.filter { p -> p.statusEffects.none { it.type == EffectType.RADIATION } }
+                        if (unradiated.isNotEmpty() && kotlin.random.Random.nextBoolean()) {
+                            chosenTargetId = unradiated.random().id
+                            chosenType = IntentType.DEBUFF
+                            desc = "☢️ Toxic"
+                        } else {
+                            chosenType = IntentType.ATTACK
+                            chosenValue = (20..35).random() + enemy.damageBonus
+                            chosenValue = (chosenValue * (1f + (wave - 1) * 0.2f)).toInt()
+                            val lethalTarget = players.find { it.hp <= chosenValue }
+                            chosenTargetId = lethalTarget?.id ?: players.minByOrNull { it.hp }!!.id
+                            desc = "⚔️ $chosenValue"
+                        }
+                    }
+                    EntityType.RAIDER -> {
+                        chosenType = IntentType.ATTACK
+                        chosenValue = (15..25).random() + enemy.damageBonus
+                        chosenValue = (chosenValue * (1f + (wave - 1) * 0.2f)).toInt()
+                        val lethalTarget = players.find { it.hp <= chosenValue }
+                        chosenTargetId = lethalTarget?.id ?: players.minByOrNull { it.hp }!!.id
+                        desc = "⚔️ $chosenValue"
+                    }
+                    EntityType.DRONE -> {
+                        if (kotlin.random.Random.nextFloat() < 0.4f) {
+                            chosenType = IntentType.BUFF
+                            chosenTargetId = enemy.id
+                            desc = "🛡️ Armor"
+                        } else {
+                            chosenType = IntentType.ATTACK
+                            chosenValue = (5..15).random() + enemy.damageBonus
+                            chosenValue = (chosenValue * (1f + (wave - 1) * 0.2f)).toInt()
+                            val lethalTarget = players.find { it.hp <= chosenValue }
+                            chosenTargetId = lethalTarget?.id ?: players.minByOrNull { it.hp }!!.id
+                            desc = "⚔️ $chosenValue"
+                        }
+                    }
+                    EntityType.BOSS -> {
+                        val rand = kotlin.random.Random.nextFloat()
+                        if (rand < 0.25f) {
+                            chosenType = IntentType.DEBUFF
+                            desc = "⚡ Stun"
+                            chosenTargetId = players.random().id
+                        } else if (rand < 0.5f) {
+                            chosenType = IntentType.AOE_ATTACK
+                            chosenValue = (20..30).random() + enemy.damageBonus
+                            chosenValue = (chosenValue * (1f + (wave - 1) * 0.2f)).toInt()
+                            desc = "💢 $chosenValue"
+                            chosenTargetId = null
+                        } else {
+                            chosenType = IntentType.ATTACK
+                            chosenValue = (40..60).random() + enemy.damageBonus
+                            chosenValue = (chosenValue * (1f + (wave - 1) * 0.2f)).toInt()
+                            val lethalTarget = players.find { it.hp <= chosenValue }
+                            chosenTargetId = lethalTarget?.id ?: players.minByOrNull { it.hp }!!.id
+                            desc = "⚔️ $chosenValue"
+                        }
+                    }
+                    else -> {
+                        chosenType = IntentType.ATTACK
+                        chosenValue = 10
+                        desc = "⚔️ 10"
+                    }
+                }
+            }
+            
+            enemy.copy(intent = EnemyIntent(chosenType, chosenValue, chosenTargetId, desc))
+        }
+        updateCombatState { it.copy(entities = newEntities) }
     }
 
     private fun updateCombatState(updater: (CombatState) -> CombatState) {
@@ -355,6 +532,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (!playersAlive) {
             grantIntel(s.currentTier * 2)
             _campaignState.update { it.copy(gameState = GameState.GAME_OVER) }
+            deleteSaveGame()
             return true
         }
         if (!enemiesAlive) {
@@ -364,6 +542,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 grantIntel(20 + s.currentTier * 2, bossDefeated = true)
                 _campaignState.update { it.copy(gameState = GameState.CAMPAIGN_VICTORY, roster = updatedRoster) }
                 triggerHaptic(HapticType.PULSE)
+                deleteSaveGame()
             } else {
                 val baseScrap = (40..80).random() + (s.currentTier * 10)
                 val finalScrap = if (s.relics.contains(Relic.SCRAP_MAGNET)) (baseScrap * 1.3f).toInt() else baseScrap
@@ -373,6 +552,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 _campaignState.update { it.copy(
                     gameState = GameState.REWARD, roster = updatedRoster, rewardScrap = finalScrap, rewardRelic = droppedRelic
                 )}
+                saveGame()
             }
             return true
         }
@@ -459,6 +639,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 updateCombatState { it.copy(phase = TurnPhase.PLAYER_TARGET_ALLY, selectedAction = action) }
                 log("Select ally to Cauterize.")
             }
+            PlayerAction.REPOSITION -> {
+                updateCombatState { it.copy(phase = TurnPhase.PLAYER_TARGET_REPOSITION, selectedAction = action) }
+                log("Select adjacent ally to Reposition.")
+            }
             else -> {
                 updateCombatState { it.copy(phase = TurnPhase.PLAYER_TARGET_ENEMY, selectedAction = action) }
                 log("Select hostile target.")
@@ -471,6 +655,20 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val activeEntity = c.entities.find { it.id == c.activeEntityId } ?: return
         val targetEntity = c.entities.find { it.id == targetId } ?: return
         
+        if (c.phase == TurnPhase.PLAYER_TARGET_REPOSITION) {
+            log("${activeEntity.name} swaps positions with ${targetEntity.name}.")
+            updateCombatState { st ->
+                st.copy(entities = st.entities.map {
+                    if (it.id == activeEntity.id) it.copy(rank = targetEntity.rank)
+                    else if (it.id == targetEntity.id) it.copy(rank = activeEntity.rank)
+                    else it
+                })
+            }
+            realignRanks(true)
+            advanceTurn()
+            return
+        }
+
         val dmgBonus = activeEntity.damageBonus
         val hasKnuckles = _campaignState.value.relics.contains(Relic.SPIKED_KNUCKLES)
         val isCrit = Random.nextFloat() < 0.15f
@@ -484,6 +682,28 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 if (isCrit) log("CRITICAL HIT!")
                 log("${activeEntity.name} crushes ${targetEntity.name} for $netDmg DMG!")
                 damageEntity(targetId, netDmg, isCrit)
+            }
+            PlayerAction.BATTERING_RAM -> {
+                val base = (15..25).random() + dmgBonus
+                val dmg = (if (hasKnuckles) base * 1.15f else base.toFloat()) * critMult
+                val netDmg = (dmg.toInt() - targetEntity.armor).coerceAtLeast(1)
+                if (isCrit) log("CRITICAL HIT!")
+                log("${activeEntity.name} rams ${targetEntity.name} ($netDmg DMG) and knocks them back!")
+                damageEntity(targetId, netDmg, isCrit)
+                if (!_campaignState.value.combatState.entities.first { it.id == targetId }.isDead) {
+                    knockbackEntity(targetId)
+                }
+            }
+            PlayerAction.TACTICAL_RETREAT -> {
+                val base = (10..15).random() + dmgBonus
+                val dmg = (if (hasKnuckles) base * 1.15f else base.toFloat()) * critMult
+                val netDmg = (dmg.toInt() - targetEntity.armor).coerceAtLeast(1)
+                if (isCrit) log("CRITICAL HIT!")
+                log("${activeEntity.name} retreats, firing at ${targetEntity.name} ($netDmg DMG)!")
+                damageEntity(targetId, netDmg, isCrit)
+                if (!_campaignState.value.combatState.entities.first { it.id == activeEntity.id }.isDead) {
+                    knockbackEntity(activeEntity.id)
+                }
             }
             PlayerAction.CAUTERIZE -> {
                 val heal = (15..25).random()
@@ -537,52 +757,72 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         advanceTurn()
     }
 
-    private fun executeEnemyTurn(enemy: Entity) {
+    private fun executeEnemyTurn(enemyArg: Entity) {
         viewModelScope.launch {
             delay(800)
             val c = _campaignState.value.combatState
-            val validTargets = c.entities.filter { it.isPlayer && !it.isDead }
+            val enemy = c.entities.find { it.id == enemyArg.id }
             
-            if (enemy.entityType == EntityType.BOSS) {
-                val isAoe = c.bossTurnCount % 2 == 0
-                updateCombatState { it.copy(bossTurnCount = it.bossTurnCount + 1) }
-                
-                triggerShake()
-                if (isAoe) {
-                    log("Warlord uses SHRAPNEL BLAST!")
-                    triggerHaptic(HapticType.PULSE)
-                    validTargets.forEach { t ->
-                        val dmg = (20..30).random()
-                        val net = (dmg - t.armor).coerceAtLeast(1)
-                        damageEntity(t.id, net)
-                    }
-                } else {
-                    val target = validTargets.randomOrNull()
-                    if (target != null) {
-                        log("Warlord uses SCRAP CLEAVE on ${target.name}!")
-                        val dmg = (40..60).random()
-                        val net = (dmg - target.armor).coerceAtLeast(1)
+            if (enemy == null || enemy.intent == null) {
+                delay(400)
+                if (checkCombatEnd()) return@launch
+                advanceTurn()
+                return@launch
+            }
+            
+            val intent = enemy.intent
+            val validTargets = c.entities.filter { it.isPlayer && !it.isDead }
+            var target = validTargets.find { it.id == intent.targetId }
+            
+            if (target == null && intent.type != IntentType.BUFF && intent.type != IntentType.AOE_ATTACK) {
+                target = validTargets.randomOrNull()
+            }
+            
+            if (target != null || intent.type == IntentType.BUFF || intent.type == IntentType.AOE_ATTACK) {
+                when (intent.type) {
+                    IntentType.ATTACK -> {
+                        val net = (intent.value - target!!.armor).coerceAtLeast(1)
+                        log("${enemy.name} uses ${intent.desc} on ${target.name} for $net DMG!")
                         triggerHaptic(HapticType.HEAVY)
                         damageEntity(target.id, net)
                     }
-                }
-            } else {
-                val target = validTargets.randomOrNull()
-                if (target != null) {
-                    var dmg = 0
-                    when (enemy.entityType) {
-                        EntityType.MUTANT -> dmg = (20..35).random()
-                        EntityType.RAIDER -> dmg = (15..25).random()
-                        EntityType.DRONE -> dmg = (5..15).random()
-                        else -> dmg = 10
+                    IntentType.AOE_ATTACK -> {
+                        log("${enemy.name} uses ${intent.desc} (AOE)!")
+                        triggerHaptic(HapticType.PULSE)
+                        triggerShake()
+                        validTargets.forEach { t ->
+                            val net = (intent.value - t.armor).coerceAtLeast(1)
+                            damageEntity(t.id, net)
+                        }
                     }
-                    dmg = (dmg * (1f + (c.wave - 1) * 0.2f)).toInt()
-                    val netDmg = (dmg - target.armor).coerceAtLeast(1)
-                    log("${enemy.name} strikes ${target.name} for $netDmg DMG!")
-                    triggerHaptic(HapticType.HEAVY)
-                    damageEntity(target.id, netDmg)
+                    IntentType.DEBUFF -> {
+                        log("${enemy.name} uses ${intent.desc} on ${target!!.name}!")
+                        if (intent.desc.contains("Toxic")) {
+                            applyStatusEffect(target.id, StatusEffect(EffectType.RADIATION, 3))
+                        } else if (intent.desc.contains("Stun")) {
+                            applyStatusEffect(target.id, StatusEffect(EffectType.STUN, 1))
+                        }
+                    }
+                    IntentType.BUFF -> {
+                        log("${enemy.name} uses ${intent.desc}!")
+                        if (intent.desc.contains("Armor")) {
+                            updateCombatState { st ->
+                                st.copy(entities = st.entities.map {
+                                    if (it.id == enemy.id) it.copy(armor = it.armor + 5) else it
+                                })
+                            }
+                        }
+                    }
                 }
             }
+            
+            updateCombatState { st ->
+                st.copy(entities = st.entities.map {
+                    if (it.id == enemy.id) it.copy(intent = null) else it
+                })
+            }
+            generateIntents()
+            
             delay(400)
             if (checkCombatEnd()) return@launch
             advanceTurn()
@@ -592,6 +832,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private fun damageEntity(entityId: String, amount: Int, isCrit: Boolean = false, prefix: String = "") {
         var entityDied = false
         var entityName = ""
+        var isPlayerTeam = false
 
         if (isCrit) {
             triggerShake()
@@ -611,6 +852,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     if (dead && !it.isDead) {
                         entityDied = true
                         entityName = it.name
+                        isPlayerTeam = it.isPlayer
                     }
                     
                     val wasAbove25 = oldHp > it.maxHp * 0.25f
@@ -632,7 +874,42 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             state.copy(entities = newEntities)
         }
 
-        if (entityDied) log("$entityName was DESTROYED.")
+        if (entityDied) {
+            log("$entityName was DESTROYED.")
+            realignRanks(isPlayerTeam)
+        }
+    }
+
+    private fun realignRanks(isPlayerTeam: Boolean) {
+        updateCombatState { st ->
+            val team = st.entities.filter { it.isPlayer == isPlayerTeam && !it.isDead }.sortedBy { it.rank }
+            val updated = team.mapIndexed { i, e -> e.id to (i + 1) }.toMap()
+            st.copy(entities = st.entities.map {
+                if (it.isPlayer == isPlayerTeam && !it.isDead) {
+                    it.copy(rank = updated[it.id] ?: it.rank)
+                } else {
+                    it
+                }
+            })
+        }
+    }
+
+    private fun knockbackEntity(id: String) {
+        val s = _campaignState.value.combatState
+        val target = s.entities.find { it.id == id } ?: return
+        val team = s.entities.filter { it.isPlayer == target.isPlayer && !it.isDead }.sortedBy { it.rank }
+        val idx = team.indexOfFirst { it.id == id }
+        if (idx >= 0 && idx < team.size - 1) {
+            val swapped = team[idx + 1]
+            updateCombatState { st ->
+                st.copy(entities = st.entities.map {
+                    if (it.id == target.id) it.copy(rank = swapped.rank)
+                    else if (it.id == swapped.id) it.copy(rank = target.rank)
+                    else it
+                })
+            }
+            realignRanks(target.isPlayer)
+        }
     }
 
     private fun healEntity(entityId: String, amount: Int) {
@@ -675,6 +952,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             rewardRelic = null,
             relics = newRelics
         )}
+        saveGame()
     }
 
     fun campHeal() {
@@ -684,6 +962,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 if (!it.isDead) it.copy(hp = (it.hp + (it.maxHp * 0.4f).toInt()).coerceAtMost(it.maxHp)) else it
             }
             _campaignState.update { it.copy(scrap = it.scrap - 25, roster = newRoster) }
+            saveGame()
         }
     }
 
@@ -697,11 +976,76 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 } else it
             }
             _campaignState.update { it.copy(scrap = it.scrap - 50, roster = newRoster) }
+            saveGame()
         }
     }
     
     fun leaveCamp() {
         _campaignState.update { it.copy(gameState = GameState.MAP) }
+        saveGame()
+    }
+
+    fun resolveEvent(choice: Int) {
+        val s = _campaignState.value
+        val ev = s.eventState ?: return
+        var newScrap = s.scrap
+        val newRoster = s.roster.toMutableList()
+        var newRelics = s.relics
+        var outcomeTxt = ""
+
+        when (choice) {
+            1 -> {
+                if (kotlin.random.Random.nextFloat() < 0.6f) {
+                    val unownedRelics = Relic.values().filter { !s.relics.contains(it) }
+                    val r = unownedRelics.randomOrNull()
+                    if (r != null) {
+                        newRelics = newRelics + r
+                        outcomeTxt = "Success! You extracted the ${r.title} and 40 Scrap."
+                    } else {
+                        outcomeTxt = "Success! You extracted 40 Scrap."
+                    }
+                    newScrap += 40
+                } else {
+                    outcomeTxt = "Failure! The tripwires detonated, dealing 25 damage to the party."
+                    for (i in newRoster.indices) {
+                        if (!newRoster[i].isDead) {
+                            val net = (25 - newRoster[i].armor).coerceAtLeast(1)
+                            val newHp = (newRoster[i].hp - net).coerceAtLeast(0)
+                            newRoster[i] = newRoster[i].copy(hp = newHp, isDead = newHp == 0)
+                        }
+                    }
+                }
+            }
+            2 -> {
+                newScrap += 15
+                outcomeTxt = "You safely salvaged 15 Scrap from the perimeter."
+            }
+            3 -> {
+                outcomeTxt = "You left the transport untouched and walked away safely."
+            }
+        }
+        
+        val playersAlive = newRoster.any { it.isPlayer && !it.isDead }
+        if (!playersAlive) {
+            grantIntel(s.currentTier * 2)
+            _campaignState.update { it.copy(gameState = GameState.GAME_OVER) }
+            deleteSaveGame()
+            return
+        }
+
+        _campaignState.update { it.copy(
+            scrap = newScrap,
+            totalScrapCollected = it.totalScrapCollected + (newScrap - s.scrap),
+            roster = newRoster,
+            relics = newRelics,
+            eventState = ev.copy(resolved = true, outcome = outcomeTxt)
+        )}
+        saveGame()
+    }
+
+    fun finishEvent() {
+        _campaignState.update { it.copy(gameState = GameState.MAP, eventState = null) }
+        saveGame()
     }
 }
 
@@ -725,6 +1069,7 @@ class MainActivity : ComponentActivity() {
 fun GameRouter(modifier: Modifier = Modifier, viewModel: GameViewModel = viewModel()) {
     val state by viewModel.campaignState.collectAsState()
     val metaState by viewModel.metaState.collectAsState()
+    val hasSavedGame by viewModel.hasSavedGame.collectAsState()
     
     val haptic = LocalHapticFeedback.current
     LaunchedEffect(state.hapticSignal) {
@@ -748,7 +1093,9 @@ fun GameRouter(modifier: Modifier = Modifier, viewModel: GameViewModel = viewMod
         when (state.gameState) {
             GameState.MAIN_MENU -> CitadelScreen(
                 metaState = metaState,
+                hasSavedGame = hasSavedGame,
                 onStartRun = { viewModel.startNewRun() },
+                onContinueRun = { viewModel.loadGame() },
                 onUpgradeScrap = { viewModel.upgradeScrap() },
                 onUpgradeHp = { viewModel.upgradeHp() }
             )
@@ -769,6 +1116,11 @@ fun GameRouter(modifier: Modifier = Modifier, viewModel: GameViewModel = viewMod
             )
             GameState.GAME_OVER -> GameOverScreen(onRestart = { viewModel.returnToCitadel() })
             GameState.CAMPAIGN_VICTORY -> CampaignVictoryScreen(state, onRestart = { viewModel.returnToCitadel() })
+            GameState.EVENT -> EventScreen(
+                eventState = state.eventState!!,
+                onChoice = { viewModel.resolveEvent(it) },
+                onContinue = { viewModel.finishEvent() }
+            )
         }
     }
 }
@@ -810,13 +1162,34 @@ fun RelicTray(relics: Set<Relic>, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun CitadelScreen(metaState: MetaState, onStartRun: () -> Unit, onUpgradeScrap: () -> Unit, onUpgradeHp: () -> Unit) {
+fun CitadelScreen(metaState: MetaState, hasSavedGame: Boolean, onStartRun: () -> Unit, onContinueRun: () -> Unit, onUpgradeScrap: () -> Unit, onUpgradeHp: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().background(MatteBlack).padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("CITADEL HUB", color = RustRed, fontSize = 36.sp, fontFamily = FontFamily.Monospace)
         Spacer(modifier = Modifier.height(24.dp))
+        
+        if (hasSavedGame) {
+            HapticButton(
+                onClick = onContinueRun,
+                colors = ButtonDefaults.buttonColors(containerColor = CyanGlow),
+                modifier = Modifier.fillMaxWidth(0.8f).height(56.dp)
+            ) {
+                Text("CONTINUE RUN", color = MatteBlack, fontFamily = FontFamily.Monospace, fontSize = 20.sp)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        HapticButton(
+            onClick = onStartRun,
+            colors = ButtonDefaults.buttonColors(containerColor = ToxicGreen),
+            modifier = Modifier.fillMaxWidth(0.8f).height(56.dp)
+        ) {
+            Text(if (hasSavedGame) "NEW RUN (Wipes Save)" else "START NEW RUN", color = MatteBlack, fontFamily = FontFamily.Monospace, fontSize = 16.sp)
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
         
         Text("Lifetime Runs: ${metaState.runsAttempted}", color = DullSteel, fontFamily = FontFamily.Monospace)
         Text("Warlords Defeated: ${metaState.bossesDefeated}", color = DullSteel, fontFamily = FontFamily.Monospace)
@@ -840,15 +1213,6 @@ fun CitadelScreen(metaState: MetaState, onStartRun: () -> Unit, onUpgradeScrap: 
             colors = ButtonDefaults.buttonColors(containerColor = AshGray)
         ) {
             Text("Hardened Fibers (10 Intel) -> +5 Max HP (Lvl ${metaState.bonusHpLevel})", color = MatteBlack, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
-        }
-        
-        Spacer(modifier = Modifier.weight(1f))
-        HapticButton(
-            onClick = onStartRun,
-            colors = ButtonDefaults.buttonColors(containerColor = RustRed),
-            modifier = Modifier.fillMaxWidth().height(56.dp)
-        ) {
-            Text("ENTER THE WASTELAND", color = MatteBlack, fontSize = 18.sp, fontFamily = FontFamily.Monospace)
         }
     }
 }
@@ -900,6 +1264,7 @@ fun MapScreen(state: CampaignState, onNodeSelected: (String) -> Unit) {
                 NodeType.SCAVENGE -> "⚙️"
                 NodeType.CAMP -> "⛺"
                 NodeType.BOSS -> "💀"
+                NodeType.EVENT -> "❓"
             }
             
             Box(
@@ -1058,6 +1423,55 @@ fun CampaignVictoryScreen(state: CampaignState, onRestart: () -> Unit) {
 }
 
 @Composable
+fun EventScreen(eventState: EventState, onChoice: (Int) -> Unit, onContinue: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize().background(MatteBlack), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth(0.9f).border(2.dp, CyanGlow).padding(24.dp)
+        ) {
+            Text(eventState.title, color = CyanGlow, fontSize = 24.sp, fontFamily = FontFamily.Monospace)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(eventState.description, color = TerminalText, fontSize = 16.sp, fontFamily = FontFamily.Monospace)
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            if (eventState.resolved) {
+                Text(eventState.outcome, color = ToxicGreen, fontSize = 16.sp, fontFamily = FontFamily.Monospace)
+                Spacer(modifier = Modifier.height(32.dp))
+                HapticButton(
+                    onClick = onContinue,
+                    colors = ButtonDefaults.buttonColors(containerColor = CyanGlow),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("CONTINUE", color = MatteBlack, fontFamily = FontFamily.Monospace)
+                }
+            } else {
+                HapticButton(
+                    onClick = { onChoice(1) },
+                    colors = ButtonDefaults.buttonColors(containerColor = RustRed),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Text("[60% Relic/Scrap | 40% -25 HP] Disarm & Loot", color = MatteBlack, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                }
+                HapticButton(
+                    onClick = { onChoice(2) },
+                    colors = ButtonDefaults.buttonColors(containerColor = ToxicGreen),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Text("[100% +15 Scrap] Salvage Perimeter", color = MatteBlack, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                }
+                HapticButton(
+                    onClick = { onChoice(3) },
+                    colors = ButtonDefaults.buttonColors(containerColor = AshGray),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Text("Leave It Be", color = MatteBlack, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun CombatScreen(
     state: CombatState,
     relics: Set<Relic>,
@@ -1117,6 +1531,12 @@ fun CombatArena(
         animationSpec = InfiniteRepeatableSpec(animation = tween(1500), repeatMode = RepeatMode.Reverse),
         label = "breathOffset"
     )
+    val dustPhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = InfiniteRepeatableSpec(animation = tween(10000, easing = LinearEasing), repeatMode = RepeatMode.Restart),
+        label = "dustPhase"
+    )
 
     val shakeX = remember { Animatable(0f) }
     val shakeY = remember { Animatable(0f) }
@@ -1139,22 +1559,77 @@ fun CombatArena(
         val h = maxHeight
 
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawRect(brush = Brush.verticalGradient(colors = listOf(AshGray, RustRed)), size = size)
-            val groundTop = size.height * 0.65f
+            val sw = size.width
+            val sh = size.height
+            
+            drawRect(brush = Brush.verticalGradient(colors = listOf(MatteBlack, RustRed.copy(alpha=0.5f))), size = size)
+            
+            val distStruct = Path().apply {
+                moveTo(sw * 0.1f, sh * 0.65f)
+                lineTo(sw * 0.15f, sh * 0.45f)
+                lineTo(sw * 0.2f, sh * 0.65f)
+                moveTo(sw * 0.7f, sh * 0.65f)
+                lineTo(sw * 0.8f, sh * 0.35f)
+                lineTo(sw * 0.85f, sh * 0.65f)
+            }
+            drawPath(path = distStruct, color = MatteBlack, style = Stroke(width = 2f))
+            
+            val groundTop = sh * 0.65f
             val groundPath = Path().apply {
                 moveTo(0f, groundTop)
-                lineTo(size.width * 0.3f, groundTop - 15f)
-                lineTo(size.width * 0.5f, groundTop + 10f)
-                lineTo(size.width * 0.7f, groundTop - 25f)
-                lineTo(size.width, groundTop)
-                lineTo(size.width, size.height)
-                lineTo(0f, size.height)
+                lineTo(sw * 0.1f, groundTop - 20f)
+                lineTo(sw * 0.3f, groundTop + 15f)
+                lineTo(sw * 0.5f, groundTop - 10f)
+                lineTo(sw * 0.7f, groundTop + 25f)
+                lineTo(sw * 0.9f, groundTop - 5f)
+                lineTo(sw, groundTop)
+                lineTo(sw, sh)
+                lineTo(0f, sh)
                 close()
             }
             drawPath(
                 path = groundPath,
-                brush = Brush.verticalGradient(colors = listOf(ScrapBrown, DarkGround), startY = groundTop, endY = size.height)
+                brush = Brush.verticalGradient(colors = listOf(DarkGround, Color.Black), startY = groundTop, endY = sh)
             )
+            
+            val crackPath = Path().apply {
+                moveTo(sw * 0.2f, sh * 0.7f)
+                lineTo(sw * 0.25f, sh * 0.75f)
+                lineTo(sw * 0.22f, sh * 0.8f)
+                lineTo(sw * 0.28f, sh * 0.85f)
+                moveTo(sw * 0.7f, sh * 0.8f)
+                lineTo(sw * 0.65f, sh * 0.85f)
+                lineTo(sw * 0.68f, sh * 0.9f)
+            }
+            drawPath(path = crackPath, color = MatteBlack, style = Stroke(width = 3f))
+            drawPath(path = crackPath, color = RustRed.copy(alpha=0.3f), style = Stroke(width = 1f))
+            
+            val wirePath = Path().apply {
+                var x = 0f
+                val step = 40f
+                while (x < sw) {
+                    moveTo(x, sh * 0.95f)
+                    quadraticBezierTo(x + step / 2, sh * 0.9f, x + step, sh * 0.95f)
+                    moveTo(x + step / 2 - 5f, sh * 0.925f - 5f)
+                    lineTo(x + step / 2 + 5f, sh * 0.925f + 5f)
+                    moveTo(x + step / 2 + 5f, sh * 0.925f - 5f)
+                    lineTo(x + step / 2 - 5f, sh * 0.925f + 5f)
+                    x += step
+                }
+            }
+            drawPath(path = wirePath, color = DullSteel.copy(alpha=0.6f), style = Stroke(width = 2f))
+            
+            for (i in 0..15) {
+                val startX = (sw * 1.5f / 15f) * i - (sw * 0.2f)
+                val xPos = (startX + sw * dustPhase) % (sw * 1.5f) - (sw * 0.2f)
+                val yPos = sh * 0.3f + (i * 23f % (sh * 0.6f))
+                val radius = (i % 3) * 2f + 2f
+                drawCircle(
+                    color = AshGray.copy(alpha = 0.3f),
+                    radius = radius,
+                    center = Offset(xPos, yPos)
+                )
+            }
         }
         
         RelicTray(relics, Modifier.align(Alignment.TopEnd))
@@ -1206,9 +1681,11 @@ fun CombatArena(
                 breathOffset * (1f + (entity.rank * 0.2f))
             } else 0f
 
-            val isActive = state.activeEntityId == entity.id
-            val isEnemyTargetable = state.phase == TurnPhase.PLAYER_TARGET_ENEMY && !entity.isPlayer && !entity.isDead
-            val isAllyTargetable = state.phase == TurnPhase.PLAYER_TARGET_ALLY && entity.isPlayer && !entity.isDead
+            val activeEnt = state.entities.find { it.id == state.activeEntityId }
+            val isActive = activeEnt?.id == entity.id
+            val isEnemyTargetable = state.phase == TurnPhase.PLAYER_TARGET_ENEMY && !entity.isPlayer && !entity.isDead && isValidTarget(state.selectedAction, entity.rank)
+            val isAllyTargetable = (state.phase == TurnPhase.PLAYER_TARGET_ALLY && entity.isPlayer && !entity.isDead) ||
+                                   (state.phase == TurnPhase.PLAYER_TARGET_REPOSITION && entity.isPlayer && !entity.isDead && activeEnt != null && kotlin.math.abs(entity.rank - activeEnt.rank) == 1)
             val isTargetable = isEnemyTargetable || isAllyTargetable
 
             Box(
@@ -1228,9 +1705,21 @@ fun CombatArena(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .offset(y = (-36).dp),
+                            .offset(y = (-52).dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        if (!entity.isPlayer && entity.intent != null) {
+                            Text(
+                                text = entity.intent.desc,
+                                color = TerminalText,
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier
+                                    .background(MatteBlack.copy(alpha = 0.7f))
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                        }
                         if (entity.statusEffects.isNotEmpty()) {
                             Row {
                                 entity.statusEffects.forEach { effect ->
@@ -1265,20 +1754,29 @@ fun CombatArena(
                             fontSize = 10.sp,
                             fontFamily = FontFamily.Monospace
                         )
-                        Box(
+                        Canvas(
                             modifier = Modifier
                                 .fillMaxWidth(0.9f)
-                                .height(6.dp)
-                                .background(MatteBlack)
-                                .border(1.dp, AshGray)
+                                .height(8.dp)
                         ) {
+                            val r = 2f
+                            val cw = size.width
+                            val ch = size.height
+                            
+                            drawRect(color = ScrapBrown)
+                            drawRect(color = DullSteel, style = Stroke(width = 2f))
+                            
+                            drawCircle(Color.Black, radius = r, center = Offset(4f, 4f))
+                            drawCircle(Color.Black, radius = r, center = Offset(cw - 4f, 4f))
+                            drawCircle(Color.Black, radius = r, center = Offset(4f, ch - 4f))
+                            drawCircle(Color.Black, radius = r, center = Offset(cw - 4f, ch - 4f))
+                            
                             val hpRatio = if (entity.maxHp > 0) entity.hp.toFloat() / entity.maxHp else 0f
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(hpRatio)
-                                    .fillMaxHeight()
-                                    .background(RustRed)
-                            )
+                            val fillW = cw * hpRatio
+                            
+                            drawRect(color = Color(0xFF400000), topLeft = Offset(0f, 0f), size = Size(cw, ch))
+                            drawRect(color = Color(0xFFA00000), topLeft = Offset(0f, 0f), size = Size(fillW, ch))
+                            drawRect(color = Color.White.copy(alpha=0.15f), topLeft = Offset(0f, 0f), size = Size(fillW, ch * 0.3f))
                         }
                     }
                 }
@@ -1289,66 +1787,171 @@ fun CombatArena(
                     Box(modifier = Modifier.fillMaxSize().border(2.dp, ToxicGreen))
                 }
 
+                if (entity.entityType == EntityType.BRUISER) {
+                    Image(
+                        painter = painterResource(id = R.drawable.hero_bruiser),
+                        contentDescription = "Scrap Bruiser",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+
                 Canvas(modifier = Modifier.fillMaxSize()) {
+                    val w = size.width
+                    val h = size.height
+                    
+                    val shadowY = h * 0.85f - yAnim.dp.toPx()
+                    drawOval(
+                        color = Color.Black.copy(alpha = 0.6f),
+                        topLeft = Offset(w * 0.1f, shadowY),
+                        size = Size(w * 0.8f, h * 0.15f)
+                    )
+
                     when (entity.entityType) {
                         EntityType.BRUISER -> {
-                            drawRect(color = DullSteel, size = size)
-                            drawRect(color = FadedOlive, size = size, style = Stroke(width = 6f))
-                            drawRect(color = MatteBlack, topLeft = Offset(size.width * 0.2f, size.height * 0.2f), size = Size(size.width * 0.6f, size.height * 0.3f))
+                            // Drawn via Image component above
                         }
                         EntityType.MEDIC -> {
-                            drawRect(color = FadedOlive, size = size)
-                            drawRect(color = DullSteel, size = size, style = Stroke(width = 6f))
-                            drawRect(color = ToxicGreen, topLeft = Offset(size.width * 0.4f, size.height * 0.4f), size = Size(size.width * 0.2f, size.height * 0.4f))
-                            drawRect(color = ToxicGreen, topLeft = Offset(size.width * 0.3f, size.height * 0.5f), size = Size(size.width * 0.4f, size.height * 0.2f))
+                            val coatPath = Path().apply {
+                                moveTo(w * 0.4f, h * 0.3f)
+                                lineTo(w * 0.6f, h * 0.3f)
+                                lineTo(w * 0.8f, h * 0.9f)
+                                lineTo(w * 0.2f, h * 0.9f)
+                                close()
+                            }
+                            drawPath(path = coatPath, color = FadedOlive)
+                            drawPath(path = coatPath, color = MatteBlack, style = Stroke(width = 4f))
+
+                            drawCircle(color = DullSteel, radius = w * 0.25f, center = Offset(w * 0.5f, h * 0.25f))
+                            drawCircle(color = MatteBlack, radius = w * 0.08f, center = Offset(w * 0.4f, h * 0.25f))
+                            drawCircle(color = MatteBlack, radius = w * 0.08f, center = Offset(w * 0.6f, h * 0.25f))
+                            drawCircle(color = MatteBlack, radius = w * 0.1f, center = Offset(w * 0.5f, h * 0.35f))
+
+                            drawRoundRect(color = MatteBlack, topLeft = Offset(w * 0.7f, h * 0.5f), size = Size(w * 0.15f, h * 0.15f), cornerRadius = CornerRadius(4f))
+                            drawRect(color = ToxicGreen, topLeft = Offset(w * 0.75f, h * 0.3f), size = Size(w * 0.08f, h * 0.2f))
+                            drawRect(color = DullSteel, topLeft = Offset(w * 0.78f, h * 0.2f), size = Size(w * 0.02f, h * 0.1f))
                         }
                         EntityType.SCAVENGER -> {
-                            val w = size.width
-                            val h = size.height
-                            drawRect(color = DullSteel, topLeft = Offset(w * 0.2f, h * 0.1f), size = Size(w * 0.6f, h * 0.9f))
-                            drawRect(color = FadedOlive, topLeft = Offset(w * 0.2f, h * 0.1f), size = Size(w * 0.6f, h * 0.9f), style = Stroke(width = 4f))
-                        }
-                        EntityType.MUTANT -> {
-                            val p = Path().apply {
-                                moveTo(size.width / 2, 0f)
-                                lineTo(size.width, size.height * 0.4f)
-                                lineTo(size.width * 0.8f, size.height)
-                                lineTo(size.width * 0.2f, size.height)
-                                lineTo(0f, size.height * 0.4f)
+                            val cloakPath = Path().apply {
+                                moveTo(w * 0.5f, h * 0.1f)
+                                lineTo(w * 0.7f, h * 0.3f)
+                                lineTo(w * 0.9f, h * 0.8f)
+                                lineTo(w * 0.8f, h * 0.9f)
+                                lineTo(w * 0.6f, h * 0.85f)
+                                lineTo(w * 0.4f, h * 0.9f)
+                                lineTo(w * 0.2f, h * 0.8f)
+                                lineTo(w * 0.1f, h * 0.8f)
+                                lineTo(w * 0.3f, h * 0.3f)
                                 close()
                             }
-                            drawPath(path = p, color = DriedBlood)
-                            drawPath(path = p, color = RustRed, style = Stroke(width = 6f))
+                            drawPath(path = cloakPath, color = ScrapBrown)
+                            drawPath(path = cloakPath, color = MatteBlack, style = Stroke(width = 4f))
+
+                            drawCircle(color = MatteBlack, radius = w * 0.15f, center = Offset(w * 0.5f, h * 0.25f))
+
+                            drawRect(color = RustRed, topLeft = Offset(w * 0.2f, h * 0.5f), size = Size(w * 1.2f, h * 0.06f))
+                            drawRect(color = DullSteel, topLeft = Offset(w * 0.8f, h * 0.45f), size = Size(w * 0.2f, h * 0.15f))
                         }
                         EntityType.RAIDER -> {
-                            val p = Path().apply {
-                                moveTo(size.width / 2, size.height * 0.1f)
-                                lineTo(size.width * 0.9f, size.height * 0.5f)
-                                lineTo(size.width * 0.7f, size.height)
-                                lineTo(size.width * 0.3f, size.height)
-                                lineTo(size.width * 0.1f, size.height * 0.5f)
+                            val bodyPath = Path().apply {
+                                moveTo(w * 0.6f, h * 0.3f)
+                                lineTo(w * 0.8f, h * 0.8f)
+                                lineTo(w * 0.4f, h * 0.9f)
+                                lineTo(w * 0.3f, h * 0.4f)
                                 close()
                             }
-                            drawPath(path = p, color = RustRed)
-                            drawPath(path = p, color = DriedBlood, style = Stroke(width = 4f))
+                            drawPath(path = bodyPath, color = DullSteel)
+                            drawPath(path = bodyPath, color = DriedBlood, style = Stroke(width = 3f))
+
+                            drawCircle(color = AshGray, radius = w * 0.2f, center = Offset(w * 0.35f, h * 0.25f))
+
+                            val mohawkPath = Path().apply {
+                                moveTo(w * 0.45f, h * 0.1f)
+                                lineTo(w * 0.55f, 0f)
+                                lineTo(w * 0.6f, h * 0.15f)
+                                lineTo(w * 0.7f, h * 0.05f)
+                                lineTo(w * 0.65f, h * 0.2f)
+                                close()
+                            }
+                            drawPath(path = mohawkPath, color = RustRed)
+
+                            drawRect(color = MatteBlack, topLeft = Offset(w * 0.5f, h * 0.4f), size = Size(w * 0.1f, h * 0.3f))
+                            val backCleaver = Path().apply {
+                                moveTo(w * 0.4f, h * 0.4f)
+                                lineTo(w * 0.8f, h * 0.3f)
+                                lineTo(w * 0.9f, h * 0.6f)
+                                lineTo(w * 0.5f, h * 0.5f)
+                                close()
+                            }
+                            drawPath(path = backCleaver, color = RustRed)
+
+                            drawRect(color = MatteBlack, topLeft = Offset(w * 0.2f, h * 0.5f), size = Size(w * 0.1f, h * 0.3f))
+                            val frontCleaver = Path().apply {
+                                moveTo(w * 0.1f, h * 0.5f)
+                                lineTo(w * 0.5f, h * 0.4f)
+                                lineTo(w * 0.6f, h * 0.7f)
+                                lineTo(w * 0.2f, h * 0.6f)
+                                close()
+                            }
+                            drawPath(path = frontCleaver, color = ScrapBrown)
+                        }
+                        EntityType.MUTANT -> {
+                            val bodyPath = Path().apply {
+                                moveTo(w * 0.7f, h * 0.2f)
+                                lineTo(w * 0.9f, h * 0.9f)
+                                lineTo(w * 0.2f, h * 0.9f)
+                                lineTo(w * 0.3f, h * 0.3f)
+                                close()
+                            }
+                            drawPath(path = bodyPath, color = FadedOlive)
+                            drawPath(path = bodyPath, color = MatteBlack, style = Stroke(width = 4f))
+
+                            drawCircle(color = DriedBlood, radius = w * 0.15f, center = Offset(w * 0.4f, h * 0.15f))
+
+                            drawOval(color = FadedOlive, topLeft = Offset(w * 0.05f, h * 0.25f), size = Size(w * 0.4f, h * 0.5f))
+                            drawLine(color = DriedBlood, start = Offset(w * 0.1f, h * 0.4f), end = Offset(w * 0.3f, h * 0.45f), strokeWidth = 3f)
+                            drawLine(color = DriedBlood, start = Offset(w * 0.15f, h * 0.55f), end = Offset(w * 0.35f, h * 0.5f), strokeWidth = 3f)
+
+                            drawRect(color = DullSteel, topLeft = Offset(w * -0.2f, h * 0.6f), size = Size(w * 0.8f, h * 0.1f))
+                            drawRoundRect(color = AshGray, topLeft = Offset(w * -0.4f, h * 0.5f), size = Size(w * 0.3f, h * 0.3f), cornerRadius = CornerRadius(12f))
                         }
                         EntityType.DRONE -> {
-                            val p = Path().apply {
-                                moveTo(size.width / 2, 0f)
-                                lineTo(size.width, size.height / 2)
-                                lineTo(size.width / 2, size.height)
-                                lineTo(0f, size.height / 2)
-                                close()
-                            }
-                            drawPath(path = p, color = DullSteel)
-                            drawPath(path = p, color = RustRed, style = Stroke(width = 4f))
+                            drawOval(color = DullSteel, topLeft = Offset(w * 0.2f, h * 0.3f), size = Size(w * 0.6f, h * 0.4f))
+                            drawOval(color = RustRed, topLeft = Offset(w * 0.2f, h * 0.3f), size = Size(w * 0.6f, h * 0.4f), style = Stroke(width = 4f))
+
+                            drawCircle(color = CyanGlow, radius = w * 0.1f, center = Offset(w * 0.35f, h * 0.5f))
+
+                            drawLine(color = MatteBlack, start = Offset(w * 0.5f, h * 0.3f), end = Offset(w * 0.4f, h * 0.1f), strokeWidth = 4f)
+                            drawLine(color = MatteBlack, start = Offset(w * 0.5f, h * 0.3f), end = Offset(w * 0.6f, h * 0.1f), strokeWidth = 4f)
                         }
                         EntityType.BOSS -> {
-                            drawRect(color = MatteBlack, size = size)
-                            drawRect(color = RustRed, size = size, style = Stroke(width = 8f))
-                            drawRect(color = Color.Red, topLeft = Offset(size.width * 0.2f, size.height * 0.2f), size = Size(size.width * 0.2f, size.height * 0.15f))
-                            drawRect(color = Color.Red, topLeft = Offset(size.width * 0.6f, size.height * 0.2f), size = Size(size.width * 0.2f, size.height * 0.15f))
-                            drawRect(color = DullSteel, topLeft = Offset(size.width * 0.3f, size.height * 0.7f), size = Size(size.width * 0.4f, size.height * 0.15f))
+                            val capePath = Path().apply {
+                                moveTo(w * 0.7f, h * 0.2f)
+                                lineTo(w * 0.95f, h * 0.9f)
+                                lineTo(w * 0.5f, h * 0.9f)
+                                close()
+                            }
+                            drawPath(path = capePath, color = DriedBlood)
+
+                            drawRoundRect(color = MatteBlack, topLeft = Offset(w * 0.3f, h * 0.3f), size = Size(w * 0.5f, h * 0.6f), cornerRadius = CornerRadius(16f))
+                            drawRoundRect(color = DullSteel, topLeft = Offset(w * 0.3f, h * 0.3f), size = Size(w * 0.5f, h * 0.6f), cornerRadius = CornerRadius(16f), style = Stroke(width = 6f))
+
+                            val pauldronPath = Path().apply {
+                                moveTo(w * 0.2f, h * 0.4f)
+                                lineTo(w * 0.4f, h * 0.2f)
+                                lineTo(w * 0.6f, h * 0.35f)
+                                close()
+                            }
+                            drawPath(path = pauldronPath, color = RustRed)
+
+                            drawCircle(color = AshGray, radius = w * 0.15f, center = Offset(w * 0.4f, h * 0.2f))
+                            drawCircle(color = Color.Red, radius = w * 0.03f, center = Offset(w * 0.35f, h * 0.2f))
+                            drawCircle(color = Color.Red, radius = w * 0.03f, center = Offset(w * 0.42f, h * 0.2f))
+
+                            drawRect(color = DullSteel, topLeft = Offset(w * -0.1f, h * 0.5f), size = Size(w * 0.6f, h * 0.15f))
+                            for (i in 0..4) {
+                                drawRect(color = ScrapBrown, topLeft = Offset(w * (-0.1f + i * 0.1f), h * 0.65f), size = Size(w * 0.05f, h * 0.05f))
+                            }
                         }
                     }
                 }
@@ -1389,7 +1992,7 @@ fun CommandDeck(
                 TurnPhase.ENEMY_TURN -> {
                     Text("ENEMY TURN...", color = TerminalText, fontFamily = FontFamily.Monospace)
                 }
-                TurnPhase.PLAYER_TARGET_ENEMY, TurnPhase.PLAYER_TARGET_ALLY -> {
+                TurnPhase.PLAYER_TARGET_ENEMY, TurnPhase.PLAYER_TARGET_ALLY, TurnPhase.PLAYER_TARGET_REPOSITION -> {
                     Text("SELECT TARGET...", color = TerminalText, fontFamily = FontFamily.Monospace)
                     Spacer(modifier = Modifier.height(8.dp))
                     HapticButton(
@@ -1402,18 +2005,24 @@ fun CommandDeck(
                 TurnPhase.PLAYER_ACTION -> {
                     val activeEnt = state.entities.find { it.id == state.activeEntityId }
                     if (activeEnt != null && !activeEnt.isDead) {
+                        val rank = activeEnt.rank
                         when (activeEnt.entityType) {
                             EntityType.BRUISER -> {
-                                ActionButton("HEAVY WRENCH", DullSteel) { onActionSelected(PlayerAction.HEAVY_WRENCH) }
-                                ActionButton("IRON GUARD", FadedOlive) { onActionSelected(PlayerAction.IRON_GUARD) }
+                                ActionButton("HEAVY WRENCH", DullSteel, canCast(PlayerAction.HEAVY_WRENCH, rank)) { onActionSelected(PlayerAction.HEAVY_WRENCH) }
+                                ActionButton("BATT. RAM", RustRed, canCast(PlayerAction.BATTERING_RAM, rank)) { onActionSelected(PlayerAction.BATTERING_RAM) }
+                                ActionButton("IRON GUARD", FadedOlive, canCast(PlayerAction.IRON_GUARD, rank)) { onActionSelected(PlayerAction.IRON_GUARD) }
+                                ActionButton("REPOSITION", AshGray, canCast(PlayerAction.REPOSITION, rank)) { onActionSelected(PlayerAction.REPOSITION) }
                             }
                             EntityType.MEDIC -> {
-                                ActionButton("CAUTERIZE", ToxicGreen) { onActionSelected(PlayerAction.CAUTERIZE) }
-                                ActionButton("RAD SHOT", FadedOlive) { onActionSelected(PlayerAction.RAD_SHOT) }
+                                ActionButton("CAUTERIZE", ToxicGreen, canCast(PlayerAction.CAUTERIZE, rank)) { onActionSelected(PlayerAction.CAUTERIZE) }
+                                ActionButton("RAD SHOT", FadedOlive, canCast(PlayerAction.RAD_SHOT, rank)) { onActionSelected(PlayerAction.RAD_SHOT) }
+                                ActionButton("REPOSITION", AshGray, canCast(PlayerAction.REPOSITION, rank)) { onActionSelected(PlayerAction.REPOSITION) }
                             }
                             EntityType.SCAVENGER -> {
-                                ActionButton("PIPE RIFLE", DullSteel) { onActionSelected(PlayerAction.PIPE_RIFLE) }
-                                ActionButton("FLASHBANG", StunYellow) { onActionSelected(PlayerAction.FLASHBANG) }
+                                ActionButton("PIPE RIFLE", DullSteel, canCast(PlayerAction.PIPE_RIFLE, rank)) { onActionSelected(PlayerAction.PIPE_RIFLE) }
+                                ActionButton("FLASHBANG", StunYellow, canCast(PlayerAction.FLASHBANG, rank)) { onActionSelected(PlayerAction.FLASHBANG) }
+                                ActionButton("RETREAT", AshGray, canCast(PlayerAction.TACTICAL_RETREAT, rank)) { onActionSelected(PlayerAction.TACTICAL_RETREAT) }
+                                ActionButton("REPOSITION", AshGray, canCast(PlayerAction.REPOSITION, rank)) { onActionSelected(PlayerAction.REPOSITION) }
                             }
                             else -> {}
                         }
@@ -1447,12 +2056,16 @@ fun CommandDeck(
 }
 
 @Composable
-fun ActionButton(text: String, color: Color, onClick: () -> Unit) {
+fun ActionButton(text: String, color: Color, enabled: Boolean = true, onClick: () -> Unit) {
     HapticButton(
-        onClick = onClick,
+        onClick = { if (enabled) onClick() },
         modifier = Modifier.fillMaxWidth().padding(end = 8.dp, bottom = 4.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = color)
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (enabled) color else color.copy(alpha = 0.3f),
+            disabledContainerColor = color.copy(alpha = 0.3f)
+        ),
+        enabled = enabled
     ) {
-        Text(text, color = MatteBlack, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+        Text(text, color = if (enabled) MatteBlack else AshGray, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
     }
 }
