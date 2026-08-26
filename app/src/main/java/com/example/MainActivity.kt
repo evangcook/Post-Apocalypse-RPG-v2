@@ -1706,14 +1706,15 @@ fun CombatArena(
 
         state.entities.forEach { entity ->
             val isBoss = entity.entityType == EntityType.BOSS
-            val charWidth = if (isBoss) baseCharWidth * 2.0f else baseCharWidth
-            val charHeight = if (isBoss) baseCharHeight * 1.8f else baseCharHeight
+            val isBruiser = entity.entityType == EntityType.BRUISER
+            val charWidth = if (isBoss) baseCharWidth * 2.0f else if (isBruiser) baseCharWidth * 2.2f else baseCharWidth
+            val charHeight = if (isBoss) baseCharHeight * 1.8f else if (isBruiser) baseCharHeight * 1.6f else baseCharHeight
             val groundLevel = h * 0.7f - charHeight
 
             val xPos = when {
-                entity.isPlayer && entity.rank == 1 -> w * 0.38f
-                entity.isPlayer && entity.rank == 2 -> w * 0.22f
-                entity.isPlayer && entity.rank == 3 -> w * 0.06f
+                entity.isPlayer && entity.rank == 1 -> w * 0.32f
+                entity.isPlayer && entity.rank == 2 -> w * 0.16f
+                entity.isPlayer && entity.rank == 3 -> w * 0.02f
                 isBoss -> w * 0.60f
                 !entity.isPlayer && entity.rank == 1 -> w * 0.52f
                 !entity.isPlayer && entity.rank == 2 -> w * 0.68f
@@ -1837,9 +1838,7 @@ fun CombatArena(
                         model = R.drawable.hero_bruiser,
                         contentDescription = "Scrap Bruiser",
                         modifier = Modifier
-                            .fillMaxSize()
-                            .scale(2.2f)
-                            .offset(y = (-10).dp),
+                            .fillMaxSize(),
                         contentScale = ContentScale.Fit
                     )
                 }
