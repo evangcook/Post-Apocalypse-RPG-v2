@@ -1054,6 +1054,38 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        val crashPrefs = getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
+        val crashLog = crashPrefs.getString("crash_log", null)
+        if (crashLog != null) {
+            crashPrefs.edit().remove("crash_log").apply()
+            setContent {
+                MyApplicationTheme {
+                    Box(modifier = Modifier.fillMaxSize().background(Color.Red)) {
+                        LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                            item {
+                                Text(
+                                    text = "APP CRASHED:\n\n$crashLog",
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            return
+        }
+        
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            val sw = java.io.StringWriter()
+            throwable.printStackTrace(java.io.PrintWriter(sw))
+            crashPrefs.edit().putString("crash_log", sw.toString()).commit()
+            defaultHandler?.uncaughtException(thread, throwable)
+        }
+
         setContent {
             MyApplicationTheme {
                 // Simplified container to prevent edge-to-edge crashes on custom skins
