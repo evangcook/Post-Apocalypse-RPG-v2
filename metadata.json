@@ -1,0 +1,6 @@
+{
+  "name": "Wasteland RPG",
+  "description": "Post-apocalyptic turn-based RPG with gritty aesthetics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
