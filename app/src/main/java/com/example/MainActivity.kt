@@ -1788,10 +1788,11 @@ fun CombatArena(
                 }
 
                 if (entity.entityType == EntityType.BRUISER) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Red)
+    Image(
+        painter = painterResource(id = R.drawable.hero_bruiser),
+        contentDescription = "Scrap Bruiser",
+        modifier = Modifier.fillMaxSize(),
+        contentScale = ContentScale.Fit
     )
 }
                 
