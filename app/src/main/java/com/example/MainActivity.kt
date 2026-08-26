@@ -1709,14 +1709,14 @@ fun CombatArena(
         state.entities.forEach { entity ->
             val isBoss = entity.entityType == EntityType.BOSS
             val isBruiser = entity.entityType == EntityType.BRUISER
-            val charWidth = if (isBoss) baseCharWidth * 2.0f else if (isBruiser) baseCharWidth * 2.2f else baseCharWidth
-            val charHeight = if (isBoss) baseCharHeight * 1.8f else if (isBruiser) baseCharHeight * 1.6f else baseCharHeight
+            val charWidth = if (isBoss) baseCharWidth * 2.0f else baseCharWidth
+            val charHeight = if (isBoss) baseCharHeight * 1.8f else baseCharHeight
             val groundLevel = h * 0.7f - charHeight
 
             val xPos = when {
-                entity.isPlayer && entity.rank == 1 -> w * 0.32f
-                entity.isPlayer && entity.rank == 2 -> w * 0.16f
-                entity.isPlayer && entity.rank == 3 -> w * 0.02f
+                entity.isPlayer && entity.rank == 1 -> w * 0.38f
+                entity.isPlayer && entity.rank == 2 -> w * 0.22f
+                entity.isPlayer && entity.rank == 3 -> w * 0.06f
                 isBoss -> w * 0.60f
                 !entity.isPlayer && entity.rank == 1 -> w * 0.52f
                 !entity.isPlayer && entity.rank == 2 -> w * 0.68f
@@ -1840,7 +1840,10 @@ fun CombatArena(
                         painter = androidx.compose.ui.res.painterResource(id = R.drawable.hero_bruiser),
                         contentDescription = "Scrap Bruiser",
                         modifier = Modifier
-                            .fillMaxSize(),
+                            .align(Alignment.BottomCenter)
+                            .requiredWidth(charWidth * 3f)
+                            .requiredHeight(charHeight * 1.2f)
+                            .offset(y = 10.dp),
                         contentScale = ContentScale.Fit
                     )
                 }
