@@ -7,13 +7,13 @@ plugins {
 }
 
 android {
-  namespace = "com.aistudio.wastelandrpg.asdfhj"
+  namespace = "com.example"
   compileSdk = 34
 
   defaultConfig {
     applicationId = "com.aistudio.wastelandrpg.asdfhj"
     minSdk = 24
-    targetSdk = 36
+    targetSdk = 34
     versionCode = 1
     versionName = "1.0"
 
