@@ -1,38 +1,23 @@
 package com.example
 
+import android.app.Activity
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import android.widget.TextView
 import android.graphics.Color
-import android.widget.ScrollView
+import android.view.Gravity
 
-class MainActivity : ComponentActivity() {
+class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        try {
-            // We are bypassing Jetpack Compose entirely.
-            val debugView = TextView(this)
-            debugView.text = "SYSTEM ONLINE. \n\nJETPACK COMPOSE IS THE FRACTURE POINT."
-            debugView.setTextColor(Color.GREEN)
-            debugView.setBackgroundColor(Color.BLACK)
-            debugView.textSize = 20f
-            debugView.setPadding(50, 50, 50, 50)
-            setContentView(debugView)
-            
-        } catch (t: Throwable) {
-            // If the native view fails, it will print its own death certificate.
-            val errorView = TextView(this)
-            errorView.text = "FATAL CRASH:\n\n" + t.stackTraceToString()
-            errorView.setTextColor(Color.RED)
-            errorView.setBackgroundColor(Color.BLACK)
-            errorView.textSize = 12f
-            errorView.setPadding(40, 40, 40, 40)
-            
-            val scroller = ScrollView(this)
-            scroller.setBackgroundColor(Color.BLACK)
-            scroller.addView(errorView)
-            setContentView(scroller)
-        }
+        val debugView = TextView(this)
+        debugView.text = "BARE METAL SUCCESS.\n\nCOMPONENT ACTIVITY IS THE FRACTURE."
+        debugView.setTextColor(Color.GREEN)
+        debugView.setBackgroundColor(Color.BLACK)
+        debugView.textSize = 20f
+        debugView.gravity = Gravity.CENTER
+        
+        setContentView(debugView)
     }
 }
+
