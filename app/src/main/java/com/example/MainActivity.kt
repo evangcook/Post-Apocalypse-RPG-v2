@@ -1053,13 +1053,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
-                // Trivial change to force recompilation and trigger emulator deploy
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    GameRouter(modifier = Modifier.padding(innerPadding))
-                }
+            androidx.compose.foundation.layout.Box(
+                modifier = androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                androidx.compose.material3.Text("SYSTEM ONLINE", color = androidx.compose.ui.graphics.Color.Green, fontSize = 24.sp)
             }
         }
     }
