@@ -19,7 +19,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build Debug APK
-        run: gradle assembleDebug --stacktrace
+        run: gradle assembleDebug --no-daemon -Djava.awt.headless=true --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
