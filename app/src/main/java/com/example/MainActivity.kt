@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.Animatable
@@ -1051,16 +1051,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 }
 
 // --- UI ---
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        
         val crashPrefs = getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
         val crashLog = crashPrefs.getString("crash_log", null)
         if (crashLog != null) {
-            crashPrefs.edit().remove("crash_log").apply()
+            super.onCreate(savedInstanceState)
             setContent {
-                MyApplicationTheme {
+                androidx.compose.material3.MaterialTheme {
                     Box(modifier = Modifier.fillMaxSize().background(Color.Red)) {
                         LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                             item {
@@ -1070,6 +1068,17 @@ class MainActivity : ComponentActivity() {
                                     fontSize = 12.sp,
                                     fontFamily = FontFamily.Monospace
                                 )
+                            }
+                            item {
+                                Button(
+                                    onClick = {
+                                        crashPrefs.edit().remove("crash_log").apply()
+                                        finish()
+                                    },
+                                    modifier = Modifier.padding(top = 16.dp)
+                                ) {
+                                    Text("CLEAR CRASH LOG & RESTART")
+                                }
                             }
                         }
                     }
@@ -1082,9 +1091,12 @@ class MainActivity : ComponentActivity() {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             val sw = java.io.StringWriter()
             throwable.printStackTrace(java.io.PrintWriter(sw))
+            android.util.Log.e("CRASH_REPORTER", "Caught crash: " + sw.toString())
             crashPrefs.edit().putString("crash_log", sw.toString()).commit()
             defaultHandler?.uncaughtException(thread, throwable)
         }
+
+        super.onCreate(savedInstanceState)
 
         setContent {
             MyApplicationTheme {
