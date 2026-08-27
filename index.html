@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V37.0 (Elites & Combos)</title>
+<title>Wasteland RPG - Engine V37.1 (Permanent Saves)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -148,7 +148,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V37.0</div>
+        <div class="title-sub">ENGINE V37.1</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -267,8 +267,8 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 </div>
 
 <script>
-const BASE_SAVE_KEY = 'wasteland_rpg_v37_slot_'; 
-const SETTINGS_KEY = 'wasteland_rpg_settings';
+const BASE_SAVE_KEY = 'wasteland_rpg_core_slot_'; 
+const SETTINGS_KEY = 'wasteland_rpg_core_settings';
 let currentSlot = 1;
 let globalSettings = { combatSpeed: 1.0 };
 let previousScreen = '';
@@ -276,7 +276,7 @@ let previousScreen = '';
 let bossSkulls = 0; let metaUpgrades = { startScrap: 0, startLevel: 1, invMax: 4 };
 let scrap = 0; let currentTier = 1; let inventory = []; let materials = { parts: 0, chems: 0, tech: 0 }; 
 let outpostTab = 'ROSTER'; let activePosSelector = null; let activePerkSelector = null; let currentWeather = 'CLEAR'; let currentNodeType = '';
-let isCurrentNodeElite = false; // V37 Combat Multiplier
+let isCurrentNodeElite = false;
 
 const SECTOR_LAYOUT = [
     [{type:'BOSS', elite:false}], 
@@ -304,7 +304,27 @@ const ROSTER_TEMPLATE = [
 
 let playerRoster = []; let activeEntities = []; let turnQueue = []; let activeIndex = -1; let combatActive = false; let pendingAction = null;
 
-function initEngine() { let s = localStorage.getItem(SETTINGS_KEY); if (s) { globalSettings = JSON.parse(s); } updateSettingsUI(); renderTitleScreen(); }
+function migrateOldSaves() {
+    for(let i=1; i<=3; i++) {
+        let oldSave = localStorage.getItem('wasteland_rpg_v37_slot_' + i);
+        if (oldSave && !localStorage.getItem(BASE_SAVE_KEY + i)) {
+            localStorage.setItem(BASE_SAVE_KEY + i, oldSave);
+        }
+    }
+    let oldSettings = localStorage.getItem('wasteland_rpg_settings');
+    if (oldSettings && !localStorage.getItem(SETTINGS_KEY)) {
+        localStorage.setItem(SETTINGS_KEY, oldSettings);
+    }
+}
+
+function initEngine() { 
+    migrateOldSaves();
+    let s = localStorage.getItem(SETTINGS_KEY); 
+    if (s) { globalSettings = JSON.parse(s); } 
+    updateSettingsUI(); 
+    renderTitleScreen(); 
+}
+
 function switchScreen(screenId) { document.querySelectorAll('#engine > div:not(.settings-icon):not(#screen-settings)').forEach(el => el.style.display = 'none'); document.getElementById(screenId).style.display = 'flex'; if (screenId === 'screen-map' || screenId === 'screen-outpost' || screenId === 'screen-citadel') { document.getElementById('btn-global-settings').style.display = 'block'; } else { document.getElementById('btn-global-settings').style.display = 'none'; } }
 function openSettings() { document.querySelectorAll('#engine > div:not(.settings-icon)').forEach(el => { if (el.style.display === 'flex' && el.id !== 'screen-settings') previousScreen = el.id; }); document.getElementById('screen-settings').style.display = 'flex'; }
 function closeSettings() { document.getElementById('screen-settings').style.display = 'none'; }
@@ -399,7 +419,6 @@ function useOutpostItem(index) { inventory.splice(index, 1); scrap += 20; saveGa
 function buyUpgrade(charId, type, cost) { if (scrap < cost) return; scrap -= cost; let c = playerRoster.find(c => c.id === charId); if (c.hp <= 0) return; if (type === 'HP') { c.maxHp += 10; c.hp += 10; } else if (type === 'DMG') { c.dmgBase += 3; } c.upgradeCount++; saveGameState(); renderOutpost(); }
 function medBay(charId, action) { let c = playerRoster.find(c => c.id === charId); if (action === 'HEAL' && scrap >= 10 && c.hp > 0 && c.hp < c.maxHp) { scrap -= 10; c.hp = Math.min(c.maxHp, c.hp + Math.floor(c.maxHp * 0.4)); } else if (action === 'REVIVE' && scrap >= 50 && c.hp <= 0) { scrap -= 50; c.hp = Math.floor(c.maxHp * 0.25); } saveGameState(); renderOutpost(); }
 
-// V37 Elite Spawning Hook
 function generateEnemies(nodeType, mult, isEliteNode) {
     const pool = {
         'BEASTS': [
@@ -426,7 +445,6 @@ function generateEnemies(nodeType, mult, isEliteNode) {
         let t = JSON.parse(JSON.stringify(p[Math.floor(Math.random() * p.length)])); 
         let hp = Math.floor(t.maxHp * mult); t.hp = hp; t.maxHp = hp; t.dmgBase = Math.floor(t.dmgBase * mult);
         
-        // V37 Elite Generation
         if (isEliteNode && Math.random() < 0.6) {
             let affixes = ['FRENZIED', 'ARMORED', 'VAMPIRIC'];
             t.eliteType = affixes[Math.floor(Math.random() * affixes.length)];
@@ -609,7 +627,6 @@ function skipStunnedTurn() { turnQueue[activeIndex].stunnedTurns--; renderField(
 function queueAction(a) { pendingAction = a; renderField(); }
 function cancelAction() { pendingAction = null; renderField(); }
 
-// V37 Status Combo Core
 function resolveAction(targetId) {
     let actEnt = turnQueue[activeIndex]; let target = activeEntities.find(e => e.id === targetId);
     let livingEnemies = activeEntities.filter(e => !e.isPlayer && e.hp > 0);
@@ -628,22 +645,14 @@ function resolveAction(targetId) {
         if (pendingAction === 'FERAL_BITE') { dmgMult = 1.2; actEnt.cooldowns.feral_bite = 3; }
         if (pendingAction === 'DEADEYE') { if (dist === livingEnemies.length - 1 && dist !== 0) dmgMult = 1.8; else dmgMult = 0.8; actEnt.cooldowns.deadeye = 2; }
         
-        // COMBO: Buckshot -> Ignite
         if (pendingAction === 'BUCKSHOT') { 
             if (dist === 0) dmgMult = 1.5; else dmgMult = 0.8; 
             if (target.oiledTurns > 0) { dmgMult *= 2; target.oiledTurns = 0; isCombo = true; comboType = 'IGNITE!'; }
             actEnt.cooldowns.buckshot = 2; 
         }
 
-        // COMBO: Pipe Rifle -> Exploit
-        if (pendingAction === 'PIPE_RIFLE' && target.bleedingTurns > 0) {
-            dmgMult *= 1.5; isCombo = true; comboType = 'EXPLOIT!';
-        }
-
-        // COMBO: Scrap Blade -> Execute
-        if (pendingAction === 'SCRAP_BLADE' && target.stunnedTurns > 0) {
-            dmgMult *= 1.5; isCombo = true; comboType = 'EXECUTE!';
-        }
+        if (pendingAction === 'PIPE_RIFLE' && target.bleedingTurns > 0) { dmgMult *= 1.5; isCombo = true; comboType = 'EXPLOIT!'; }
+        if (pendingAction === 'SCRAP_BLADE' && target.stunnedTurns > 0) { dmgMult *= 1.5; isCombo = true; comboType = 'EXECUTE!'; }
 
         const rangedMoves = ['PISTOL', 'RAD_SHOT', 'PIPE_RIFLE', 'FLASHBANG', 'FLARE_GUN', 'QUICK_SHOT', 'DEADEYE'];
         if (currentWeather === 'SANDSTORM' && rangedMoves.includes(pendingAction)) { dmgMult *= 0.75; }
@@ -653,21 +662,15 @@ function resolveAction(targetId) {
 
         applyDamageHit(actEnt, target, Math.floor(baseDmg * dmgMult), atkType, pendingAction);
 
-        if (pendingAction === 'FLARE_GUN') {
-            target.oiledTurns = 3; log(`> ${target.name} is coated in oil!`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "OILED", "fct-weak"), 400);
-        }
-
-        if (pendingAction === 'MOLOTOV') {
-            actEnt.cooldowns.molotov = 3; let secondaries = livingEnemies.filter(e => e.id !== targetId);
-            if (secondaries.length > 0) { let sTarg = secondaries[Math.floor(Math.random() * secondaries.length)]; applyDamageHit(actEnt, sTarg, Math.floor(baseDmg * 0.7), atkType, null); }
-        }
+        if (pendingAction === 'FLARE_GUN') { target.oiledTurns = 3; log(`> ${target.name} is coated in oil!`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "OILED", "fct-weak"), 400); }
+        if (pendingAction === 'MOLOTOV') { actEnt.cooldowns.molotov = 3; let secondaries = livingEnemies.filter(e => e.id !== targetId); if (secondaries.length > 0) { let sTarg = secondaries[Math.floor(Math.random() * secondaries.length)]; applyDamageHit(actEnt, sTarg, Math.floor(baseDmg * 0.7), atkType, null); } }
     }
     pendingAction = null; checkWinState();
 }
 
 function applyDamageHit(attacker, target, calcDmg, atkType, abilityStr) {
     if (target.hp <= 0) return; let resistValue = target.resistances[atkType] || 0; let armorCalc = abilityStr === 'FERAL_BITE' ? 0 : target.armor;
-    if (target.oiledTurns > 0 && atkType === 'energy') resistValue -= 15; // Oil strips energy resist
+    if (target.oiledTurns > 0 && atkType === 'energy') resistValue -= 15; 
     let netDmg = Math.max(1, calcDmg - resistValue - armorCalc); if (resistValue >= 100) netDmg = 0; target.hp = Math.max(0, target.hp - netDmg);
     let logStyle = "log-dmg"; let logMsg = `> ${attacker.name} hits ${target.name} for ${netDmg}`;
 
@@ -716,12 +719,7 @@ function executeEnemyAi(enemy) {
         let posStr = target.gridPos === 1 ? 'Front' : target.gridPos === 2 ? 'Mid' : 'Back';
         log(`> ${enemy.name} hits ${target.name} [${posStr}] for ${net}`, "log-dmg"); spawnFCT(target.id, `-${net}`, "fct-dmg");
 
-        // V37 Vampiric Elite Hook
-        if (enemy.eliteType === 'VAMPIRIC') {
-            let heal = Math.max(1, Math.floor(net * 0.5));
-            enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
-            setTimeout(() => spawnFCT(enemy.id, `+${heal}`, "fct-heal"), 300);
-        }
+        if (enemy.eliteType === 'VAMPIRIC') { let heal = Math.max(1, Math.floor(net * 0.5)); enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal); setTimeout(() => spawnFCT(enemy.id, `+${heal}`, "fct-heal"), 300); }
 
         if (["Mutant", "Attack Dog", "War Hound", "Chem Fiend"].includes(enemy.name) && Math.random() < 0.4) { target.bleedingTurns = 2; setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300 * globalSettings.combatSpeed); } 
         else if ((enemy.name === "Sniper" || enemy.classType === "BOSS") && Math.random() < 0.25) { target.stunnedTurns = 1; setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300 * globalSettings.combatSpeed); }
