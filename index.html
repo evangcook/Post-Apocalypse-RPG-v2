@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V35.0 (The Citadel)</title>
+<title>Wasteland RPG - Engine V36.0 (Saves & Settings)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -18,13 +18,21 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .btn-continue { border-color: #B8860B; color: #B8860B; }
 .btn-meta { border-color: #4488ff; color: #4488ff; }
 
-/* V35 Citadel Screen */
+/* V36 Universal Header Settings Button */
+.settings-icon { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #888; transition: 0.2s; z-index: 100; text-shadow: 0 0 5px #000; }
+.settings-icon:hover { color: #fff; transform: rotate(90deg); }
+
+/* V36 Settings Screen */
+#screen-settings { display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; height: 100%; box-sizing: border-box; background: rgba(0,0,0,0.95); z-index: 200; position: absolute; top:0; left:0; width:100%; }
+.settings-menu { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 300px; text-align: center; }
+.settings-title { color: #B8860B; font-size: 24px; font-weight: bold; margin-bottom: 20px; letter-spacing: 2px; }
+
 #screen-citadel { display: none; flex-direction: column; padding: 20px; height: 100%; box-sizing: border-box; background: linear-gradient(rgba(10, 10, 20, 0.9), rgba(0, 0, 0, 0.95)); overflow-y: auto; }
-.citadel-header { display: flex; justify-content: space-between; color: #4488ff; font-weight: bold; font-size: 18px; margin-bottom: 15px; flex-shrink: 0;}
+.citadel-header { display: flex; justify-content: space-between; color: #4488ff; font-weight: bold; font-size: 18px; margin-bottom: 15px; flex-shrink: 0; padding-right: 30px;}
 .skull-icon { color: #fff; text-shadow: 0 0 5px #ff4444; }
 
-#screen-map { display: none; flex-direction: column; padding: 20px; height: 100%; box-sizing: border-box;}
-.map-header { display: flex; justify-content: space-between; color: #B8860B; font-weight: bold; font-size: 18px; margin-bottom: 15px; flex-shrink: 0;}
+#screen-map { display: none; flex-direction: column; padding: 20px; height: 100%; box-sizing: border-box; position: relative;}
+.map-header { display: flex; justify-content: space-between; color: #B8860B; font-weight: bold; font-size: 18px; margin-bottom: 15px; flex-shrink: 0; padding-right: 30px;}
 .outpost-btn { background: #0a110a; border: 1px solid #6B8E23; color: #6B8E23; font-weight: bold; padding: 15px; margin-bottom: 15px; font-family: monospace; font-size: 14px; cursor: pointer; text-align: center; border-radius: 4px; transition: 0.2s; flex-shrink: 0;}
 .outpost-btn:hover { background: #6B8E23; color: #000; }
 
@@ -136,13 +144,26 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <body>
 
 <div id="engine">
+    <!-- V36 Persistent Settings Icon -->
+    <div id="btn-global-settings" class="settings-icon" onclick="openSettings()" style="display:none;">⚙️</div>
+
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V35.0</div>
+        <div class="title-sub">ENGINE V36.0</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
-    <!-- V35: The Citadel Screen -->
+    <!-- V36 Settings Overlay Screen -->
+    <div id="screen-settings">
+        <div class="settings-title">SYSTEM SETTINGS</div>
+        <div class="settings-menu">
+            <button class="title-btn" id="btn-toggle-speed" onclick="toggleGameSpeed()">COMBAT SPEED: NORMAL</button>
+            <button class="title-btn btn-meta" onclick="returnToTitle()">RETURN TO TITLE</button>
+            <button class="title-btn" style="border-color: #8B0000; color: #ff4444;" onclick="eraseCurrentSave()">ERASE SAVE DATA</button>
+            <button class="title-btn" style="border-color: #888; color: #888; margin-top: 20px;" onclick="closeSettings()">RESUME</button>
+        </div>
+    </div>
+
     <div id="screen-citadel">
         <div class="citadel-header">
             <span>THE CITADEL (META-UPGRADES)</span>
@@ -180,7 +201,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
     </div>
 
     <div id="screen-outpost">
-        <div class="map-header">
+        <div class="map-header" style="padding-right: 30px;">
             <span>OUTPOST COMMAND</span>
             <span>SCRAP: <span id="outpost-scrap">0</span></span>
         </div>
@@ -250,21 +271,16 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 </div>
 
 <script>
-const SAVE_KEY = 'wasteland_rpg_engine_v35'; 
+// V36 Save Systems & Globals
+const BASE_SAVE_KEY = 'wasteland_rpg_v36_slot_'; 
+const SETTINGS_KEY = 'wasteland_rpg_settings';
+let currentSlot = 1;
+let globalSettings = { combatSpeed: 1.0 };
+let previousScreen = '';
 
-// V35 Meta Progression State
-let bossSkulls = 0;
-let metaUpgrades = { startScrap: 0, startLevel: 1, invMax: 4 };
-
-// Run State
-let scrap = 0; let currentTier = 1;
-let inventory = []; 
-let materials = { parts: 0, chems: 0, tech: 0 }; 
-let outpostTab = 'ROSTER';
-let activePosSelector = null;
-let activePerkSelector = null;
-let currentWeather = 'CLEAR';
-let currentNodeType = '';
+let bossSkulls = 0; let metaUpgrades = { startScrap: 0, startLevel: 1, invMax: 4 };
+let scrap = 0; let currentTier = 1; let inventory = []; let materials = { parts: 0, chems: 0, tech: 0 }; 
+let outpostTab = 'ROSTER'; let activePosSelector = null; let activePerkSelector = null; let currentWeather = 'CLEAR'; let currentNodeType = '';
 
 const SECTOR_LAYOUT = [
     ['BOSS'], ['MECH', 'RAIDERS'], ['BEASTS', 'MECH', 'RAIDERS'], ['RAIDERS', 'BEASTS'], ['MECH', 'RAIDERS', 'BEASTS'], ['BEASTS', 'MECH'], ['RAIDERS', 'BEASTS', 'RAIDERS'], ['MECH', 'RAIDERS'], ['BEASTS', 'RAIDERS', 'MECH'], ['RAIDERS']
@@ -283,22 +299,103 @@ const ROSTER_TEMPLATE = [
 
 let playerRoster = []; let activeEntities = []; let turnQueue = []; let activeIndex = -1; let combatActive = false; let pendingAction = null;
 
-function switchScreen(screenId) { document.querySelectorAll('#engine > div').forEach(el => el.style.display = 'none'); document.getElementById(screenId).style.display = 'flex'; }
-
-function renderTitleScreen() {
-    switchScreen('screen-title'); document.getElementById('title-menu-container').innerHTML = '';
-    
-    // Check if we have save data for a mid-run load
-    let d = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (d && d.tier) document.getElementById('title-menu-container').innerHTML += `<button class="title-btn btn-continue" onclick="continueGame()">Continue Expedition</button>`;
-    
-    document.getElementById('title-menu-container').innerHTML += `<button class="title-btn" onclick="startNewGame()">New Expedition</button>`;
-    
-    // The Citadel Button
-    document.getElementById('title-menu-container').innerHTML += `<button class="title-btn btn-meta" onclick="renderCitadel()">ENTER CITADEL</button>`;
+// V36 Initialization & Settings
+function initEngine() {
+    let s = localStorage.getItem(SETTINGS_KEY);
+    if (s) { globalSettings = JSON.parse(s); }
+    updateSettingsUI();
+    renderTitleScreen();
 }
 
-// V35 Meta Functions
+function switchScreen(screenId) { 
+    document.querySelectorAll('#engine > div:not(.settings-icon):not(#screen-settings)').forEach(el => el.style.display = 'none'); 
+    document.getElementById(screenId).style.display = 'flex'; 
+    
+    if (screenId === 'screen-map' || screenId === 'screen-outpost' || screenId === 'screen-citadel') {
+        document.getElementById('btn-global-settings').style.display = 'block';
+    } else {
+        document.getElementById('btn-global-settings').style.display = 'none';
+    }
+}
+
+function openSettings() {
+    document.querySelectorAll('#engine > div:not(.settings-icon)').forEach(el => {
+        if (el.style.display === 'flex' && el.id !== 'screen-settings') previousScreen = el.id;
+    });
+    document.getElementById('screen-settings').style.display = 'flex';
+}
+
+function closeSettings() {
+    document.getElementById('screen-settings').style.display = 'none';
+}
+
+function toggleGameSpeed() {
+    globalSettings.combatSpeed = globalSettings.combatSpeed === 1.0 ? 0.5 : 1.0;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(globalSettings));
+    updateSettingsUI();
+}
+
+function updateSettingsUI() {
+    document.getElementById('btn-toggle-speed').innerText = globalSettings.combatSpeed === 1.0 ? "COMBAT SPEED: NORMAL" : "COMBAT SPEED: FAST";
+}
+
+function returnToTitle() {
+    closeSettings();
+    renderTitleScreen();
+}
+
+function eraseCurrentSave() {
+    if(confirm("Are you sure you want to permanently delete this save slot?")) {
+        localStorage.removeItem(BASE_SAVE_KEY + currentSlot);
+        closeSettings();
+        renderTitleScreen();
+    }
+}
+
+// V36 Save Slot Selectors
+function renderTitleScreen() {
+    switchScreen('screen-title'); 
+    let menuHTML = '';
+    
+    for(let i=1; i<=3; i++) {
+        let d = JSON.parse(localStorage.getItem(BASE_SAVE_KEY + i));
+        if (d) {
+            menuHTML += `<button class="title-btn btn-continue" onclick="selectSlot(${i}, true)">SLOT ${i} [TIER ${d.tier}] (💀 ${d.bossSkulls || 0})</button>`;
+        } else {
+            menuHTML += `<button class="title-btn" onclick="selectSlot(${i}, false)">SLOT ${i} [ EMPTY ]</button>`;
+        }
+    }
+    document.getElementById('title-menu-container').innerHTML = menuHTML;
+}
+
+function selectSlot(slotNum, exists) {
+    currentSlot = slotNum;
+    if (exists) { continueGame(); } else { startNewGame(); }
+}
+
+function startNewGame() { 
+    scrap = metaUpgrades.startScrap || 0; 
+    currentTier = 1; 
+    inventory = ['MED_STIM']; 
+    materials = { parts: 0, chems: 0, tech: 0 }; 
+    bossSkulls = 0;
+    metaUpgrades = { startScrap: 0, startLevel: 1, invMax: 4 };
+    playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
+    saveGameState(); renderMap(); 
+}
+
+function continueGame() { loadGameState(); renderMap(); }
+
+function saveGameState() { localStorage.setItem(BASE_SAVE_KEY + currentSlot, JSON.stringify({ scrap, tier: currentTier, roster: playerRoster, inventory, materials, bossSkulls, metaUpgrades })); }
+function loadGameState() {
+    let d = JSON.parse(localStorage.getItem(BASE_SAVE_KEY + currentSlot));
+    if (d) { 
+        scrap = d.scrap || 0; currentTier = d.tier || 1; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
+        inventory = d.inventory || ['MED_STIM']; materials = d.materials || { parts: 0, chems: 0, tech: 0 }; 
+        bossSkulls = d.bossSkulls || 0; metaUpgrades = d.metaUpgrades || { startScrap: 0, startLevel: 1, invMax: 4 };
+    }
+}
+
 function renderCitadel() {
     switchScreen('screen-citadel');
     document.getElementById('citadel-skulls').innerText = `${bossSkulls} 💀`;
@@ -314,38 +411,9 @@ function buyMetaUpgrade(type) {
     saveGameState(); renderCitadel();
 }
 
-function startNewGame() { 
-    scrap = metaUpgrades.startScrap; 
-    currentTier = 1; 
-    inventory = ['MED_STIM']; 
-    materials = { parts: 0, chems: 0, tech: 0 }; 
-    playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
-    
-    // Apply meta levels
-    playerRoster.forEach(p => {
-        p.level = metaUpgrades.startLevel;
-        p.perkPoints = metaUpgrades.startLevel - 1;
-        p.xpToNext = Math.floor(100 * Math.pow(1.5, metaUpgrades.startLevel - 1));
-    });
-    
-    saveGameState(); renderMap(); 
-}
-
-function continueGame() { loadGameState(); renderMap(); }
-
-function saveGameState() { localStorage.setItem(SAVE_KEY, JSON.stringify({ scrap, tier: currentTier, roster: playerRoster, inventory, materials, bossSkulls, metaUpgrades })); }
-function loadGameState() {
-    let d = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (d) { 
-        scrap = d.scrap || 0; currentTier = d.tier || 1; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
-        inventory = d.inventory || ['MED_STIM']; materials = d.materials || { parts: 0, chems: 0, tech: 0 }; 
-        bossSkulls = d.bossSkulls || 0; metaUpgrades = d.metaUpgrades || { startScrap: 0, startLevel: 1, invMax: 4 };
-    }
-}
-
 function renderMap() {
     switchScreen('screen-map'); document.getElementById('scrap-display').innerText = scrap; const mapC = document.getElementById('map-nodes');
-    if (currentTier > TOTAL_TIERS) { mapC.innerHTML = `<h3 style="color:#8B0000; text-align:center;">SECTOR CLEARED</h3><button class="return-btn" onclick="handleSquadWipe()">Return to Citadel</button>`; return; }
+    if (currentTier > TOTAL_TIERS) { mapC.innerHTML = `<h3 style="color:#8B0000; text-align:center;">SECTOR CLEARED</h3><button class="return-btn" onclick="renderCitadel()">Return to Citadel</button>`; return; }
     let m = `<div class="map-track">`;
     for (let i = 0; i < TOTAL_TIERS; i++) {
         let t = TOTAL_TIERS - i; let rowStatus = (t === currentTier) ? 'active' : (t < currentTier) ? 'cleared' : 'locked'; let dis = (t !== currentTier) ? 'disabled' : '';
@@ -433,7 +501,6 @@ function renderOutpost() {
             </div>`;
     });
 
-    // Inventory Rendering (V35 applies Meta Max Inv)
     document.getElementById('inv-count').innerText = `${inventory.length}/${metaUpgrades.invMax}`;
     const invC = document.getElementById('outpost-inventory'); invC.innerHTML = '';
     for (let i = 0; i < metaUpgrades.invMax; i++) {
@@ -516,13 +583,13 @@ function setCombatBackground(nodeType, tier) {
 function spawnFCT(entityId, msg, styleClass) {
     const el = document.getElementById(entityId); if (!el) return;
     const f = document.createElement('div'); f.className = `fct ${styleClass}`; f.innerText = msg; el.appendChild(f);
-    setTimeout(() => { if (f.parentNode) f.parentNode.removeChild(f); }, 1000);
+    setTimeout(() => { if (f.parentNode) f.parentNode.removeChild(f); }, 1000 * globalSettings.combatSpeed);
 }
 
 function initiateCombat(nodeType) {
     switchScreen('screen-combat'); combatActive = true; document.getElementById('log').innerHTML = '';
     
-    let bgFile = 'bg_combat.png'; currentWeather = 'CLEAR'; currentNodeType = nodeType; // Save current node
+    let bgFile = 'bg_combat.png'; currentWeather = 'CLEAR'; currentNodeType = nodeType; 
     if (currentTier === 1) { bgFile = 'bg_combat.png'; } else {
         if (nodeType === 'BOSS') { bgFile = 'bg_thunderdome.png'; currentWeather = 'BLOODLUST'; }
         else if (nodeType === 'MECH') { bgFile = 'bg_refinery.png'; if (Math.random() < 0.4) currentWeather = 'TOXIC_SMOG'; }
@@ -661,8 +728,8 @@ function resolveConsumableItem(targetId) {
 function processTurn() {
     if (!combatActive) return; pendingAction = null; let aE = turnQueue[activeIndex]; if (aE.hp <= 0) { nextTurn(); return; }
     renderField(); applyTurnStartEffects(aE); if (!combatActive) return; if (!aE.hp > 0) return checkWinState(); 
-    if (aE.stunnedTurns > 0) { if (!aE.isPlayer) { log(`> ${aE.name} stunned.`, "log-status"); spawnFCT(aE.id, "STUNNED", "fct-status"); aE.stunnedTurns--; setTimeout(nextTurn, 1000); return; } else return; }
-    if (!aE.isPlayer) setTimeout(() => executeEnemyAi(aE), 1000);
+    if (aE.stunnedTurns > 0) { if (!aE.isPlayer) { log(`> ${aE.name} stunned.`, "log-status"); spawnFCT(aE.id, "STUNNED", "fct-status"); aE.stunnedTurns--; setTimeout(nextTurn, 1000 * globalSettings.combatSpeed); return; } else return; }
+    if (!aE.isPlayer) setTimeout(() => executeEnemyAi(aE), 1000 * globalSettings.combatSpeed);
 }
 
 function applyTurnStartEffects(ent) {
@@ -676,7 +743,7 @@ function applyTurnStartEffects(ent) {
     if (chg) renderField();
 }
 
-function skipStunnedTurn() { turnQueue[activeIndex].stunnedTurns--; renderField(); setTimeout(nextTurn, 500); }
+function skipStunnedTurn() { turnQueue[activeIndex].stunnedTurns--; renderField(); setTimeout(nextTurn, 500 * globalSettings.combatSpeed); }
 function queueAction(a) { pendingAction = a; renderField(); }
 function cancelAction() { pendingAction = null; renderField(); }
 
@@ -726,10 +793,10 @@ function applyDamageHit(attacker, target, calcDmg, atkType, abilityStr) {
     log(logMsg, logStyle);
 
     if (abilityStr === 'RAD_SHOT' || abilityStr === 'FERAL_BITE') {
-        if (Math.random() < (abilityStr === 'FERAL_BITE' ? 0.9 : 0.6)) { target.bleedingTurns = 3; log(`> ${target.name} bleeding!`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300); }
+        if (Math.random() < (abilityStr === 'FERAL_BITE' ? 0.9 : 0.6)) { target.bleedingTurns = 3; log(`> ${target.name} bleeding!`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300 * globalSettings.combatSpeed); }
     } else if (abilityStr === 'HEAVY_WRENCH' || abilityStr === 'FLASHBANG') {
         let sc = (abilityStr === 'FLASHBANG') ? 0.35 : 0.2; if (abilityStr === 'FLASHBANG' && target.resistances.energy < 0) sc *= 2;
-        if (Math.random() < sc) { target.stunnedTurns = 1; log(`> ${target.name} stunned!`, "log-status"); setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300); }
+        if (Math.random() < sc) { target.stunnedTurns = 1; log(`> ${target.name} stunned!`, "log-status"); setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300 * globalSettings.combatSpeed); }
     }
 }
 
@@ -745,7 +812,7 @@ function executeEnemyAi(enemy) {
         enemy.phase = 2; log(`> WARLORD ENRAGED!`, "log-dmg"); spawnFCT(enemy.id, "ENRAGED!", "fct-status"); enemy.dmgBase = Math.floor(enemy.dmgBase * 1.5);
         const m = 1 + ((currentTier - 1) * 0.4); const d = { name: "War Hound", classType: "BEAST", range: 'melee', maxHp: Math.floor(30*m), hp: Math.floor(30*m), speed: 18, armor: 0, isPlayer: false, dmgBase: Math.floor(12*m), img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } };
         for(let i = 0; i < 2; i++) { let n = JSON.parse(JSON.stringify(d)); n.id = `summon_${Date.now()}_${i}`; activeEntities.push(n); turnQueue.push(n); }
-        renderField(); setTimeout(nextTurn, 1000); return;
+        renderField(); setTimeout(nextTurn, 1000 * globalSettings.combatSpeed); return;
     }
 
     let validTargets = activeEntities.filter(e => e.isPlayer && e.hp > 0); 
@@ -763,8 +830,8 @@ function executeEnemyAi(enemy) {
         let posStr = target.gridPos === 1 ? 'Front' : target.gridPos === 2 ? 'Mid' : 'Back';
         log(`> ${enemy.name} hits ${target.name} [${posStr}] for ${net}`, "log-dmg"); spawnFCT(target.id, `-${net}`, "fct-dmg");
 
-        if (["Mutant", "Attack Dog", "War Hound", "Chem Fiend"].includes(enemy.name) && Math.random() < 0.4) { target.bleedingTurns = 2; setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300); } 
-        else if ((enemy.name === "Sniper" || enemy.classType === "BOSS") && Math.random() < 0.25) { target.stunnedTurns = 1; setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300); }
+        if (["Mutant", "Attack Dog", "War Hound", "Chem Fiend"].includes(enemy.name) && Math.random() < 0.4) { target.bleedingTurns = 2; setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300 * globalSettings.combatSpeed); } 
+        else if ((enemy.name === "Sniper" || enemy.classType === "BOSS") && Math.random() < 0.25) { target.stunnedTurns = 1; setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300 * globalSettings.combatSpeed); }
     }
     checkWinState();
 }
@@ -780,12 +847,7 @@ function checkWinState() {
     const pA = activeEntities.some(e => e.isPlayer && e.hp > 0); const eA = activeEntities.some(e => !e.isPlayer && e.hp > 0);
     if (!pA) { document.getElementById('command-deck').innerHTML = `<button onclick="handleSquadWipe()">EXPEDITION FAILED - RESTART</button>`; combatActive = false; } 
     else if (!eA) { 
-        // V35 Boss Skull Hook
-        if (currentNodeType === 'BOSS') {
-            bossSkulls++;
-            log(`> VICTORY! Warlord Skull acquired!`, "log-heal");
-        }
-
+        if (currentNodeType === 'BOSS') { bossSkulls++; log(`> VICTORY! Warlord Skull acquired!`, "log-heal"); }
         let s = Math.floor(Math.random() * 30) + (currentTier * 20); 
         playerRoster.forEach(char => {
             if (char.gridPos > 0 && char.hp > 0) {
@@ -799,12 +861,13 @@ function checkWinState() {
 
         document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${s})">LOOT ${s}</button>`; combatActive = false; 
     } 
-    else { if (pendingAction === null) setTimeout(nextTurn, 800); }
+    else { if (pendingAction === null) setTimeout(nextTurn, 800 * globalSettings.combatSpeed); }
 }
 
 function collectLoot(a) { scrap += a; currentTier++; playerRoster.forEach(p => p.armor = 0); saveGameState(); renderMap(); }
 function nextTurn() { activeIndex++; if (activeIndex >= turnQueue.length) activeIndex = 0; processTurn(); }
-renderTitleScreen();
+
+initEngine();
 </script>
 </body>
 </html>
