@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V18.0 (Expanded Sector & Hostiles)</title>
+<title>Wasteland RPG - Engine V19.0 (Roguelite Loop)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -107,7 +107,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V18.0</div>
+        <div class="title-sub">ENGINE V19.0</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -146,7 +146,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
 <script>
 // --- GLOBAL STATE ---
-const SAVE_KEY = 'wasteland_rpg_engine_v18'; // Advanced to V18 to initialize new map structure
+const SAVE_KEY = 'wasteland_rpg_engine_v19'; // Increment to force clean array maps
 
 let scrap = 0;
 let currentTier = 1;
@@ -234,7 +234,7 @@ function renderMap() {
 
     // Loop through SECTOR_LAYOUT top-to-bottom
     for (let i = 0; i < TOTAL_TIERS; i++) {
-        let t = TOTAL_TIERS - i; // Calculate tier number (10 down to 1)
+        let t = TOTAL_TIERS - i; 
         let rowData = SECTOR_LAYOUT[i];
         let rowStatus = (t === currentTier) ? 'active' : (t < currentTier) ? 'cleared' : 'locked';
         let disabledAttr = (t !== currentTier) ? 'disabled' : '';
@@ -315,7 +315,6 @@ function medBay(charId, action) {
 
 // --- V18 ENEMY GENERATOR ---
 function generateEnemies(nodeType, mult) {
-    // Base Templates
     const e_dog = { name: "Attack Dog", classType: "BEAST", maxHp: 30, speed: 18, armor: 0, dmgBase: 12, img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } };
     const e_mutant = { name: "Mutant", classType: "MUTANT", maxHp: 70, speed: 7, armor: 0, dmgBase: 25, img: "enemy_mutant.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } };
     const e_chem = { name: "Chem Fiend", classType: "MUTANT", maxHp: 60, speed: 11, armor: 0, dmgBase: 15, img: "enemy_chem.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 50, energy: -5 } };
@@ -337,20 +336,15 @@ function generateEnemies(nodeType, mult) {
         return [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: Math.floor(40*mult), img: "enemy_boss.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 } }];
     }
 
-    // Determine how many enemies spawn (2 or 3)
     let squadSize = Math.random() > 0.5 ? 3 : 2;
     let squad = [];
-
     for (let i = 0; i < squadSize; i++) {
         let template = pool[Math.floor(Math.random() * pool.length)];
         let scaledHp = Math.floor(template.maxHp * mult);
         squad.push({
-            ...JSON.parse(JSON.stringify(template)), // Deep clone
-            id: `e${i}_${Date.now()}`, // Unique ID required for DOM interaction
-            isPlayer: false,
-            maxHp: scaledHp,
-            hp: scaledHp,
-            dmgBase: Math.floor(template.dmgBase * mult)
+            ...JSON.parse(JSON.stringify(template)), 
+            id: `e${i}_${Date.now()}`, 
+            isPlayer: false, maxHp: scaledHp, hp: scaledHp, dmgBase: Math.floor(template.dmgBase * mult)
         });
     }
     return squad;
@@ -372,9 +366,10 @@ function initiateCombat(nodeType) {
 
     playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; });
 
+    // Failsafe (Should technically be impossible to hit now due to Wipe Reset logic)
     if (!playerRoster.some(p => p.hp > 0)) {
-        alert("Your entire roster is dead. You must revive someone at the Outpost.");
-        renderMap(); return;
+        alert("CRITICAL ERROR: No living units. Forcing reset.");
+        handleSquadWipe(); return;
     }
 
     const mult = 1 + ((currentTier - 1) * 0.4);
@@ -554,7 +549,6 @@ function executeEnemyAi(enemy) {
         target.hp = Math.max(0, target.hp - netDmg);
         log(`> ${enemy.name} attacks ${target.name} for ${netDmg} ${atkType.toUpperCase()} DMG!`, "log-dmg"); spawnFCT(target.id, `-${netDmg}`, "fct-dmg");
 
-        // V18 Extended Enemy AI Effects
         if ((enemy.name === "Mutant" || enemy.name === "Attack Dog" || enemy.name === "Chem Fiend") && Math.random() < 0.4) {
             target.bleedingTurns = 2; log(`> ${enemy.name} caused ${target.name} to bleed.`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300);
         } else if ((enemy.name === "Sniper" || enemy.classType === "BOSS") && Math.random() < 0.25) {
@@ -564,13 +558,36 @@ function executeEnemyAi(enemy) {
     checkWinState();
 }
 
+// --- V19 WIPING LOGIC ---
+function handleSquadWipe() {
+    currentTier = 1;
+    // Wipe clears combat effects, resets CDs, and grants a free full-heal for the next attempt.
+    playerRoster.forEach(char => {
+        char.hp = char.maxHp;
+        char.stunnedTurns = 0;
+        char.bleedingTurns = 0;
+        char.armor = 0;
+        char.armorTurns = 0;
+        if(char.cooldowns) { for (let skill in char.cooldowns) char.cooldowns[skill] = 0; }
+    });
+    saveGameState();
+    renderMap();
+}
+
 function checkWinState() {
     renderField();
     const playersAlive = activeEntities.some(e => e.isPlayer && e.hp > 0); const enemiesAlive = activeEntities.some(e => !e.isPlayer && e.hp > 0);
 
-    if (!playersAlive) { log("> SQUAD WIPED.", "log-dmg"); combatActive = false; document.getElementById('command-deck').innerHTML = `<button onclick="renderMap()">RETREAT TO MAP</button>`;
-    } else if (!enemiesAlive) { log("> HOSTILES ELIMINATED.", "log-heal"); combatActive = false; let scrapGained = Math.floor(Math.random() * 30) + (currentTier * 20); document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${scrapGained})">LOOT ${scrapGained}</button>`;
-    } else { if (pendingAction === null) setTimeout(nextTurn, 800); }
+    if (!playersAlive) { 
+        log("> SQUAD WIPED.", "log-dmg"); combatActive = false; 
+        document.getElementById('command-deck').innerHTML = `<button onclick="handleSquadWipe()">EXPEDITION FAILED - RESTART</button>`;
+    } else if (!enemiesAlive) { 
+        log("> HOSTILES ELIMINATED.", "log-heal"); combatActive = false; 
+        let scrapGained = Math.floor(Math.random() * 30) + (currentTier * 20); 
+        document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${scrapGained})">LOOT ${scrapGained}</button>`;
+    } else { 
+        if (pendingAction === null) setTimeout(nextTurn, 800); 
+    }
 }
 
 function collectLoot(amount) {
