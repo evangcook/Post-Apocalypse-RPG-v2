@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V36.0 (Saves & Settings)</title>
+<title>Wasteland RPG - Engine V37.0 (Elites & Combos)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -18,11 +18,8 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .btn-continue { border-color: #B8860B; color: #B8860B; }
 .btn-meta { border-color: #4488ff; color: #4488ff; }
 
-/* V36 Universal Header Settings Button */
 .settings-icon { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #888; transition: 0.2s; z-index: 100; text-shadow: 0 0 5px #000; }
 .settings-icon:hover { color: #fff; transform: rotate(90deg); }
-
-/* V36 Settings Screen */
 #screen-settings { display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; height: 100%; box-sizing: border-box; background: rgba(0,0,0,0.95); z-index: 200; position: absolute; top:0; left:0; width:100%; }
 .settings-menu { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 300px; text-align: center; }
 .settings-title { color: #B8860B; font-size: 24px; font-weight: bold; margin-bottom: 20px; letter-spacing: 2px; }
@@ -49,6 +46,8 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .node-cleared { border-color: #6B8E23; color: #555; background: #0a110a; }
 .node-cleared .node-icon { filter: grayscale(100%); opacity: 0.5; }
 .node-cleared::after { content: '✓'; position: absolute; color: #6B8E23; font-size: 30px; font-weight: bold; opacity: 0.5; }
+.elite-node { border-color: #8B0000; box-shadow: 0 0 10px #8B0000; }
+.elite-node .node-lbl { color: #ff4444; }
 
 @keyframes pulseActive { 0% { box-shadow: 0 0 5px #8B0000; border-color: #8B0000; } 50% { box-shadow: 0 0 20px #ff4444; border-color: #ff4444; } 100% { box-shadow: 0 0 5px #8B0000; border-color: #8B0000; } }
 .node-active { color: #fff; background: #1a0a0a; animation: pulseActive 2s infinite; }
@@ -121,6 +120,7 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .status-bleed { background-color: rgba(139,0,0,0.7); color: #fff; text-shadow: 0 0 2px #000; }
 .status-stun { background-color: rgba(184,134,11,0.7); color: #000; font-weight: bold; }
 .status-shield { background-color: rgba(107,142,35,0.7); color: #fff; }
+.status-oil { background-color: rgba(50,50,50,0.9); color: #B8860B; }
 .portrait { width: calc(100% * var(--sprite-scale, 1)); height: auto; max-height: 25vh; object-fit: contain; object-position: bottom; transition: all 0.2s; filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.8)); }
 
 @keyframes hoverSprite { 0% { transform: translateY(0); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0); } }
@@ -128,12 +128,12 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 
 @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-50px) scale(1.3); } }
 .fct { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); font-weight: bold; font-size: clamp(14px, 4vw, 20px); text-shadow: 2px 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; animation: floatUp 1s ease-out forwards; pointer-events: none; z-index: 20; white-space: nowrap; }
-.fct-dmg { color: #ff4444; } .fct-heal { color: #6B8E23; } .fct-status { color: #B8860B; } .fct-weak { color: #ffaa00; font-size: clamp(18px, 5vw, 24px); }
+.fct-dmg { color: #ff4444; } .fct-heal { color: #6B8E23; } .fct-status { color: #B8860B; } .fct-weak { color: #ffaa00; font-size: clamp(18px, 5vw, 24px); } .fct-combo { color: #ff44ff; font-size: clamp(20px, 6vw, 28px); }
 
 .dashboard { height: 35vh; max-height: 250px; background: #050505; border: 2px solid #333; display: grid; grid-template-columns: 1fr 1fr; box-sizing: border-box; margin: 5px; }
 #command-deck { border-right: 2px solid #333; padding: 10px; display: flex; flex-direction: column; justify-content: center; gap: 8px; overflow-y: auto;}
 #log { padding: 10px; overflow-y: auto; font-size: clamp(10px, 3vw, 12px); color: #555; display: flex; flex-direction: column; }
-.log-turn { color: #aaa; margin-top: 5px; } .log-heal { color: #6B8E23; } .log-dmg { color: #8B0000; } .log-status { color: #B8860B; }
+.log-turn { color: #aaa; margin-top: 5px; } .log-heal { color: #6B8E23; } .log-dmg { color: #8B0000; } .log-status { color: #B8860B; } .log-combo { color: #ff44ff; font-weight: bold; }
 button { background: #111; color: #ccc; border: 1px solid #444; padding: clamp(10px, 3vh, 15px); font-family: monospace; font-size: clamp(10px, 3vw, 13px); cursor: pointer; text-transform: uppercase; transition: 0.2s; }
 button:hover:not(:disabled) { background: #222; border-color: #888; }
 button:active { background: #000; }
@@ -144,16 +144,14 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <body>
 
 <div id="engine">
-    <!-- V36 Persistent Settings Icon -->
     <div id="btn-global-settings" class="settings-icon" onclick="openSettings()" style="display:none;">⚙️</div>
 
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V36.0</div>
+        <div class="title-sub">ENGINE V37.0</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
-    <!-- V36 Settings Overlay Screen -->
     <div id="screen-settings">
         <div class="settings-title">SYSTEM SETTINGS</div>
         <div class="settings-menu">
@@ -169,7 +167,6 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
             <span>THE CITADEL (META-UPGRADES)</span>
             <span>SKULLS: <span id="citadel-skulls" class="skull-icon">0 💀</span></span>
         </div>
-        
         <div class="outpost-roster">
             <div class="upgrade-card" style="border-color: #4488ff;">
                 <div class="upgrade-header"><span>SCRAP SCAVENGER</span><span id="meta-lbl-scrap">LVL 0</span></div>
@@ -187,7 +184,6 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
                 <button class="upg-btn btn-meta" onclick="buyMetaUpgrade('INV')">UPGRADE [COST: 3 💀]</button>
             </div>
         </div>
-        
         <button class="return-btn" style="margin-top:20px;" onclick="renderTitleScreen()">RETURN TO TITLE</button>
     </div>
 
@@ -271,8 +267,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 </div>
 
 <script>
-// V36 Save Systems & Globals
-const BASE_SAVE_KEY = 'wasteland_rpg_v36_slot_'; 
+const BASE_SAVE_KEY = 'wasteland_rpg_v37_slot_'; 
 const SETTINGS_KEY = 'wasteland_rpg_settings';
 let currentSlot = 1;
 let globalSettings = { combatSpeed: 1.0 };
@@ -281,135 +276,67 @@ let previousScreen = '';
 let bossSkulls = 0; let metaUpgrades = { startScrap: 0, startLevel: 1, invMax: 4 };
 let scrap = 0; let currentTier = 1; let inventory = []; let materials = { parts: 0, chems: 0, tech: 0 }; 
 let outpostTab = 'ROSTER'; let activePosSelector = null; let activePerkSelector = null; let currentWeather = 'CLEAR'; let currentNodeType = '';
+let isCurrentNodeElite = false; // V37 Combat Multiplier
 
 const SECTOR_LAYOUT = [
-    ['BOSS'], ['MECH', 'RAIDERS'], ['BEASTS', 'MECH', 'RAIDERS'], ['RAIDERS', 'BEASTS'], ['MECH', 'RAIDERS', 'BEASTS'], ['BEASTS', 'MECH'], ['RAIDERS', 'BEASTS', 'RAIDERS'], ['MECH', 'RAIDERS'], ['BEASTS', 'RAIDERS', 'MECH'], ['RAIDERS']
+    [{type:'BOSS', elite:false}], 
+    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:false}], 
+    [{type:'BEASTS', elite:false}, {type:'MECH', elite:false}, {type:'RAIDERS', elite:true}], 
+    [{type:'RAIDERS', elite:false}, {type:'BEASTS', elite:true}], 
+    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:true}, {type:'BEASTS', elite:false}], 
+    [{type:'BEASTS', elite:false}, {type:'MECH', elite:true}], 
+    [{type:'RAIDERS', elite:true}, {type:'BEASTS', elite:false}, {type:'RAIDERS', elite:false}], 
+    [{type:'MECH', elite:true}, {type:'RAIDERS', elite:false}], 
+    [{type:'BEASTS', elite:false}, {type:'RAIDERS', elite:true}, {type:'MECH', elite:false}], 
+    [{type:'RAIDERS', elite:false}]
 ];
 const TOTAL_TIERS = SECTOR_LAYOUT.length;
 
 const ROSTER_TEMPLATE = [
-    { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 1, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
-    { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 2, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { cauterize: 0 } },
-    { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 }, upgradeCount: 0, gridPos: 3, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { flashbang: 0 } },
-    { id: 'p4', name: "Pyro", classType: "PYROMANIAC", maxHp: 55, hp: 55, speed: 11, armor: 0, isPlayer: true, dmgBase: 12, img: "hero_pyro.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 10 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { molotov: 0 } },
-    { id: 'p5', name: "Breacher", classType: "SHOTGUNNER", maxHp: 65, hp: 65, speed: 9, armor: 5, isPlayer: true, dmgBase: 22, img: "hero_shotgunner.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { buckshot: 0 } },
-    { id: 'p6', name: "Ghost", classType: "SNIPER", maxHp: 40, hp: 40, speed: 16, armor: 0, isPlayer: true, dmgBase: 28, img: "hero_sniper.png", scale: 0.9, hpDrop: -10, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { deadeye: 0 } },
-    { id: 'p7', name: "War Hound", classType: "HOUND", maxHp: 35, hp: 35, speed: 19, armor: 0, isPlayer: true, dmgBase: 16, img: "hero_hound.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { feral_bite: 0 } }
+    { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 1, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
+    { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 2, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { cauterize: 0 } },
+    { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 }, upgradeCount: 0, gridPos: 3, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { flashbang: 0 } },
+    { id: 'p4', name: "Pyro", classType: "PYROMANIAC", maxHp: 55, hp: 55, speed: 11, armor: 0, isPlayer: true, dmgBase: 12, img: "hero_pyro.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 10 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { molotov: 0 } },
+    { id: 'p5', name: "Breacher", classType: "SHOTGUNNER", maxHp: 65, hp: 65, speed: 9, armor: 5, isPlayer: true, dmgBase: 22, img: "hero_shotgunner.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { buckshot: 0 } },
+    { id: 'p6', name: "Ghost", classType: "SNIPER", maxHp: 40, hp: 40, speed: 16, armor: 0, isPlayer: true, dmgBase: 28, img: "hero_sniper.png", scale: 0.9, hpDrop: -10, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { deadeye: 0 } },
+    { id: 'p7', name: "War Hound", classType: "HOUND", maxHp: 35, hp: 35, speed: 19, armor: 0, isPlayer: true, dmgBase: 16, img: "hero_hound.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { feral_bite: 0 } }
 ];
 
 let playerRoster = []; let activeEntities = []; let turnQueue = []; let activeIndex = -1; let combatActive = false; let pendingAction = null;
 
-// V36 Initialization & Settings
-function initEngine() {
-    let s = localStorage.getItem(SETTINGS_KEY);
-    if (s) { globalSettings = JSON.parse(s); }
-    updateSettingsUI();
-    renderTitleScreen();
-}
+function initEngine() { let s = localStorage.getItem(SETTINGS_KEY); if (s) { globalSettings = JSON.parse(s); } updateSettingsUI(); renderTitleScreen(); }
+function switchScreen(screenId) { document.querySelectorAll('#engine > div:not(.settings-icon):not(#screen-settings)').forEach(el => el.style.display = 'none'); document.getElementById(screenId).style.display = 'flex'; if (screenId === 'screen-map' || screenId === 'screen-outpost' || screenId === 'screen-citadel') { document.getElementById('btn-global-settings').style.display = 'block'; } else { document.getElementById('btn-global-settings').style.display = 'none'; } }
+function openSettings() { document.querySelectorAll('#engine > div:not(.settings-icon)').forEach(el => { if (el.style.display === 'flex' && el.id !== 'screen-settings') previousScreen = el.id; }); document.getElementById('screen-settings').style.display = 'flex'; }
+function closeSettings() { document.getElementById('screen-settings').style.display = 'none'; }
+function toggleGameSpeed() { globalSettings.combatSpeed = globalSettings.combatSpeed === 1.0 ? 0.5 : 1.0; localStorage.setItem(SETTINGS_KEY, JSON.stringify(globalSettings)); updateSettingsUI(); }
+function updateSettingsUI() { document.getElementById('btn-toggle-speed').innerText = globalSettings.combatSpeed === 1.0 ? "COMBAT SPEED: NORMAL" : "COMBAT SPEED: FAST"; }
+function returnToTitle() { closeSettings(); renderTitleScreen(); }
+function eraseCurrentSave() { if(confirm("Are you sure you want to permanently delete this save slot?")) { localStorage.removeItem(BASE_SAVE_KEY + currentSlot); closeSettings(); renderTitleScreen(); } }
 
-function switchScreen(screenId) { 
-    document.querySelectorAll('#engine > div:not(.settings-icon):not(#screen-settings)').forEach(el => el.style.display = 'none'); 
-    document.getElementById(screenId).style.display = 'flex'; 
-    
-    if (screenId === 'screen-map' || screenId === 'screen-outpost' || screenId === 'screen-citadel') {
-        document.getElementById('btn-global-settings').style.display = 'block';
-    } else {
-        document.getElementById('btn-global-settings').style.display = 'none';
-    }
-}
-
-function openSettings() {
-    document.querySelectorAll('#engine > div:not(.settings-icon)').forEach(el => {
-        if (el.style.display === 'flex' && el.id !== 'screen-settings') previousScreen = el.id;
-    });
-    document.getElementById('screen-settings').style.display = 'flex';
-}
-
-function closeSettings() {
-    document.getElementById('screen-settings').style.display = 'none';
-}
-
-function toggleGameSpeed() {
-    globalSettings.combatSpeed = globalSettings.combatSpeed === 1.0 ? 0.5 : 1.0;
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(globalSettings));
-    updateSettingsUI();
-}
-
-function updateSettingsUI() {
-    document.getElementById('btn-toggle-speed').innerText = globalSettings.combatSpeed === 1.0 ? "COMBAT SPEED: NORMAL" : "COMBAT SPEED: FAST";
-}
-
-function returnToTitle() {
-    closeSettings();
-    renderTitleScreen();
-}
-
-function eraseCurrentSave() {
-    if(confirm("Are you sure you want to permanently delete this save slot?")) {
-        localStorage.removeItem(BASE_SAVE_KEY + currentSlot);
-        closeSettings();
-        renderTitleScreen();
-    }
-}
-
-// V36 Save Slot Selectors
 function renderTitleScreen() {
-    switchScreen('screen-title'); 
-    let menuHTML = '';
-    
+    switchScreen('screen-title'); let menuHTML = '';
     for(let i=1; i<=3; i++) {
         let d = JSON.parse(localStorage.getItem(BASE_SAVE_KEY + i));
-        if (d) {
-            menuHTML += `<button class="title-btn btn-continue" onclick="selectSlot(${i}, true)">SLOT ${i} [TIER ${d.tier}] (💀 ${d.bossSkulls || 0})</button>`;
-        } else {
-            menuHTML += `<button class="title-btn" onclick="selectSlot(${i}, false)">SLOT ${i} [ EMPTY ]</button>`;
-        }
+        if (d) { menuHTML += `<button class="title-btn btn-continue" onclick="selectSlot(${i}, true)">SLOT ${i} [TIER ${d.tier}] (💀 ${d.bossSkulls || 0})</button>`; } 
+        else { menuHTML += `<button class="title-btn" onclick="selectSlot(${i}, false)">SLOT ${i} [ EMPTY ]</button>`; }
     }
     document.getElementById('title-menu-container').innerHTML = menuHTML;
 }
 
-function selectSlot(slotNum, exists) {
-    currentSlot = slotNum;
-    if (exists) { continueGame(); } else { startNewGame(); }
-}
+function selectSlot(slotNum, exists) { currentSlot = slotNum; if (exists) { continueGame(); } else { startNewGame(); } }
 
 function startNewGame() { 
-    scrap = metaUpgrades.startScrap || 0; 
-    currentTier = 1; 
-    inventory = ['MED_STIM']; 
-    materials = { parts: 0, chems: 0, tech: 0 }; 
-    bossSkulls = 0;
-    metaUpgrades = { startScrap: 0, startLevel: 1, invMax: 4 };
-    playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
+    scrap = metaUpgrades.startScrap || 0; currentTier = 1; inventory = ['MED_STIM']; materials = { parts: 0, chems: 0, tech: 0 }; bossSkulls = 0; metaUpgrades = { startScrap: 0, startLevel: 1, invMax: 4 }; playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
+    playerRoster.forEach(p => { p.level = metaUpgrades.startLevel; p.perkPoints = metaUpgrades.startLevel - 1; p.xpToNext = Math.floor(100 * Math.pow(1.5, metaUpgrades.startLevel - 1)); });
     saveGameState(); renderMap(); 
 }
 
 function continueGame() { loadGameState(); renderMap(); }
-
 function saveGameState() { localStorage.setItem(BASE_SAVE_KEY + currentSlot, JSON.stringify({ scrap, tier: currentTier, roster: playerRoster, inventory, materials, bossSkulls, metaUpgrades })); }
-function loadGameState() {
-    let d = JSON.parse(localStorage.getItem(BASE_SAVE_KEY + currentSlot));
-    if (d) { 
-        scrap = d.scrap || 0; currentTier = d.tier || 1; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
-        inventory = d.inventory || ['MED_STIM']; materials = d.materials || { parts: 0, chems: 0, tech: 0 }; 
-        bossSkulls = d.bossSkulls || 0; metaUpgrades = d.metaUpgrades || { startScrap: 0, startLevel: 1, invMax: 4 };
-    }
-}
+function loadGameState() { let d = JSON.parse(localStorage.getItem(BASE_SAVE_KEY + currentSlot)); if (d) { scrap = d.scrap || 0; currentTier = d.tier || 1; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); inventory = d.inventory || ['MED_STIM']; materials = d.materials || { parts: 0, chems: 0, tech: 0 }; bossSkulls = d.bossSkulls || 0; metaUpgrades = d.metaUpgrades || { startScrap: 0, startLevel: 1, invMax: 4 }; } }
 
-function renderCitadel() {
-    switchScreen('screen-citadel');
-    document.getElementById('citadel-skulls').innerText = `${bossSkulls} 💀`;
-    document.getElementById('meta-lbl-scrap').innerText = `LVL ${metaUpgrades.startScrap / 50}`;
-    document.getElementById('meta-lbl-level').innerText = `LVL ${metaUpgrades.startLevel - 1}`;
-    document.getElementById('meta-lbl-inv').innerText = `LVL ${metaUpgrades.invMax - 4}`;
-}
-
-function buyMetaUpgrade(type) {
-    if (type === 'SCRAP' && bossSkulls >= 1) { bossSkulls -= 1; metaUpgrades.startScrap += 50; }
-    else if (type === 'LEVEL' && bossSkulls >= 2) { bossSkulls -= 2; metaUpgrades.startLevel += 1; }
-    else if (type === 'INV' && bossSkulls >= 3) { bossSkulls -= 3; metaUpgrades.invMax += 1; }
-    saveGameState(); renderCitadel();
-}
+function renderCitadel() { switchScreen('screen-citadel'); document.getElementById('citadel-skulls').innerText = `${bossSkulls} 💀`; document.getElementById('meta-lbl-scrap').innerText = `LVL ${metaUpgrades.startScrap / 50}`; document.getElementById('meta-lbl-level').innerText = `LVL ${metaUpgrades.startLevel - 1}`; document.getElementById('meta-lbl-inv').innerText = `LVL ${metaUpgrades.invMax - 4}`; }
+function buyMetaUpgrade(type) { if (type === 'SCRAP' && bossSkulls >= 1) { bossSkulls -= 1; metaUpgrades.startScrap += 50; } else if (type === 'LEVEL' && bossSkulls >= 2) { bossSkulls -= 2; metaUpgrades.startLevel += 1; } else if (type === 'INV' && bossSkulls >= 3) { bossSkulls -= 3; metaUpgrades.invMax += 1; } saveGameState(); renderCitadel(); }
 
 function renderMap() {
     switchScreen('screen-map'); document.getElementById('scrap-display').innerText = scrap; const mapC = document.getElementById('map-nodes');
@@ -418,166 +345,99 @@ function renderMap() {
     for (let i = 0; i < TOTAL_TIERS; i++) {
         let t = TOTAL_TIERS - i; let rowStatus = (t === currentTier) ? 'active' : (t < currentTier) ? 'cleared' : 'locked'; let dis = (t !== currentTier) ? 'disabled' : '';
         m += `<div class="map-row">`;
-        SECTOR_LAYOUT[i].forEach(nT => {
+        SECTOR_LAYOUT[i].forEach(n => {
             let icon = '🎯'; let lbl = 'RAIDERS';
-            if (nT === 'BOSS') { icon = '💀'; lbl = 'WARLORD'; } else if (nT === 'BEASTS') { icon = '☣️'; lbl = 'BEASTS'; } else if (nT === 'MECH') { icon = '⚙️'; lbl = 'MECH'; }
-            m += `<button class="map-node node-${rowStatus} ${(nT === 'BOSS' && t === currentTier) ? 'boss-node' : ''}" ${dis} onclick="initiateCombat('${nT}')"><span class="node-icon">${icon}</span><span class="node-lbl">${lbl}</span></button>`;
+            if (n.type === 'BOSS') { icon = '💀'; lbl = 'WARLORD'; } else if (n.type === 'BEASTS') { icon = '☣️'; lbl = 'BEASTS'; } else if (n.type === 'MECH') { icon = '⚙️'; lbl = 'MECH'; }
+            let eCls = n.elite ? 'elite-node' : ''; let eLbl = n.elite ? ' (ELITE)' : '';
+            m += `<button class="map-node node-${rowStatus} ${eCls} ${(n.type === 'BOSS' && t === currentTier) ? 'boss-node' : ''}" ${dis} onclick="initiateCombat('${n.type}', ${n.elite})"><span class="node-icon">${icon}</span><span class="node-lbl">${lbl}${eLbl}</span></button>`;
         });
         m += `</div>`; if (t > 1) m += `<div class="map-connector ${(t <= currentTier) ? 'connector-cleared' : ''}"></div>`;
     }
     m += `</div>`; mapC.innerHTML = m; setTimeout(() => { mapC.scrollTop = mapC.scrollHeight; }, 10);
 }
 
-function setOutpostTab(tab) {
-    outpostTab = tab;
-    document.getElementById('tab-roster').className = `op-tab-btn ${tab === 'ROSTER' ? 'op-tab-active' : ''}`;
-    document.getElementById('tab-workbench').className = `op-tab-btn ${tab === 'WORKBENCH' ? 'op-tab-active' : ''}`;
-    document.getElementById('tab-cyber').className = `op-tab-btn ${tab === 'CYBER' ? 'op-tab-active' : ''}`;
-    document.getElementById('outpost-roster-view').style.display = tab === 'ROSTER' ? 'flex' : 'none';
-    document.getElementById('outpost-workbench-view').style.display = tab === 'WORKBENCH' ? 'flex' : 'none';
-    document.getElementById('outpost-cyber-view').style.display = tab === 'CYBER' ? 'flex' : 'none';
-    renderOutpost();
-}
+function setOutpostTab(tab) { outpostTab = tab; document.getElementById('tab-roster').className = `op-tab-btn ${tab === 'ROSTER' ? 'op-tab-active' : ''}`; document.getElementById('tab-workbench').className = `op-tab-btn ${tab === 'WORKBENCH' ? 'op-tab-active' : ''}`; document.getElementById('tab-cyber').className = `op-tab-btn ${tab === 'CYBER' ? 'op-tab-active' : ''}`; document.getElementById('outpost-roster-view').style.display = tab === 'ROSTER' ? 'flex' : 'none'; document.getElementById('outpost-workbench-view').style.display = tab === 'WORKBENCH' ? 'flex' : 'none'; document.getElementById('outpost-cyber-view').style.display = tab === 'CYBER' ? 'flex' : 'none'; renderOutpost(); }
 
 function renderOutpost() {
     switchScreen('screen-outpost'); document.getElementById('outpost-scrap').innerText = scrap; 
-    
-    // Tab 1: ROSTER
     const c = document.getElementById('outpost-roster'); c.innerHTML = '';
     playerRoster.forEach(char => {
         let cost = 30 + (char.upgradeCount * 25); let canUpg = scrap >= cost; let isDead = char.hp <= 0; let isInj = char.hp < char.maxHp && char.hp > 0;
         let medHtml = isDead ? `<button class="upg-btn revive-btn" ${scrap < 50 ? 'disabled' : ''} onclick="medBay('${char.id}', 'REVIVE')">DEFIB (50)</button>` : `<button class="upg-btn med-btn" ${!isInj || scrap < 10 ? 'disabled' : ''} onclick="medBay('${char.id}', 'HEAL')">TRIAGE (10)</button>`;
-        
         let traitDisplay = char.trait ? `TRAIT: ${char.trait}` : (char.perkPoints > 0 ? `<button class="upg-btn perk-btn" style="padding:2px 5px;" onclick="activePerkSelector='${char.id}'; activePosSelector=null; renderOutpost()">CHOOSE PERK (!)</button>` : `LVL ${char.level} (${char.xp}/${char.xpToNext} XP)`);
-        let posText = char.gridPos === 1 ? '[1] FRONTLINE' : char.gridPos === 2 ? '[2] MIDLINE' : char.gridPos === 3 ? '[3] BACKLINE' : '[X] BENCHED';
-        let posClass = `pos-btn-${char.gridPos}`;
-        let btnGroupHtml = '';
+        let posText = char.gridPos === 1 ? '[1] FRONTLINE' : char.gridPos === 2 ? '[2] MIDLINE' : char.gridPos === 3 ? '[3] BACKLINE' : '[X] BENCHED'; let posClass = `pos-btn-${char.gridPos}`; let btnGroupHtml = '';
 
-        if (activePosSelector === char.id) {
-            btnGroupHtml = `<button class="upg-btn sub-menu-btn pos-btn-1" onclick="assignSlot('${char.id}', 1)">[1] FRONT</button> <button class="upg-btn sub-menu-btn pos-btn-2" onclick="assignSlot('${char.id}', 2)">[2] MID</button> <button class="upg-btn sub-menu-btn pos-btn-3" onclick="assignSlot('${char.id}', 3)">[3] BACK</button> <button class="upg-btn sub-menu-btn pos-btn-0" onclick="assignSlot('${char.id}', 0)">[X] BENCH</button> <button class="upg-btn sub-menu-btn" style="border-color:#888;" onclick="activePosSelector=null; renderOutpost()">CANCEL</button>`;
-        } else if (activePerkSelector === char.id) {
-            btnGroupHtml = `<button class="upg-btn sub-menu-btn perk-btn" onclick="assignPerk('${char.id}', 'VETERAN')">VETERAN (+5 DMG)</button> <button class="upg-btn sub-menu-btn perk-btn" onclick="assignPerk('${char.id}', 'FORTIFIED')">FORTIFIED (+25 HP)</button> <button class="upg-btn sub-menu-btn" style="border-color:#888;" onclick="activePerkSelector=null; renderOutpost()">CANCEL</button>`;
-        } else {
-            btnGroupHtml = `<button class="upg-btn ${posClass}" onclick="activePosSelector='${char.id}'; activePerkSelector=null; renderOutpost()">${posText}</button> <button class="upg-btn" ${!canUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'HP', ${cost})">+10 HP</button> <button class="upg-btn" ${!canUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'DMG', ${cost})">+3 DMG</button> ${medHtml}`;
-        }
+        if (activePosSelector === char.id) { btnGroupHtml = `<button class="upg-btn sub-menu-btn pos-btn-1" onclick="assignSlot('${char.id}', 1)">[1] FRONT</button> <button class="upg-btn sub-menu-btn pos-btn-2" onclick="assignSlot('${char.id}', 2)">[2] MID</button> <button class="upg-btn sub-menu-btn pos-btn-3" onclick="assignSlot('${char.id}', 3)">[3] BACK</button> <button class="upg-btn sub-menu-btn pos-btn-0" onclick="assignSlot('${char.id}', 0)">[X] BENCH</button> <button class="upg-btn sub-menu-btn" style="border-color:#888;" onclick="activePosSelector=null; renderOutpost()">CANCEL</button>`; } 
+        else if (activePerkSelector === char.id) { btnGroupHtml = `<button class="upg-btn sub-menu-btn perk-btn" onclick="assignPerk('${char.id}', 'VETERAN')">VETERAN (+5 DMG)</button> <button class="upg-btn sub-menu-btn perk-btn" onclick="assignPerk('${char.id}', 'FORTIFIED')">FORTIFIED (+25 HP)</button> <button class="upg-btn sub-menu-btn" style="border-color:#888;" onclick="activePerkSelector=null; renderOutpost()">CANCEL</button>`; } 
+        else { btnGroupHtml = `<button class="upg-btn ${posClass}" onclick="activePosSelector='${char.id}'; activePerkSelector=null; renderOutpost()">${posText}</button> <button class="upg-btn" ${!canUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'HP', ${cost})">+10 HP</button> <button class="upg-btn" ${!canUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'DMG', ${cost})">+3 DMG</button> ${medHtml}`; }
 
         c.innerHTML += `<div class="upgrade-card" style="${isDead ? 'border-color: #8B0000; opacity: 0.8;' : ''}"> <div class="upgrade-header"><span>${char.name} (${char.classType})</span><span>${traitDisplay}</span></div> <div class="upgrade-stats"><span>HP: ${char.hp}/${char.maxHp}</span><span>DMG: ${char.dmgBase}</span><span>UPG: <span class="cost-txt">${cost}</span></span></div> <div class="upgrade-btn-group">${btnGroupHtml}</div> </div>`;
     });
 
-    // Tab 2: WORKBENCH
-    document.getElementById('mat-parts-wb').innerText = `⚙️ PARTS: ${materials.parts}`;
-    document.getElementById('mat-chems-wb').innerText = `🧪 CHEMS: ${materials.chems}`;
-    document.getElementById('mat-tech-wb').innerText = `💻 TECH: ${materials.tech}`;
-    document.getElementById('btn-breakdown').disabled = scrap < 25;
-
+    document.getElementById('mat-parts-wb').innerText = `⚙️ PARTS: ${materials.parts}`; document.getElementById('mat-chems-wb').innerText = `🧪 CHEMS: ${materials.chems}`; document.getElementById('mat-tech-wb').innerText = `💻 TECH: ${materials.tech}`; document.getElementById('btn-breakdown').disabled = scrap < 25;
     let wbHtml = ''; let invFull = inventory.length >= metaUpgrades.invMax;
-    wbHtml += `<button class="upg-btn" ${materials.chems < 2 || invFull ? 'disabled' : ''} onclick="craftItem('MED_STIM')">CRAFT MED-STIM (2 🧪)</button>`;
-    wbHtml += `<button class="upg-btn" ${materials.parts < 2 || invFull ? 'disabled' : ''} onclick="craftItem('SCRAP_BOMB')">CRAFT SCRAP BOMB (2 ⚙️)</button>`;
-    wbHtml += `<button class="upg-btn" ${materials.chems < 1 || materials.tech < 1 || invFull ? 'disabled' : ''} onclick="craftItem('ADRENALINE')">CRAFT ADRENALINE (1 🧪, 1 💻)</button>`;
-    wbHtml += `<button class="upg-btn" ${materials.tech < 2 || invFull ? 'disabled' : ''} onclick="craftItem('EMP_CHARGE')">CRAFT EMP CHARGE (2 💻)</button>`;
+    wbHtml += `<button class="upg-btn" ${materials.chems < 2 || invFull ? 'disabled' : ''} onclick="craftItem('MED_STIM')">CRAFT MED-STIM (2 🧪)</button>`; wbHtml += `<button class="upg-btn" ${materials.parts < 2 || invFull ? 'disabled' : ''} onclick="craftItem('SCRAP_BOMB')">CRAFT SCRAP BOMB (2 ⚙️)</button>`; wbHtml += `<button class="upg-btn" ${materials.chems < 1 || materials.tech < 1 || invFull ? 'disabled' : ''} onclick="craftItem('ADRENALINE')">CRAFT ADRENALINE (1 🧪, 1 💻)</button>`; wbHtml += `<button class="upg-btn" ${materials.tech < 2 || invFull ? 'disabled' : ''} onclick="craftItem('EMP_CHARGE')">CRAFT EMP CHARGE (2 💻)</button>`;
     document.getElementById('crafting-grid').innerHTML = wbHtml;
 
-    // Tab 3: CYBERNETICS
-    document.getElementById('mat-parts-cb').innerText = `⚙️ PARTS: ${materials.parts}`;
-    document.getElementById('mat-chems-cb').innerText = `🧪 CHEMS: ${materials.chems}`;
-    document.getElementById('mat-tech-cb').innerText = `💻 TECH: ${materials.tech}`;
-    
+    document.getElementById('mat-parts-cb').innerText = `⚙️ PARTS: ${materials.parts}`; document.getElementById('mat-chems-cb').innerText = `🧪 CHEMS: ${materials.chems}`; document.getElementById('mat-tech-cb').innerText = `💻 TECH: ${materials.tech}`;
     const cybC = document.getElementById('cybernetics-roster'); cybC.innerHTML = '';
     playerRoster.forEach(char => {
-        let augList = char.augments && char.augments.length > 0 ? char.augments.join(', ') : 'NONE';
-        let canPlating = materials.parts >= 3;
-        let canOptics = materials.tech >= 2;
-        let canPump = materials.chems >= 2;
-
-        cybC.innerHTML += `
-            <div class="upgrade-card">
-                <div class="upgrade-header"><span>${char.name}</span><span style="color:#4488ff; font-size:10px;">AUGS: ${augList}</span></div>
-                <div class="upgrade-stats"><span>MAX HP: ${char.maxHp}</span><span>BASE DMG: ${char.dmgBase}</span><span>SPEED: ${char.speed}</span></div>
-                <div class="upgrade-btn-group">
-                    <button class="upg-btn" style="border-color:#4488ff;" ${!canPlating ? 'disabled' : ''} onclick="installAugment('${char.id}', 'PLATING')">SUB-DERMAL PLATING (+20 HP) [3 ⚙️]</button>
-                    <button class="upg-btn" style="border-color:#4488ff;" ${!canOptics ? 'disabled' : ''} onclick="installAugment('${char.id}', 'OPTICS')">OPTICS (+4 DMG) [2 💻]</button>
-                    <button class="upg-btn" style="border-color:#4488ff;" ${!canPump ? 'disabled' : ''} onclick="installAugment('${char.id}', 'PUMP')">ADRENAL PUMP (+3 SPD) [2 🧪]</button>
-                </div>
-            </div>`;
+        let augList = char.augments && char.augments.length > 0 ? char.augments.join(', ') : 'NONE'; let canPlating = materials.parts >= 3; let canOptics = materials.tech >= 2; let canPump = materials.chems >= 2;
+        cybC.innerHTML += `<div class="upgrade-card"> <div class="upgrade-header"><span>${char.name}</span><span style="color:#4488ff; font-size:10px;">AUGS: ${augList}</span></div> <div class="upgrade-stats"><span>MAX HP: ${char.maxHp}</span><span>BASE DMG: ${char.dmgBase}</span><span>SPEED: ${char.speed}</span></div> <div class="upgrade-btn-group"> <button class="upg-btn" style="border-color:#4488ff;" ${!canPlating ? 'disabled' : ''} onclick="installAugment('${char.id}', 'PLATING')">SUB-DERMAL PLATING (+20 HP) [3 ⚙️]</button> <button class="upg-btn" style="border-color:#4488ff;" ${!canOptics ? 'disabled' : ''} onclick="installAugment('${char.id}', 'OPTICS')">OPTICS (+4 DMG) [2 💻]</button> <button class="upg-btn" style="border-color:#4488ff;" ${!canPump ? 'disabled' : ''} onclick="installAugment('${char.id}', 'PUMP')">ADRENAL PUMP (+3 SPD) [2 🧪]</button> </div> </div>`;
     });
 
-    document.getElementById('inv-count').innerText = `${inventory.length}/${metaUpgrades.invMax}`;
-    const invC = document.getElementById('outpost-inventory'); invC.innerHTML = '';
-    for (let i = 0; i < metaUpgrades.invMax; i++) {
-        let item = inventory[i];
-        if (item) {
-            let label = item === 'MED_STIM' ? '💉 Med-Stim' : item === 'SCRAP_BOMB' ? '💣 Scrap Bomb' : item === 'ADRENALINE' ? '⚡ Adrenaline' : '🔋 EMP Charge';
-            invC.innerHTML += `<button class="inv-slot" onclick="useOutpostItem(${i})">${label} [SELL]</button>`;
-        } else {
-            invC.innerHTML += `<button class="inv-slot" disabled>[ EMPTY SLOT ]</button>`;
-        }
-    }
+    document.getElementById('inv-count').innerText = `${inventory.length}/${metaUpgrades.invMax}`; const invC = document.getElementById('outpost-inventory'); invC.innerHTML = '';
+    for (let i = 0; i < metaUpgrades.invMax; i++) { let item = inventory[i]; if (item) { let label = item === 'MED_STIM' ? '💉 Med-Stim' : item === 'SCRAP_BOMB' ? '💣 Scrap Bomb' : item === 'ADRENALINE' ? '⚡ Adrenaline' : '🔋 EMP Charge'; invC.innerHTML += `<button class="inv-slot" onclick="useOutpostItem(${i})">${label} [SELL]</button>`; } else { invC.innerHTML += `<button class="inv-slot" disabled>[ EMPTY SLOT ]</button>`; } }
 }
 
 function breakdownScrap() { if (scrap < 25) return; scrap -= 25; let m = ['parts', 'chems', 'tech'][Math.floor(Math.random() * 3)]; materials[m]++; saveGameState(); renderOutpost(); }
-function craftItem(item) {
-    if (inventory.length >= metaUpgrades.invMax) return;
-    if (item === 'MED_STIM' && materials.chems >= 2) { materials.chems -= 2; inventory.push(item); }
-    else if (item === 'SCRAP_BOMB' && materials.parts >= 2) { materials.parts -= 2; inventory.push(item); }
-    else if (item === 'ADRENALINE' && materials.chems >= 1 && materials.tech >= 1) { materials.chems -= 1; materials.tech -= 1; inventory.push(item); }
-    else if (item === 'EMP_CHARGE' && materials.tech >= 2) { materials.tech -= 2; inventory.push(item); }
-    saveGameState(); renderOutpost();
-}
-
-function installAugment(charId, type) {
-    let char = playerRoster.find(c => c.id === charId);
-    if (!char.augments) char.augments = [];
-    if (type === 'PLATING' && materials.parts >= 3) { materials.parts -= 3; char.maxHp += 20; char.hp += 20; char.augments.push('Plating'); } 
-    else if (type === 'OPTICS' && materials.tech >= 2) { materials.tech -= 2; char.dmgBase += 4; char.augments.push('Optics'); } 
-    else if (type === 'PUMP' && materials.chems >= 2) { materials.chems -= 2; char.speed += 3; char.augments.push('Pump'); }
-    saveGameState(); renderOutpost();
-}
-
+function craftItem(item) { if (inventory.length >= metaUpgrades.invMax) return; if (item === 'MED_STIM' && materials.chems >= 2) { materials.chems -= 2; inventory.push(item); } else if (item === 'SCRAP_BOMB' && materials.parts >= 2) { materials.parts -= 2; inventory.push(item); } else if (item === 'ADRENALINE' && materials.chems >= 1 && materials.tech >= 1) { materials.chems -= 1; materials.tech -= 1; inventory.push(item); } else if (item === 'EMP_CHARGE' && materials.tech >= 2) { materials.tech -= 2; inventory.push(item); } saveGameState(); renderOutpost(); }
+function installAugment(charId, type) { let char = playerRoster.find(c => c.id === charId); if (!char.augments) char.augments = []; if (type === 'PLATING' && materials.parts >= 3) { materials.parts -= 3; char.maxHp += 20; char.hp += 20; char.augments.push('Plating'); } else if (type === 'OPTICS' && materials.tech >= 2) { materials.tech -= 2; char.dmgBase += 4; char.augments.push('Optics'); } else if (type === 'PUMP' && materials.chems >= 2) { materials.chems -= 2; char.speed += 3; char.augments.push('Pump'); } saveGameState(); renderOutpost(); }
 function assignSlot(charId, newSlot) { let char = playerRoster.find(c => c.id === charId); let oldSlot = char.gridPos; if (newSlot > 0) { let existingChar = playerRoster.find(c => c.gridPos === newSlot && c.id !== charId); if (existingChar) existingChar.gridPos = oldSlot; } char.gridPos = newSlot; activePosSelector = null; saveGameState(); renderOutpost(); }
 function assignPerk(charId, traitName) { let char = playerRoster.find(c => c.id === charId); if (traitName === 'VETERAN') { char.trait = 'VETERAN'; char.dmgBase += 5; } else if (traitName === 'FORTIFIED') { char.trait = 'FORTIFIED'; char.maxHp += 25; char.hp += 25; } char.perkPoints--; activePerkSelector = null; saveGameState(); renderOutpost(); }
 function useOutpostItem(index) { inventory.splice(index, 1); scrap += 20; saveGameState(); renderOutpost(); }
 function buyUpgrade(charId, type, cost) { if (scrap < cost) return; scrap -= cost; let c = playerRoster.find(c => c.id === charId); if (c.hp <= 0) return; if (type === 'HP') { c.maxHp += 10; c.hp += 10; } else if (type === 'DMG') { c.dmgBase += 3; } c.upgradeCount++; saveGameState(); renderOutpost(); }
 function medBay(charId, action) { let c = playerRoster.find(c => c.id === charId); if (action === 'HEAL' && scrap >= 10 && c.hp > 0 && c.hp < c.maxHp) { scrap -= 10; c.hp = Math.min(c.maxHp, c.hp + Math.floor(c.maxHp * 0.4)); } else if (action === 'REVIVE' && scrap >= 50 && c.hp <= 0) { scrap -= 50; c.hp = Math.floor(c.maxHp * 0.25); } saveGameState(); renderOutpost(); }
 
-function generateEnemies(nodeType, mult) {
+// V37 Elite Spawning Hook
+function generateEnemies(nodeType, mult, isEliteNode) {
     const pool = {
         'BEASTS': [
-            { name: "Attack Dog", classType: "BEAST", range: 'melee', maxHp: 30, speed: 18, armor: 0, dmgBase: 12, img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } }, 
-            { name: "Mutant", classType: "MUTANT", range: 'melee', maxHp: 70, speed: 7, armor: 0, dmgBase: 25, img: "enemy_mutant.png", scale: 1.5, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } }, 
-            { name: "Chem Fiend", classType: "MUTANT", range: 'ranged', maxHp: 60, speed: 11, armor: 0, dmgBase: 15, img: "enemy_chem.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 50, energy: -5 } }
+            { name: "Attack Dog", classType: "BEAST", range: 'melee', maxHp: 30, speed: 18, armor: 0, dmgBase: 12, img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } }, 
+            { name: "Mutant", classType: "MUTANT", range: 'melee', maxHp: 70, speed: 7, armor: 0, dmgBase: 25, img: "enemy_mutant.png", scale: 1.5, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } }, 
+            { name: "Chem Fiend", classType: "MUTANT", range: 'ranged', maxHp: 60, speed: 11, armor: 0, dmgBase: 15, img: "enemy_chem.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 50, energy: -5 } }
         ],
         'RAIDERS': [
-            { name: "Raider", classType: "RAIDER", range: 'melee', maxHp: 40, speed: 10, armor: 0, dmgBase: 15, img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }, 
-            { name: "Psycho", classType: "RAIDER", range: 'melee', maxHp: 45, speed: 14, armor: 0, dmgBase: 22, img: "enemy_psycho.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
-            { name: "Sniper", classType: "RAIDER", range: 'ranged', maxHp: 35, speed: 16, armor: 0, dmgBase: 30, img: "enemy_sniper.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
-            { name: "Juggernaut", classType: "RAIDER", range: 'melee', maxHp: 90, speed: 6, armor: 5, dmgBase: 18, img: "enemy_juggernaut.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 0, energy: -5 } }
+            { name: "Raider", classType: "RAIDER", range: 'melee', maxHp: 40, speed: 10, armor: 0, dmgBase: 15, img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }, 
+            { name: "Psycho", classType: "RAIDER", range: 'melee', maxHp: 45, speed: 14, armor: 0, dmgBase: 22, img: "enemy_psycho.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
+            { name: "Sniper", classType: "RAIDER", range: 'ranged', maxHp: 35, speed: 16, armor: 0, dmgBase: 30, img: "enemy_sniper.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
+            { name: "Juggernaut", classType: "RAIDER", range: 'melee', maxHp: 90, speed: 6, armor: 5, dmgBase: 18, img: "enemy_juggernaut.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 0, energy: -5 } }
         ],
         'MECH': [
-            { name: "Drone", classType: "DRONE", range: 'ranged', isHovering: true, maxHp: 25, speed: 18, armor: 5, dmgBase: 10, img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } }, 
-            { name: "Turret", classType: "MECH", range: 'ranged', maxHp: 50, speed: 2, armor: 8, dmgBase: 20, img: "enemy_turret.png", scale: 0.9, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 100, energy: -10 } }, 
-            { name: "War Rig", classType: "MECH", range: 'ranged', maxHp: 150, speed: 5, armor: 10, dmgBase: 25, img: "enemy_warrig.png", scale: 1.8, hpDrop: -20, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 15, bio: 100, energy: -15 } }
+            { name: "Drone", classType: "DRONE", range: 'ranged', isHovering: true, maxHp: 25, speed: 18, armor: 5, dmgBase: 10, img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } }, 
+            { name: "Turret", classType: "MECH", range: 'ranged', maxHp: 50, speed: 2, armor: 8, dmgBase: 20, img: "enemy_turret.png", scale: 0.9, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 100, energy: -10 } }, 
+            { name: "War Rig", classType: "MECH", range: 'ranged', maxHp: 150, speed: 5, armor: 10, dmgBase: 25, img: "enemy_warrig.png", scale: 1.8, hpDrop: -20, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 15, bio: 100, energy: -15 } }
         ]
     };
-    if (nodeType === 'BOSS') return [{ id: 'b1', name: "Warlord", classType: "BOSS", range: 'melee', maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: Math.floor(40*mult), img: "enemy_boss.png", scale: 2.2, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 }, phase: 1 }];
+    if (nodeType === 'BOSS') return [{ id: 'b1', name: "Warlord", classType: "BOSS", range: 'melee', maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: Math.floor(40*mult), img: "enemy_boss.png", scale: 2.2, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 }, phase: 1 }];
     
     let p = pool[nodeType]; let sZ = Math.random() > 0.5 ? 3 : 2; let squad = [];
     for (let i = 0; i < sZ; i++) {
-        let t = p[Math.floor(Math.random() * p.length)]; let hp = Math.floor(t.maxHp * mult);
-        squad.push({ ...JSON.parse(JSON.stringify(t)), id: `e${i}_${Date.now()}`, isPlayer: false, maxHp: hp, hp, dmgBase: Math.floor(t.dmgBase * mult) });
+        let t = JSON.parse(JSON.stringify(p[Math.floor(Math.random() * p.length)])); 
+        let hp = Math.floor(t.maxHp * mult); t.hp = hp; t.maxHp = hp; t.dmgBase = Math.floor(t.dmgBase * mult);
+        
+        // V37 Elite Generation
+        if (isEliteNode && Math.random() < 0.6) {
+            let affixes = ['FRENZIED', 'ARMORED', 'VAMPIRIC'];
+            t.eliteType = affixes[Math.floor(Math.random() * affixes.length)];
+            t.name = `*${t.eliteType}* ${t.name}`;
+            if (t.eliteType === 'FRENZIED') { t.dmgBase = Math.floor(t.dmgBase * 1.4); t.speed += 4; }
+            if (t.eliteType === 'ARMORED') { t.maxHp += 30; t.hp += 30; t.armor += 15; }
+        }
+
+        squad.push({ ...t, id: `e${i}_${Date.now()}`, isPlayer: false });
     }
     return squad;
-}
-
-function setCombatBackground(nodeType, tier) {
-    let bgFile = 'bg_combat.png'; 
-    if (tier === 1) { bgFile = 'bg_combat.png'; } 
-    else {
-        if (nodeType === 'BOSS') bgFile = 'bg_thunderdome.png';
-        else if (nodeType === 'MECH') bgFile = 'bg_refinery.png';
-        else if (nodeType === 'RAIDERS') bgFile = 'bg_highway.png';
-        else if (nodeType === 'BEASTS') bgFile = 'bg_canyon.png';
-    }
-    document.getElementById('combat-sky-layer').style.backgroundImage = `linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('${bgFile}')`;
 }
 
 function spawnFCT(entityId, msg, styleClass) {
@@ -586,10 +446,10 @@ function spawnFCT(entityId, msg, styleClass) {
     setTimeout(() => { if (f.parentNode) f.parentNode.removeChild(f); }, 1000 * globalSettings.combatSpeed);
 }
 
-function initiateCombat(nodeType) {
+function initiateCombat(nodeType, isEliteNode) {
     switchScreen('screen-combat'); combatActive = true; document.getElementById('log').innerHTML = '';
     
-    let bgFile = 'bg_combat.png'; currentWeather = 'CLEAR'; currentNodeType = nodeType; 
+    let bgFile = 'bg_combat.png'; currentWeather = 'CLEAR'; currentNodeType = nodeType; isCurrentNodeElite = isEliteNode;
     if (currentTier === 1) { bgFile = 'bg_combat.png'; } else {
         if (nodeType === 'BOSS') { bgFile = 'bg_thunderdome.png'; currentWeather = 'BLOODLUST'; }
         else if (nodeType === 'MECH') { bgFile = 'bg_refinery.png'; if (Math.random() < 0.4) currentWeather = 'TOXIC_SMOG'; }
@@ -609,9 +469,9 @@ function initiateCombat(nodeType) {
     if (!deployedRoster.some(p => p.hp > 0)) { alert("All deployed units are dead. Adjust squad at Outpost."); renderOutpost(); return; }
     deployedRoster.sort((a, b) => a.gridPos - b.gridPos);
 
-    playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; });
+    playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; ent.oiledTurns = 0; });
     const mult = 1 + ((currentTier - 1) * 0.4);
-    activeEntities = [...deployedRoster, ...generateEnemies(nodeType, mult)];
+    activeEntities = [...deployedRoster, ...generateEnemies(nodeType, mult, isEliteNode)];
     turnQueue = [...activeEntities].sort((a, b) => b.speed - a.speed);
     activeIndex = 0; log("> COMBAT INITIATED.", "log-turn"); processTurn();
 }
@@ -639,15 +499,16 @@ function renderField() {
             }
             else if (pendingAction !== 'CAUTERIZE' && !ent.isPlayer) { tCls = 'targetable-enemy'; clk = `onclick="resolveAction('${ent.id}')"`; }
         }
-        let eff = ''; if (ent.bleedingTurns > 0 && !isDead) eff += `💧`; if (ent.stunnedTurns > 0 && !isDead) eff += `💫`; if (ent.armorTurns > 0 && !isDead) eff += `🛡️`;
+        let eff = ''; if (ent.bleedingTurns > 0 && !isDead) eff += `💧`; if (ent.stunnedTurns > 0 && !isDead) eff += `💫`; if (ent.armorTurns > 0 && !isDead) eff += `🛡️`; if (ent.oiledTurns > 0 && !isDead) eff += `🛢️`;
         let hoverCls = ent.isHovering && !isDead ? 'hovering' : '';
+        let eliteGlow = ent.eliteType && !isDead ? 'filter: drop-shadow(0 0 15px #8B0000);' : '';
 
         const html = `
             <div class="entity ${isAct} ${dCls} ${tCls}" id="${ent.id}" ${clk} style="--sprite-scale: ${ent.scale || 1};">
                 <div style="width: 100%; position: relative; z-index: 10; transform: translateY(${ent.hpDrop || 0}px);">
                     <div class="hp-text"><span class="status-badge">${eff}</span> ${ent.hp}/${ent.maxHp}</div>
                     <div class="hp-container"><div class="hp-fill ${ent.isPlayer ? 'player-hp' : 'enemy-hp'}" style="width: ${(ent.hp / ent.maxHp) * 100}%"></div></div>
-                </div><img class="portrait ${hoverCls}" src="${ent.img}">
+                </div><img class="portrait ${hoverCls}" src="${ent.img}" style="${eliteGlow}">
             </div>`;
         if (ent.isPlayer) pTeam.innerHTML += html; else eTeam.innerHTML += html;
     });
@@ -674,7 +535,7 @@ function renderCommandDeck() {
         deckHtml += `<button onclick="queueAction('PIPE_RIFLE')">Pipe Rifle</button>`;
         deckHtml += `<button ${cds.flashbang > 0 ? 'disabled' : ''} onclick="queueAction('FLASHBANG')">Flashbang ${cds.flashbang > 0 ? `[${cds.flashbang}]` : ''}</button>`;
     } else if (aE.classType === 'PYROMANIAC') {
-        deckHtml += `<button onclick="queueAction('FLARE_GUN')">Flare Gun</button>`;
+        deckHtml += `<button onclick="queueAction('FLARE_GUN')">Flare Gun (Oil)</button>`;
         deckHtml += `<button ${cds.molotov > 0 ? 'disabled' : ''} onclick="queueAction('MOLOTOV')">Molotov (AoE) ${cds.molotov > 0 ? `[${cds.molotov}]` : ''}</button>`;
     } else if (aE.classType === 'SHOTGUNNER') {
         deckHtml += `<button onclick="queueAction('SLUG_SHOT')">Slug Shot</button>`;
@@ -740,6 +601,7 @@ function applyTurnStartEffects(ent) {
 
     if (ent.bleedingTurns > 0) { let b = Math.max(1, Math.floor(ent.maxHp * 0.08)); ent.hp = Math.max(0, ent.hp - b); log(`> ${ent.name} bleeds for ${b}.`, "log-dmg"); spawnFCT(ent.id, `-${b}`, "fct-dmg"); ent.bleedingTurns--; chg = true; }
     if (ent.armorTurns > 0) { ent.armorTurns--; if (ent.armorTurns === 0) { ent.armor = 0; } chg = true; }
+    if (ent.oiledTurns > 0) { ent.oiledTurns--; chg = true; }
     if (chg) renderField();
 }
 
@@ -747,6 +609,7 @@ function skipStunnedTurn() { turnQueue[activeIndex].stunnedTurns--; renderField(
 function queueAction(a) { pendingAction = a; renderField(); }
 function cancelAction() { pendingAction = null; renderField(); }
 
+// V37 Status Combo Core
 function resolveAction(targetId) {
     let actEnt = turnQueue[activeIndex]; let target = activeEntities.find(e => e.id === targetId);
     let livingEnemies = activeEntities.filter(e => !e.isPlayer && e.hp > 0);
@@ -758,19 +621,41 @@ function resolveAction(targetId) {
     } else {
         let atkType = 'phys'; if(['RAD_SHOT', 'FERAL_BITE'].includes(pendingAction)) atkType = 'bio'; if(['FLASHBANG', 'MOLOTOV', 'FLARE_GUN'].includes(pendingAction)) atkType = 'energy';
         let baseDmg = actEnt.dmgBase + Math.floor(Math.random() * 6); let dmgMult = 1.0;
+        let isCombo = false; let comboType = '';
 
         if (pendingAction === 'FLASHBANG') { dmgMult = 0.4; actEnt.cooldowns.flashbang = 4; }
         if (pendingAction === 'HEAVY_WRENCH') { dmgMult = 1.5; actEnt.cooldowns.heavy_wrench = 3; }
         if (pendingAction === 'FERAL_BITE') { dmgMult = 1.2; actEnt.cooldowns.feral_bite = 3; }
-        
-        if (pendingAction === 'BUCKSHOT') { if (dist === 0) dmgMult = 1.5; else dmgMult = 0.8; actEnt.cooldowns.buckshot = 2; }
         if (pendingAction === 'DEADEYE') { if (dist === livingEnemies.length - 1 && dist !== 0) dmgMult = 1.8; else dmgMult = 0.8; actEnt.cooldowns.deadeye = 2; }
+        
+        // COMBO: Buckshot -> Ignite
+        if (pendingAction === 'BUCKSHOT') { 
+            if (dist === 0) dmgMult = 1.5; else dmgMult = 0.8; 
+            if (target.oiledTurns > 0) { dmgMult *= 2; target.oiledTurns = 0; isCombo = true; comboType = 'IGNITE!'; }
+            actEnt.cooldowns.buckshot = 2; 
+        }
+
+        // COMBO: Pipe Rifle -> Exploit
+        if (pendingAction === 'PIPE_RIFLE' && target.bleedingTurns > 0) {
+            dmgMult *= 1.5; isCombo = true; comboType = 'EXPLOIT!';
+        }
+
+        // COMBO: Scrap Blade -> Execute
+        if (pendingAction === 'SCRAP_BLADE' && target.stunnedTurns > 0) {
+            dmgMult *= 1.5; isCombo = true; comboType = 'EXECUTE!';
+        }
 
         const rangedMoves = ['PISTOL', 'RAD_SHOT', 'PIPE_RIFLE', 'FLASHBANG', 'FLARE_GUN', 'QUICK_SHOT', 'DEADEYE'];
         if (currentWeather === 'SANDSTORM' && rangedMoves.includes(pendingAction)) { dmgMult *= 0.75; }
         if (currentWeather === 'BLOODLUST') { dmgMult *= 1.2; }
 
+        if (isCombo) { log(`> COMBO ACTIVATED: ${comboType}`, "log-combo"); setTimeout(() => spawnFCT(target.id, comboType, "fct-combo"), 200); }
+
         applyDamageHit(actEnt, target, Math.floor(baseDmg * dmgMult), atkType, pendingAction);
+
+        if (pendingAction === 'FLARE_GUN') {
+            target.oiledTurns = 3; log(`> ${target.name} is coated in oil!`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "OILED", "fct-weak"), 400);
+        }
 
         if (pendingAction === 'MOLOTOV') {
             actEnt.cooldowns.molotov = 3; let secondaries = livingEnemies.filter(e => e.id !== targetId);
@@ -782,6 +667,7 @@ function resolveAction(targetId) {
 
 function applyDamageHit(attacker, target, calcDmg, atkType, abilityStr) {
     if (target.hp <= 0) return; let resistValue = target.resistances[atkType] || 0; let armorCalc = abilityStr === 'FERAL_BITE' ? 0 : target.armor;
+    if (target.oiledTurns > 0 && atkType === 'energy') resistValue -= 15; // Oil strips energy resist
     let netDmg = Math.max(1, calcDmg - resistValue - armorCalc); if (resistValue >= 100) netDmg = 0; target.hp = Math.max(0, target.hp - netDmg);
     let logStyle = "log-dmg"; let logMsg = `> ${attacker.name} hits ${target.name} for ${netDmg}`;
 
@@ -830,6 +716,13 @@ function executeEnemyAi(enemy) {
         let posStr = target.gridPos === 1 ? 'Front' : target.gridPos === 2 ? 'Mid' : 'Back';
         log(`> ${enemy.name} hits ${target.name} [${posStr}] for ${net}`, "log-dmg"); spawnFCT(target.id, `-${net}`, "fct-dmg");
 
+        // V37 Vampiric Elite Hook
+        if (enemy.eliteType === 'VAMPIRIC') {
+            let heal = Math.max(1, Math.floor(net * 0.5));
+            enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
+            setTimeout(() => spawnFCT(enemy.id, `+${heal}`, "fct-heal"), 300);
+        }
+
         if (["Mutant", "Attack Dog", "War Hound", "Chem Fiend"].includes(enemy.name) && Math.random() < 0.4) { target.bleedingTurns = 2; setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300 * globalSettings.combatSpeed); } 
         else if ((enemy.name === "Sniper" || enemy.classType === "BOSS") && Math.random() < 0.25) { target.stunnedTurns = 1; setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300 * globalSettings.combatSpeed); }
     }
@@ -848,15 +741,18 @@ function checkWinState() {
     if (!pA) { document.getElementById('command-deck').innerHTML = `<button onclick="handleSquadWipe()">EXPEDITION FAILED - RESTART</button>`; combatActive = false; } 
     else if (!eA) { 
         if (currentNodeType === 'BOSS') { bossSkulls++; log(`> VICTORY! Warlord Skull acquired!`, "log-heal"); }
-        let s = Math.floor(Math.random() * 30) + (currentTier * 20); 
+        
+        let scrapMult = isCurrentNodeElite ? 2 : 1;
+        let s = (Math.floor(Math.random() * 30) + (currentTier * 20)) * scrapMult; 
+        
         playerRoster.forEach(char => {
             if (char.gridPos > 0 && char.hp > 0) {
-                char.xp += 35;
+                char.xp += 35 * scrapMult;
                 if (char.xp >= char.xpToNext) { char.level++; char.xp -= char.xpToNext; char.xpToNext = Math.floor(char.xpToNext * 1.5); char.perkPoints++; log(`> ${char.name} reached Level ${char.level}! Perk point available.`, "log-heal"); }
             }
         });
 
-        let matDrops = 1 + Math.floor(Math.random() * 2);
+        let matDrops = (1 + Math.floor(Math.random() * 2)) * scrapMult;
         for(let i=0; i<matDrops; i++) { let m = ['parts', 'chems', 'tech'][Math.floor(Math.random() * 3)]; materials[m]++; log(`> Salvaged: 1 ${m.toUpperCase()}`, "log-heal"); }
 
         document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${s})">LOOT ${s}</button>`; combatActive = false; 
