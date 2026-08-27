@@ -1059,6 +1059,9 @@ class MainActivity : AppCompatActivity() {
         crashPrefs.edit().remove("crash_log").apply()
         
         if (crashLog != null) {
+            // A crash occurred last time. Nuke the save game in case it was a serialization error
+            getSharedPreferences("citadel_save", Context.MODE_PRIVATE).edit().clear().apply()
+            
             super.onCreate(savedInstanceState)
             setContent {
                 androidx.compose.material3.MaterialTheme {
@@ -1075,7 +1078,6 @@ class MainActivity : AppCompatActivity() {
                             item {
                                 Button(
                                     onClick = {
-                                        crashPrefs.edit().remove("crash_log").apply()
                                         finish()
                                     },
                                     modifier = Modifier.padding(top = 16.dp)
@@ -1840,10 +1842,9 @@ fun CombatArena(
                         painter = androidx.compose.ui.res.painterResource(id = R.drawable.hero_bruiser),
                         contentDescription = "Scrap Bruiser",
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .requiredWidth(charWidth * 3f)
-                            .requiredHeight(charHeight * 1.2f)
-                            .offset(y = 10.dp),
+                            .fillMaxSize()
+                            .scale(1.8f)
+                            .offset(y = (-15).dp),
                         contentScale = ContentScale.Fit
                     )
                 }
