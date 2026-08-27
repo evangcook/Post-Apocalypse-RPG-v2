@@ -3,12 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V20.0 (Dynamic Warlord)</title>
+<title>Wasteland RPG - Engine V21.0 (Active Bench & Specialists)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
 
-/* --- TITLE SCREEN ELEMENTS --- */
 #screen-title { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; background: linear-gradient(rgba(10, 10, 10, 0.8), rgba(0, 0, 0, 0.95)), repeating-linear-gradient(45deg, #111 0, #111 2px, #000 2px, #000 6px), url('bg_title.png'); background-size: cover, auto, cover; background-position: center; text-align: center; padding: 20px; }
 .title-header { font-size: clamp(30px, 8vw, 60px); color: #B8860B; font-weight: bold; text-transform: uppercase; letter-spacing: 4px; text-shadow: 3px 3px 0px #8B0000, 0 0 15px rgba(184, 134, 11, 0.5); margin-bottom: 10px; }
 .title-sub { color: #666; font-size: clamp(12px, 3vw, 16px); letter-spacing: 8px; margin-bottom: 8vh; text-shadow: 1px 1px 2px #000; }
@@ -18,7 +17,6 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .title-btn:active { transform: translateY(2px); box-shadow: none; }
 .btn-continue { border-color: #B8860B; color: #B8860B; }
 
-/* --- MAP SCREEN --- */
 #screen-map { display: none; flex-direction: column; padding: 20px; height: 100%; box-sizing: border-box;}
 .map-header { display: flex; justify-content: space-between; color: #B8860B; font-weight: bold; font-size: 18px; margin-bottom: 15px; flex-shrink: 0;}
 .outpost-btn { background: #0a110a; border: 1px solid #6B8E23; color: #6B8E23; font-weight: bold; padding: 15px; margin-bottom: 15px; font-family: monospace; font-size: 14px; cursor: pointer; text-align: center; border-radius: 4px; transition: 0.2s; flex-shrink: 0;}
@@ -44,25 +42,25 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .node-active:hover { transform: scale(1.1); }
 .boss-node.node-active { animation: pulseActive 1s infinite; background: #2a0505; }
 
-/* --- OUTPOST SCREEN --- */
 #screen-outpost { display: none; flex-direction: column; gap: 15px; padding: 20px; height: 100%; box-sizing: border-box; overflow-y: auto;}
 .outpost-roster { display: grid; grid-template-columns: 1fr; gap: 15px; }
 .upgrade-card { background: #0a0a0a; border: 1px solid #333; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
 .upgrade-header { display: flex; justify-content: space-between; align-items: center; color: #B8860B; font-weight: bold; border-bottom: 1px solid #222; padding-bottom: 5px;}
 .upgrade-stats { display: flex; justify-content: space-between; font-size: 12px; color: #888; }
-.upgrade-btn-group { display: flex; gap: 10px; margin-top: 5px; }
-.upg-btn { flex: 1; padding: 10px; background: #111; color: #ccc; border: 1px solid #444; cursor: pointer; font-family: monospace; font-size: 12px; transition: 0.2s;}
+.upgrade-btn-group { display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap;}
+.upg-btn { flex: 1; min-width: 30%; padding: 10px; background: #111; color: #ccc; border: 1px solid #444; cursor: pointer; font-family: monospace; font-size: 12px; transition: 0.2s;}
 .upg-btn:hover:not(:disabled) { background: #333; border-color: #888; color: #fff;}
 .upg-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .med-btn { border-color: #6B8E23; color: #6B8E23; }
 .med-btn:hover:not(:disabled) { background: #6B8E23; color: #000; }
 .revive-btn { border-color: #8B0000; color: #ff4444; }
 .revive-btn:hover:not(:disabled) { background: #8B0000; color: #fff; }
+.deploy-btn-active { background: #1a2a1a; border-color: #6B8E23; color: #6B8E23; font-weight: bold;}
+.deploy-btn-benched { background: #2a1a1a; border-color: #8B0000; color: #8B0000; }
 .cost-txt { color: #B8860B; }
-.return-btn { background: #111; color: #ccc; border: 1px solid #444; padding: 15px; font-family: monospace; font-size: 14px; cursor: pointer; text-transform: uppercase; margin-top: auto; transition: 0.2s;}
+.return-btn { background: #111; color: #ccc; border: 1px solid #444; padding: 15px; font-family: monospace; font-size: 14px; cursor: pointer; text-transform: uppercase; margin-top: auto; transition: 0.2s; flex-shrink:0;}
 .return-btn:hover { background: #222; border-color: #888; }
 
-/* --- COMBAT SCREEN & FCT --- */
 #screen-combat { display: none; flex-direction: column; height: 100%; }
 .sky-layer { background-image: linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('bg_combat.png'); background-size: cover; background-position: center bottom; flex-grow: 1; display: flex; flex-direction: column; position: relative; }
 #queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; }
@@ -107,7 +105,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V20.0</div>
+        <div class="title-sub">ENGINE V21.0</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -116,17 +114,17 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
             <span>SECTOR 1</span>
             <span>SCRAP: <span id="scrap-display">0</span></span>
         </div>
-        <button class="outpost-btn" onclick="renderOutpost()">⛺ ACCESS OUTPOST</button>
+        <button class="outpost-btn" onclick="renderOutpost()">⛺ ACCESS OUTPOST (SQUAD SELECT)</button>
         <div class="map-viewport" id="map-nodes"></div>
     </div>
 
     <div id="screen-outpost">
         <div class="map-header">
-            <span>UPGRADE OUTPOST</span>
+            <span>UPGRADE & DEPLOY</span>
             <span>SCRAP: <span id="outpost-scrap">0</span></span>
         </div>
         <div id="outpost-roster" class="outpost-roster"></div>
-        <button class="return-btn" onclick="renderMap()">RETURN TO MAP</button>
+        <button class="return-btn" onclick="renderMap()">CONFIRM DEPLOYMENT & RETURN</button>
     </div>
 
     <div id="screen-combat">
@@ -145,436 +143,324 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 </div>
 
 <script>
-// --- GLOBAL STATE ---
-const SAVE_KEY = 'wasteland_rpg_engine_v20'; 
-
-let scrap = 0;
-let currentTier = 1;
+const SAVE_KEY = 'wasteland_rpg_engine_v21'; 
+let scrap = 0; let currentTier = 1;
 
 const SECTOR_LAYOUT = [
-    ['BOSS'], // T10
-    ['MECH', 'RAIDERS'], // T9
-    ['BEASTS', 'MECH', 'RAIDERS'], // T8
-    ['RAIDERS', 'BEASTS'], // T7
-    ['MECH', 'RAIDERS', 'BEASTS'], // T6
-    ['BEASTS', 'MECH'], // T5
-    ['RAIDERS', 'BEASTS', 'RAIDERS'], // T4
-    ['MECH', 'RAIDERS'], // T3
-    ['BEASTS', 'RAIDERS', 'MECH'], // T2
-    ['RAIDERS'] // T1
+    ['BOSS'], ['MECH', 'RAIDERS'], ['BEASTS', 'MECH', 'RAIDERS'], ['RAIDERS', 'BEASTS'], ['MECH', 'RAIDERS', 'BEASTS'], ['BEASTS', 'MECH'], ['RAIDERS', 'BEASTS', 'RAIDERS'], ['MECH', 'RAIDERS'], ['BEASTS', 'RAIDERS', 'MECH'], ['RAIDERS']
 ];
 const TOTAL_TIERS = SECTOR_LAYOUT.length;
 
+// V21 Expanded Roster with isActive flag
 const ROSTER_TEMPLATE = [
-    { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
-    { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, cooldowns: { cauterize: 0 } },
-    { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 }, upgradeCount: 0, cooldowns: { flashbang: 0 } }
+    { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, isActive: true, cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
+    { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, isActive: true, cooldowns: { cauterize: 0 } },
+    { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 }, upgradeCount: 0, isActive: true, cooldowns: { flashbang: 0 } },
+    { id: 'p4', name: "Pyro", classType: "PYROMANIAC", maxHp: 55, hp: 55, speed: 11, armor: 0, isPlayer: true, dmgBase: 12, img: "hero_pyro.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 10 }, upgradeCount: 0, isActive: false, cooldowns: { molotov: 0 } },
+    { id: 'p5', name: "Breacher", classType: "SHOTGUNNER", maxHp: 65, hp: 65, speed: 9, armor: 5, isPlayer: true, dmgBase: 22, img: "hero_shotgunner.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, isActive: false, cooldowns: { buckshot: 0 } },
+    { id: 'p6', name: "Ghost", classType: "SNIPER", maxHp: 40, hp: 40, speed: 16, armor: 0, isPlayer: true, dmgBase: 28, img: "hero_sniper.png", scale: 0.9, hpDrop: -10, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 }, upgradeCount: 0, isActive: false, cooldowns: { deadeye: 0 } },
+    { id: 'p7', name: "War Hound", classType: "HOUND", maxHp: 35, hp: 35, speed: 19, armor: 0, isPlayer: true, dmgBase: 16, img: "hero_hound.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 10, energy: 0 }, upgradeCount: 0, isActive: false, cooldowns: { feral_bite: 0 } }
 ];
 
-let playerRoster = [];
-let activeEntities = [];
-let turnQueue = [];
-let activeIndex = -1;
-let combatActive = false;
-let pendingAction = null;
+let playerRoster = []; let activeEntities = []; let turnQueue = []; let activeIndex = -1; let combatActive = false; let pendingAction = null;
 
-// --- BOOT LOGIC ---
-function switchScreen(screenId) {
-    document.getElementById('screen-title').style.display = 'none';
-    document.getElementById('screen-map').style.display = 'none';
-    document.getElementById('screen-outpost').style.display = 'none';
-    document.getElementById('screen-combat').style.display = 'none';
-    document.getElementById(screenId).style.display = 'flex'; 
-}
+function switchScreen(screenId) { document.querySelectorAll('#engine > div').forEach(el => el.style.display = 'none'); document.getElementById(screenId).style.display = 'flex'; }
 
 function renderTitleScreen() {
-    switchScreen('screen-title');
-    const menuContainer = document.getElementById('title-menu-container');
-    menuContainer.innerHTML = '';
-    if (localStorage.getItem(SAVE_KEY)) menuContainer.innerHTML += `<button class="title-btn btn-continue" onclick="continueGame()">Continue Expedition</button>`;
-    menuContainer.innerHTML += `<button class="title-btn" onclick="startNewGame()">New Expedition</button>`;
+    switchScreen('screen-title'); document.getElementById('title-menu-container').innerHTML = '';
+    if (localStorage.getItem(SAVE_KEY)) document.getElementById('title-menu-container').innerHTML += `<button class="title-btn btn-continue" onclick="continueGame()">Continue Expedition</button>`;
+    document.getElementById('title-menu-container').innerHTML += `<button class="title-btn" onclick="startNewGame()">New Expedition</button>`;
 }
 
-function startNewGame() {
-    localStorage.removeItem(SAVE_KEY); 
-    scrap = 0; currentTier = 1;
-    playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
-    saveGameState(); renderMap(); 
-}
+function startNewGame() { localStorage.removeItem(SAVE_KEY); scrap = 0; currentTier = 1; playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); saveGameState(); renderMap(); }
 function continueGame() { loadGameState(); renderMap(); }
 
-function saveGameState() {
-    const stateToSave = { scrap: scrap, tier: currentTier, roster: playerRoster };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(stateToSave));
-}
-
+function saveGameState() { localStorage.setItem(SAVE_KEY, JSON.stringify({ scrap, tier: currentTier, roster: playerRoster })); }
 function loadGameState() {
-    const savedData = localStorage.getItem(SAVE_KEY);
-    if (savedData) {
-        const loadedState = JSON.parse(savedData);
-        scrap = loadedState.scrap || 0;
-        currentTier = loadedState.tier || 1;
-        playerRoster = loadedState.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
-    }
+    let d = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (d) { scrap = d.scrap || 0; currentTier = d.tier || 1; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); }
 }
 
-// --- V18 MAP LOGIC ---
 function renderMap() {
-    switchScreen('screen-map');
-    document.getElementById('scrap-display').innerText = scrap;
-    const mapContainer = document.getElementById('map-nodes');
-    
-    if (currentTier > TOTAL_TIERS) {
-        mapContainer.innerHTML = `<h3 style="color:#8B0000; text-align:center;">SECTOR CLEARED</h3><button class="return-btn" onclick="renderTitleScreen()">Return to Citadel</button>`;
-        return;
-    }
-
-    let mapHTML = `<div class="map-track">`;
-
+    switchScreen('screen-map'); document.getElementById('scrap-display').innerText = scrap; const mapC = document.getElementById('map-nodes');
+    if (currentTier > TOTAL_TIERS) { mapC.innerHTML = `<h3 style="color:#8B0000; text-align:center;">SECTOR CLEARED</h3><button class="return-btn" onclick="renderTitleScreen()">Return to Citadel</button>`; return; }
+    let m = `<div class="map-track">`;
     for (let i = 0; i < TOTAL_TIERS; i++) {
-        let t = TOTAL_TIERS - i; 
-        let rowData = SECTOR_LAYOUT[i];
-        let rowStatus = (t === currentTier) ? 'active' : (t < currentTier) ? 'cleared' : 'locked';
-        let disabledAttr = (t !== currentTier) ? 'disabled' : '';
-
-        mapHTML += `<div class="map-row">`;
-        
-        rowData.forEach(nodeType => {
+        let t = TOTAL_TIERS - i; let rowStatus = (t === currentTier) ? 'active' : (t < currentTier) ? 'cleared' : 'locked'; let dis = (t !== currentTier) ? 'disabled' : '';
+        m += `<div class="map-row">`;
+        SECTOR_LAYOUT[i].forEach(nT => {
             let icon = '🎯'; let lbl = 'RAIDERS';
-            if (nodeType === 'BOSS') { icon = '💀'; lbl = 'WARLORD'; }
-            if (nodeType === 'BEASTS') { icon = '☣️'; lbl = 'BEASTS'; }
-            if (nodeType === 'MECH') { icon = '⚙️'; lbl = 'MECH'; }
-
-            let extraClass = (nodeType === 'BOSS' && t === currentTier) ? 'boss-node' : '';
-            mapHTML += `<button class="map-node node-${rowStatus} ${extraClass}" ${disabledAttr} onclick="initiateCombat('${nodeType}')">
-                            <span class="node-icon">${icon}</span><span class="node-lbl">${lbl}</span>
-                        </button>`;
+            if (nT === 'BOSS') { icon = '💀'; lbl = 'WARLORD'; } else if (nT === 'BEASTS') { icon = '☣️'; lbl = 'BEASTS'; } else if (nT === 'MECH') { icon = '⚙️'; lbl = 'MECH'; }
+            m += `<button class="map-node node-${rowStatus} ${(nT === 'BOSS' && t === currentTier) ? 'boss-node' : ''}" ${dis} onclick="initiateCombat('${nT}')"><span class="node-icon">${icon}</span><span class="node-lbl">${lbl}</span></button>`;
         });
-        
-        mapHTML += `</div>`;
-        if (t > 1) {
-            let lineStatus = (t <= currentTier) ? 'connector-cleared' : '';
-            mapHTML += `<div class="map-connector ${lineStatus}"></div>`;
-        }
+        m += `</div>`; if (t > 1) m += `<div class="map-connector ${(t <= currentTier) ? 'connector-cleared' : ''}"></div>`;
     }
-
-    mapHTML += `</div>`;
-    mapContainer.innerHTML = mapHTML;
-    setTimeout(() => { mapContainer.scrollTop = mapContainer.scrollHeight; }, 10);
+    m += `</div>`; mapC.innerHTML = m; setTimeout(() => { mapC.scrollTop = mapC.scrollHeight; }, 10);
 }
 
-// --- OUTPOST LOGIC ---
 function renderOutpost() {
-    switchScreen('screen-outpost');
-    document.getElementById('outpost-scrap').innerText = scrap;
-    const container = document.getElementById('outpost-roster');
-    container.innerHTML = '';
-    
+    switchScreen('screen-outpost'); document.getElementById('outpost-scrap').innerText = scrap; const c = document.getElementById('outpost-roster'); c.innerHTML = '';
     playerRoster.forEach(char => {
-        let cost = 30 + (char.upgradeCount * 25);
-        let canAffordUpg = scrap >= cost;
-        let isDead = char.hp <= 0;
-        let isInjured = char.hp < char.maxHp && char.hp > 0;
-        let canAffordHeal = scrap >= 10;
-        let canAffordRevive = scrap >= 50;
+        let cost = 30 + (char.upgradeCount * 25); let canUpg = scrap >= cost; let isDead = char.hp <= 0; let isInj = char.hp < char.maxHp && char.hp > 0;
+        let medHtml = isDead ? `<button class="upg-btn revive-btn" ${scrap < 50 ? 'disabled' : ''} onclick="medBay('${char.id}', 'REVIVE')">DEFIB (50)</button>` : `<button class="upg-btn med-btn" ${!isInj || scrap < 10 ? 'disabled' : ''} onclick="medBay('${char.id}', 'HEAL')">TRIAGE (10)</button>`;
+        let deployClass = char.isActive ? 'deploy-btn-active' : 'deploy-btn-benched';
+        let deployText = char.isActive ? 'DEPLOYED [✓]' : 'BENCHED [X]';
         
-        let medBayHtml = '';
-        if (isDead) { medBayHtml = `<button class="upg-btn revive-btn" ${!canAffordRevive ? 'disabled' : ''} onclick="medBay('${char.id}', 'REVIVE')">DEFIB (50)</button>`;
-        } else { medBayHtml = `<button class="upg-btn med-btn" ${!isInjured || !canAffordHeal ? 'disabled' : ''} onclick="medBay('${char.id}', 'HEAL')">TRIAGE (10)</button>`; }
-
-        container.innerHTML += `
+        c.innerHTML += `
             <div class="upgrade-card" style="${isDead ? 'border-color: #8B0000; opacity: 0.8;' : ''}">
                 <div class="upgrade-header"><span>${char.name} (${char.classType})</span><span>LVL ${char.upgradeCount + 1}</span></div>
-                <div class="upgrade-stats"><span>HP: ${char.hp}/${char.maxHp}</span><span>DMG: ${char.dmgBase}</span><span>UPG Cost: <span class="cost-txt">${cost}</span></span></div>
+                <div class="upgrade-stats"><span>HP: ${char.hp}/${char.maxHp}</span><span>DMG: ${char.dmgBase}</span><span>UPG: <span class="cost-txt">${cost}</span></span></div>
                 <div class="upgrade-btn-group">
-                    <button class="upg-btn" ${!canAffordUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'HP', ${cost})">+10 HP</button>
-                    <button class="upg-btn" ${!canAffordUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'DMG', ${cost})">+3 DMG</button>
-                    ${medBayHtml}
+                    <button class="upg-btn ${deployClass}" onclick="toggleDeploy('${char.id}')">${deployText}</button>
+                    <button class="upg-btn" ${!canUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'HP', ${cost})">+10 HP</button>
+                    <button class="upg-btn" ${!canUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'DMG', ${cost})">+3 DMG</button>
+                    ${medHtml}
                 </div>
-            </div>
-        `;
+            </div>`;
     });
 }
 
-function buyUpgrade(charId, type, cost) {
-    if (scrap < cost) return;
-    scrap -= cost; let char = playerRoster.find(c => c.id === charId);
-    if (char.hp <= 0) return; 
-    if (type === 'HP') { char.maxHp += 10; char.hp += 10; } else if (type === 'DMG') { char.dmgBase += 3; }
-    char.upgradeCount++; saveGameState(); renderOutpost(); 
+function toggleDeploy(charId) {
+    let char = playerRoster.find(c => c.id === charId);
+    let activeCount = playerRoster.filter(c => c.isActive).length;
+    if (!char.isActive && activeCount >= 3) { alert("Maximum 3 operators deployed."); return; }
+    if (char.isActive && activeCount <= 1) { alert("Must have at least 1 operator deployed."); return; }
+    char.isActive = !char.isActive; saveGameState(); renderOutpost();
 }
 
+function buyUpgrade(charId, type, cost) {
+    if (scrap < cost) return; scrap -= cost; let c = playerRoster.find(c => c.id === charId); if (c.hp <= 0) return; 
+    if (type === 'HP') { c.maxHp += 10; c.hp += 10; } else if (type === 'DMG') { c.dmgBase += 3; }
+    c.upgradeCount++; saveGameState(); renderOutpost(); 
+}
 function medBay(charId, action) {
-    let char = playerRoster.find(c => c.id === charId);
-    if (action === 'HEAL' && scrap >= 10 && char.hp > 0 && char.hp < char.maxHp) { scrap -= 10; char.hp = Math.min(char.maxHp, char.hp + Math.floor(char.maxHp * 0.4)); } 
-    else if (action === 'REVIVE' && scrap >= 50 && char.hp <= 0) { scrap -= 50; char.hp = Math.floor(char.maxHp * 0.25); }
+    let c = playerRoster.find(c => c.id === charId);
+    if (action === 'HEAL' && scrap >= 10 && c.hp > 0 && c.hp < c.maxHp) { scrap -= 10; c.hp = Math.min(c.maxHp, c.hp + Math.floor(c.maxHp * 0.4)); } 
+    else if (action === 'REVIVE' && scrap >= 50 && c.hp <= 0) { scrap -= 50; c.hp = Math.floor(c.maxHp * 0.25); }
     saveGameState(); renderOutpost();
 }
 
-// --- ENEMY GENERATOR ---
 function generateEnemies(nodeType, mult) {
-    const e_dog = { name: "Attack Dog", classType: "BEAST", maxHp: 30, speed: 18, armor: 0, dmgBase: 12, img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } };
-    const e_mutant = { name: "Mutant", classType: "MUTANT", maxHp: 70, speed: 7, armor: 0, dmgBase: 25, img: "enemy_mutant.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } };
-    const e_chem = { name: "Chem Fiend", classType: "MUTANT", maxHp: 60, speed: 11, armor: 0, dmgBase: 15, img: "enemy_chem.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 50, energy: -5 } };
+    const pool = {
+        'BEASTS': [{ name: "Attack Dog", classType: "BEAST", maxHp: 30, speed: 18, armor: 0, dmgBase: 12, img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } }, { name: "Mutant", classType: "MUTANT", maxHp: 70, speed: 7, armor: 0, dmgBase: 25, img: "enemy_mutant.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } }, { name: "Chem Fiend", classType: "MUTANT", maxHp: 60, speed: 11, armor: 0, dmgBase: 15, img: "enemy_chem.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 50, energy: -5 } }],
+        'RAIDERS': [{ name: "Raider", classType: "RAIDER", maxHp: 40, speed: 10, armor: 0, dmgBase: 15, img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }, { name: "Psycho", classType: "RAIDER", maxHp: 45, speed: 14, armor: 0, dmgBase: 22, img: "enemy_psycho.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, { name: "Sniper", classType: "RAIDER", maxHp: 35, speed: 16, armor: 0, dmgBase: 30, img: "enemy_sniper.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, { name: "Juggernaut", classType: "RAIDER", maxHp: 90, speed: 6, armor: 5, dmgBase: 18, img: "enemy_juggernaut.png", scale: 1.3, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 0, energy: -5 } }],
+        'MECH': [{ name: "Drone", classType: "DRONE", maxHp: 25, speed: 18, armor: 5, dmgBase: 10, img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } }, { name: "Turret", classType: "MECH", maxHp: 50, speed: 2, armor: 8, dmgBase: 20, img: "enemy_turret.png", scale: 0.9, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 100, energy: -10 } }, { name: "War Rig", classType: "MECH", maxHp: 150, speed: 5, armor: 10, dmgBase: 25, img: "enemy_warrig.png", scale: 1.8, hpDrop: -20, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 15, bio: 100, energy: -15 } }]
+    };
+    if (nodeType === 'BOSS') return [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: Math.floor(40*mult), img: "enemy_boss.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 }, phase: 1 }];
     
-    const e_raider = { name: "Raider", classType: "RAIDER", maxHp: 40, speed: 10, armor: 0, dmgBase: 15, img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } };
-    const e_psycho = { name: "Psycho", classType: "RAIDER", maxHp: 45, speed: 14, armor: 0, dmgBase: 22, img: "enemy_psycho.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } };
-    const e_sniper = { name: "Sniper", classType: "RAIDER", maxHp: 35, speed: 16, armor: 0, dmgBase: 30, img: "enemy_sniper.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } };
-    const e_jug = { name: "Juggernaut", classType: "RAIDER", maxHp: 90, speed: 6, armor: 5, dmgBase: 18, img: "enemy_juggernaut.png", scale: 1.3, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 0, energy: -5 } };
-
-    const e_drone = { name: "Drone", classType: "DRONE", maxHp: 25, speed: 18, armor: 5, dmgBase: 10, img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } };
-    const e_turret = { name: "Turret", classType: "MECH", maxHp: 50, speed: 2, armor: 8, dmgBase: 20, img: "enemy_turret.png", scale: 0.9, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 100, energy: -10 } };
-    const e_warrig = { name: "War Rig", classType: "MECH", maxHp: 150, speed: 5, armor: 10, dmgBase: 25, img: "enemy_warrig.png", scale: 1.8, hpDrop: -20, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 15, bio: 100, energy: -15 } };
-
-    let pool = [];
-    if (nodeType === 'BEASTS') pool = [e_dog, e_mutant, e_chem, e_dog];
-    else if (nodeType === 'RAIDERS') pool = [e_raider, e_psycho, e_sniper, e_jug, e_raider];
-    else if (nodeType === 'MECH') pool = [e_drone, e_turret, e_warrig, e_drone];
-    else if (nodeType === 'BOSS') {
-        // V20: Boss given `phase: 1`
-        return [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: Math.floor(40*mult), img: "enemy_boss.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 }, phase: 1 }];
-    }
-
-    let squadSize = Math.random() > 0.5 ? 3 : 2;
-    let squad = [];
-    for (let i = 0; i < squadSize; i++) {
-        let template = pool[Math.floor(Math.random() * pool.length)];
-        let scaledHp = Math.floor(template.maxHp * mult);
-        squad.push({
-            ...JSON.parse(JSON.stringify(template)), 
-            id: `e${i}_${Date.now()}`, 
-            isPlayer: false, maxHp: scaledHp, hp: scaledHp, dmgBase: Math.floor(template.dmgBase * mult)
-        });
+    let p = pool[nodeType]; let sZ = Math.random() > 0.5 ? 3 : 2; let squad = [];
+    for (let i = 0; i < sZ; i++) {
+        let t = p[Math.floor(Math.random() * p.length)]; let hp = Math.floor(t.maxHp * mult);
+        squad.push({ ...JSON.parse(JSON.stringify(t)), id: `e${i}_${Date.now()}`, isPlayer: false, maxHp: hp, hp, dmgBase: Math.floor(t.dmgBase * mult) });
     }
     return squad;
 }
 
 function spawnFCT(entityId, msg, styleClass) {
-    const entityElement = document.getElementById(entityId);
-    if (!entityElement) return;
-    const fctElement = document.createElement('div');
-    fctElement.className = `fct ${styleClass}`; fctElement.innerText = msg;
-    entityElement.appendChild(fctElement);
-    setTimeout(() => { if (fctElement.parentNode) fctElement.parentNode.removeChild(fctElement); }, 1000);
+    const el = document.getElementById(entityId); if (!el) return;
+    const f = document.createElement('div'); f.className = `fct ${styleClass}`; f.innerText = msg; el.appendChild(f);
+    setTimeout(() => { if (f.parentNode) f.parentNode.removeChild(f); }, 1000);
 }
 
 function initiateCombat(nodeType) {
-    switchScreen('screen-combat');
-    combatActive = true;
-    document.getElementById('log').innerHTML = '';
-
+    switchScreen('screen-combat'); combatActive = true; document.getElementById('log').innerHTML = '';
+    
+    // Filter active deployed roster
+    let deployedRoster = playerRoster.filter(p => p.isActive);
+    if (!deployedRoster.some(p => p.hp > 0)) { alert("All deployed units are dead. Adjust squad at Outpost."); renderOutpost(); return; }
+    
     playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; });
-
-    if (!playerRoster.some(p => p.hp > 0)) {
-        handleSquadWipe(); return;
-    }
-
     const mult = 1 + ((currentTier - 1) * 0.4);
-    let enemies = generateEnemies(nodeType, mult);
-
-    activeEntities = [...playerRoster, ...enemies];
+    activeEntities = [...deployedRoster, ...generateEnemies(nodeType, mult)];
     turnQueue = [...activeEntities].sort((a, b) => b.speed - a.speed);
-    activeIndex = 0;
-    log("> COMBAT INITIATED.", "log-turn");
-    processTurn();
+    activeIndex = 0; log("> COMBAT INITIATED.", "log-turn"); processTurn();
 }
 
 const logEl = document.getElementById('log');
-function log(msg, styleClass = "log-dmg") {
-    const entry = document.createElement('div');
-    entry.className = styleClass; entry.innerText = msg;
-    logEl.appendChild(entry); logEl.scrollTop = logEl.scrollHeight;
-}
+function log(msg, styleClass = "log-dmg") { const el = document.createElement('div'); el.className = styleClass; el.innerText = msg; logEl.appendChild(el); logEl.scrollTop = logEl.scrollHeight; }
 
 function renderQueue() {
-    const queueStr = turnQueue.map(e => {
-        if (e.hp <= 0) return ''; 
-        let pref = e.stunnedTurns > 0 ? '!' : ''; return pref + e.name.substring(0,3).toUpperCase();
-    }).filter(s => s !== '').join(' > ');
-    document.getElementById('queue-display').innerText = `Q: ${queueStr}`;
+    const qStr = turnQueue.map(e => { if (e.hp <= 0) return ''; return (e.stunnedTurns > 0 ? '!' : '') + e.name.substring(0,3).toUpperCase(); }).filter(s => s !== '').join(' > ');
+    document.getElementById('queue-display').innerText = `Q: ${qStr}`;
 }
 
 function renderField() {
-    renderQueue();
-    const pTeam = document.getElementById('player-team');
-    const eTeam = document.getElementById('enemy-team');
-    pTeam.innerHTML = ''; eTeam.innerHTML = '';
-
+    renderQueue(); const pTeam = document.getElementById('player-team'); const eTeam = document.getElementById('enemy-team'); pTeam.innerHTML = ''; eTeam.innerHTML = '';
     activeEntities.forEach(ent => {
-        const isDead = ent.hp <= 0;
-        const isActive = (!isDead && turnQueue.length > 0 && turnQueue[activeIndex]?.id === ent.id) ? 'active' : '';
-        const deadClass = isDead ? 'dead' : '';
-        let targetClass = ''; let clickHandler = '';
-
-        if (pendingAction !== null && !isDead) {
-            if (pendingAction === 'CAUTERIZE' && ent.isPlayer) { targetClass = 'targetable-ally'; clickHandler = `onclick="resolveAction('${ent.id}')"`; } 
-            else if (pendingAction !== 'CAUTERIZE' && !ent.isPlayer) { targetClass = 'targetable-enemy'; clickHandler = `onclick="resolveAction('${ent.id}')"`; }
+        const isDead = ent.hp <= 0; const isAct = (!isDead && turnQueue.length > 0 && turnQueue[activeIndex]?.id === ent.id) ? 'active' : ''; const dCls = isDead ? 'dead' : '';
+        let tCls = ''; let clk = '';
+        if (pendingAction && !isDead) {
+            if (pendingAction === 'CAUTERIZE' && ent.isPlayer) { tCls = 'targetable-ally'; clk = `onclick="resolveAction('${ent.id}')"`; } 
+            else if (pendingAction !== 'CAUTERIZE' && !ent.isPlayer) { tCls = 'targetable-enemy'; clk = `onclick="resolveAction('${ent.id}')"`; }
         }
-
-        let effectsHtml = '';
-        if (ent.bleedingTurns > 0 && !isDead) effectsHtml += `<span class="status-badge status-bleed">💧</span>`;
-        if (ent.stunnedTurns > 0 && !isDead) effectsHtml += `<span class="status-badge status-stun">💫</span>`;
-        if (ent.armorTurns > 0 && !isDead) effectsHtml += `<span class="status-badge status-shield">🛡️</span>`;
-
+        let eff = ''; if (ent.bleedingTurns > 0 && !isDead) eff += `💧`; if (ent.stunnedTurns > 0 && !isDead) eff += `💫`; if (ent.armorTurns > 0 && !isDead) eff += `🛡️`;
         const html = `
-            <div class="entity ${isActive} ${deadClass} ${targetClass}" id="${ent.id}" ${clickHandler} style="--sprite-scale: ${ent.scale || 1};">
+            <div class="entity ${isAct} ${dCls} ${tCls}" id="${ent.id}" ${clk} style="--sprite-scale: ${ent.scale || 1};">
                 <div style="width: 100%; position: relative; z-index: 10; transform: translateY(${ent.hpDrop || 0}px);">
-                    <div class="hp-text">${effectsHtml} ${ent.hp}/${ent.maxHp}</div>
+                    <div class="hp-text"><span class="status-badge">${eff}</span> ${ent.hp}/${ent.maxHp}</div>
                     <div class="hp-container"><div class="hp-fill ${ent.isPlayer ? 'player-hp' : 'enemy-hp'}" style="width: ${(ent.hp / ent.maxHp) * 100}%"></div></div>
-                </div>
-                <img class="portrait" src="${ent.img}" alt="${ent.name}">
-            </div>
-        `;
+                </div><img class="portrait" src="${ent.img}">
+            </div>`;
         if (ent.isPlayer) pTeam.innerHTML += html; else eTeam.innerHTML += html;
     });
     renderCommandDeck();
 }
 
 function renderCommandDeck() {
-    const deck = document.getElementById('command-deck');
-    deck.innerHTML = '';
-    if (!combatActive) return;
-    if (pendingAction) { deck.innerHTML = `<button style="color:#8B0000; border-color:#8B0000" onclick="cancelAction()">CANCEL ORDERS</button>`; return; }
+    const d = document.getElementById('command-deck'); d.innerHTML = ''; if (!combatActive) return;
+    if (pendingAction) { d.innerHTML = `<button style="color:#8B0000; border-color:#8B0000" onclick="cancelAction()">CANCEL ORDERS</button>`; return; }
+    let aE = turnQueue[activeIndex];
+    if (!aE.isPlayer) { d.innerHTML = `<div class="dash-msg">ENEMY TURN...</div>`; return; }
+    if (aE.stunnedTurns > 0) { d.innerHTML = `<div class="dash-msg">STUNNED</div><button onclick="skipStunnedTurn()">Skip Turn</button>`; return; }
 
-    let actEnt = turnQueue[activeIndex];
-    if (!actEnt.isPlayer) { deck.innerHTML = `<div class="dash-msg">ENEMY TURN...</div>`; return; }
-    if (actEnt.stunnedTurns > 0) { deck.innerHTML = `<div class="dash-msg">STUNNED</div><button onclick="skipStunnedTurn()">Skip Turn</button>`; return; }
-
-    let cds = actEnt.cooldowns;
-    if (actEnt.classType === 'BRUISER') {
-        deck.innerHTML += `<button onclick="queueAction('SCRAP_BLADE')">Scrap Blade</button>`;
-        deck.innerHTML += `<button ${cds.heavy_wrench > 0 ? 'disabled' : ''} onclick="queueAction('HEAVY_WRENCH')">Heavy Wrench ${cds.heavy_wrench > 0 ? `[${cds.heavy_wrench}]` : ''}</button>`;
-        deck.innerHTML += `<button ${cds.iron_guard > 0 ? 'disabled' : ''} onclick="executeSelfAction('IRON_GUARD')">Iron Guard ${cds.iron_guard > 0 ? `[${cds.iron_guard}]` : ''}</button>`;
-    } else if (actEnt.classType === 'MEDIC') {
-        deck.innerHTML += `<button onclick="queueAction('PISTOL')">Pistol</button>`;
-        deck.innerHTML += `<button onclick="queueAction('RAD_SHOT')">Rad Shot</button>`;
-        deck.innerHTML += `<button ${cds.cauterize > 0 ? 'disabled' : ''} onclick="queueAction('CAUTERIZE')">Cauterize ${cds.cauterize > 0 ? `[${cds.cauterize}]` : ''}</button>`;
-    } else if (actEnt.classType === 'SCAVENGER') {
-        deck.innerHTML += `<button onclick="queueAction('PIPE_RIFLE')">Pipe Rifle</button>`;
-        deck.innerHTML += `<button ${cds.flashbang > 0 ? 'disabled' : ''} onclick="queueAction('FLASHBANG')">Flashbang ${cds.flashbang > 0 ? `[${cds.flashbang}]` : ''}</button>`;
+    let cds = aE.cooldowns;
+    if (aE.classType === 'BRUISER') {
+        d.innerHTML += `<button onclick="queueAction('SCRAP_BLADE')">Scrap Blade</button>`;
+        d.innerHTML += `<button ${cds.heavy_wrench > 0 ? 'disabled' : ''} onclick="queueAction('HEAVY_WRENCH')">Heavy Wrench ${cds.heavy_wrench > 0 ? `[${cds.heavy_wrench}]` : ''}</button>`;
+        d.innerHTML += `<button ${cds.iron_guard > 0 ? 'disabled' : ''} onclick="executeSelfAction('IRON_GUARD')">Iron Guard ${cds.iron_guard > 0 ? `[${cds.iron_guard}]` : ''}</button>`;
+    } else if (aE.classType === 'MEDIC') {
+        d.innerHTML += `<button onclick="queueAction('PISTOL')">Pistol</button>`;
+        d.innerHTML += `<button onclick="queueAction('RAD_SHOT')">Rad Shot</button>`;
+        d.innerHTML += `<button ${cds.cauterize > 0 ? 'disabled' : ''} onclick="queueAction('CAUTERIZE')">Cauterize ${cds.cauterize > 0 ? `[${cds.cauterize}]` : ''}</button>`;
+    } else if (aE.classType === 'SCAVENGER') {
+        d.innerHTML += `<button onclick="queueAction('PIPE_RIFLE')">Pipe Rifle</button>`;
+        d.innerHTML += `<button ${cds.flashbang > 0 ? 'disabled' : ''} onclick="queueAction('FLASHBANG')">Flashbang ${cds.flashbang > 0 ? `[${cds.flashbang}]` : ''}</button>`;
+    } else if (aE.classType === 'PYROMANIAC') {
+        d.innerHTML += `<button onclick="queueAction('FLARE_GUN')">Flare Gun</button>`;
+        d.innerHTML += `<button ${cds.molotov > 0 ? 'disabled' : ''} onclick="queueAction('MOLOTOV')">Molotov (AoE) ${cds.molotov > 0 ? `[${cds.molotov}]` : ''}</button>`;
+    } else if (aE.classType === 'SHOTGUNNER') {
+        d.innerHTML += `<button onclick="queueAction('SLUG_SHOT')">Slug Shot</button>`;
+        d.innerHTML += `<button ${cds.buckshot > 0 ? 'disabled' : ''} onclick="queueAction('BUCKSHOT')">Buckshot (Front) ${cds.buckshot > 0 ? `[${cds.buckshot}]` : ''}</button>`;
+    } else if (aE.classType === 'SNIPER') {
+        d.innerHTML += `<button onclick="queueAction('QUICK_SHOT')">Quick Shot</button>`;
+        d.innerHTML += `<button ${cds.deadeye > 0 ? 'disabled' : ''} onclick="queueAction('DEADEYE')">Deadeye (Back) ${cds.deadeye > 0 ? `[${cds.deadeye}]` : ''}</button>`;
+    } else if (aE.classType === 'HOUND') {
+        d.innerHTML += `<button onclick="queueAction('SNAP')">Snap</button>`;
+        d.innerHTML += `<button ${cds.feral_bite > 0 ? 'disabled' : ''} onclick="queueAction('FERAL_BITE')">Feral Bite (Bleed) ${cds.feral_bite > 0 ? `[${cds.feral_bite}]` : ''}</button>`;
     }
 }
 
 function processTurn() {
-    if (!combatActive) return;
-    pendingAction = null;
-    let activeEntity = turnQueue[activeIndex];
-    if (activeEntity.hp <= 0) { nextTurn(); return; }
-
-    renderField();
-    applyTurnStartEffects(activeEntity);
-    if (!combatActive) return;
-    if (!activeEntity.hp > 0) return checkWinState(); 
-
-    if (activeEntity.stunnedTurns > 0) {
-        if (!activeEntity.isPlayer) {
-            log(`${activeEntity.name} is stunned and skips turn.`, "log-status"); spawnFCT(activeEntity.id, "STUNNED", "fct-status");
-            activeEntity.stunnedTurns--; setTimeout(nextTurn, 1000); return;
-        } else { return; }
-    }
-
-    if (!activeEntity.isPlayer) setTimeout(() => executeEnemyAi(activeEntity), 1000);
+    if (!combatActive) return; pendingAction = null; let aE = turnQueue[activeIndex]; if (aE.hp <= 0) { nextTurn(); return; }
+    renderField(); applyTurnStartEffects(aE); if (!combatActive) return; if (!aE.hp > 0) return checkWinState(); 
+    if (aE.stunnedTurns > 0) { if (!aE.isPlayer) { log(`> ${aE.name} stunned.`, "log-status"); spawnFCT(aE.id, "STUNNED", "fct-status"); aE.stunnedTurns--; setTimeout(nextTurn, 1000); return; } else return; }
+    if (!aE.isPlayer) setTimeout(() => executeEnemyAi(aE), 1000);
 }
 
 function applyTurnStartEffects(ent) {
-    let changed = false;
-    if (ent.isPlayer && ent.cooldowns) { for (let skill in ent.cooldowns) { if (ent.cooldowns[skill] > 0) { ent.cooldowns[skill]--; changed = true; } } }
-
-    if (ent.bleedingTurns > 0) {
-        const bleedDmg = Math.max(1, Math.floor(ent.maxHp * 0.08)); 
-        ent.hp = Math.max(0, ent.hp - bleedDmg); log(`> ${ent.name} bleeds for ${bleedDmg} DMG.`, "log-dmg"); spawnFCT(ent.id, `-${bleedDmg}`, "fct-dmg");
-        ent.bleedingTurns--; changed = true;
-    }
-
-    if (ent.armorTurns > 0) { ent.armorTurns--; if (ent.armorTurns === 0) { log(`> ${ent.name}'s Iron Guard faded.`); ent.armor = 0; } changed = true; }
-    if (changed) { renderField(); }
+    let chg = false; if (ent.isPlayer && ent.cooldowns) { for (let s in ent.cooldowns) { if (ent.cooldowns[s] > 0) { ent.cooldowns[s]--; chg = true; } } }
+    if (ent.bleedingTurns > 0) { let b = Math.max(1, Math.floor(ent.maxHp * 0.08)); ent.hp = Math.max(0, ent.hp - b); log(`> ${ent.name} bleeds for ${b}.`, "log-dmg"); spawnFCT(ent.id, `-${b}`, "fct-dmg"); ent.bleedingTurns--; chg = true; }
+    if (ent.armorTurns > 0) { ent.armorTurns--; if (ent.armorTurns === 0) { ent.armor = 0; } chg = true; }
+    if (chg) renderField();
 }
 
-function skipStunnedTurn() {
-    let activeEntity = turnQueue[activeIndex]; log(`${activeEntity.name} recovers from stun.`, "log-status");
-    activeEntity.stunnedTurns--; renderField(); setTimeout(nextTurn, 500);
-}
-
-function queueAction(actionType) { pendingAction = actionType; renderField(); }
+function skipStunnedTurn() { turnQueue[activeIndex].stunnedTurns--; renderField(); setTimeout(nextTurn, 500); }
+function queueAction(a) { pendingAction = a; renderField(); }
 function cancelAction() { pendingAction = null; renderField(); }
 
+// --- V21 CORE LOGIC (Positional & AoE Damage) ---
 function resolveAction(targetId) {
     let actEnt = turnQueue[activeIndex]; let target = activeEntities.find(e => e.id === targetId);
+    let livingEnemies = activeEntities.filter(e => !e.isPlayer && e.hp > 0);
+    let dist = livingEnemies.findIndex(e => e.id === targetId);
 
     if (pendingAction === 'CAUTERIZE') {
         let heal = 20 + Math.floor(Math.random() * 10); target.hp = Math.min(target.maxHp, target.hp + heal); actEnt.cooldowns.cauterize = 3; 
         log(`> ${actEnt.name} heals ${target.name} for ${heal}.`, "log-heal"); spawnFCT(target.id, `+${heal}`, "fct-heal");
     } else {
-        let atkType = 'phys'; if(pendingAction === 'RAD_SHOT') atkType = 'bio'; if(pendingAction === 'FLASHBANG') atkType = 'energy';
-        let dmg = actEnt.dmgBase + Math.floor(Math.random() * 6);
-        if (pendingAction === 'FLASHBANG') { dmg = Math.floor(dmg * 0.4); actEnt.cooldowns.flashbang = 4; }
-        if (pendingAction === 'HEAVY_WRENCH') { dmg = Math.floor(dmg * 1.5); actEnt.cooldowns.heavy_wrench = 3; }
-
-        let resistValue = target.resistances[atkType] || 0;
-        let netDmg = Math.max(1, dmg - resistValue - target.armor); if (resistValue >= 100) netDmg = 0;
-        target.hp = Math.max(0, target.hp - netDmg);
-
-        let logStyle = "log-dmg"; let logMsg = `> ${actEnt.name} hits ${target.name} for ${netDmg} ${atkType.toUpperCase()} DMG`;
-
-        if (netDmg === 0 && resistValue >= 100) { logMsg += " (Immune)."; spawnFCT(target.id, "IMMUNE", "fct-status");
-        } else if (resistValue > 5) { logMsg += " (Resisted)."; spawnFCT(target.id, `-${netDmg}`, "fct-dmg");
-        } else if (resistValue < 0) { logMsg += " (Weakness!)."; logStyle = "log-dmg"; spawnFCT(target.id, `-${netDmg}!`, "fct-weak"); 
-        } else { spawnFCT(target.id, `-${netDmg}`, "fct-dmg"); }
+        let atkType = 'phys'; 
+        if(['RAD_SHOT', 'FERAL_BITE'].includes(pendingAction)) atkType = 'bio'; 
+        if(['FLASHBANG', 'MOLOTOV', 'FLARE_GUN'].includes(pendingAction)) atkType = 'energy';
         
-        log(logMsg, logStyle); applyAttackEffects(actEnt, target, pendingAction, netDmg > 0);
+        let baseDmg = actEnt.dmgBase + Math.floor(Math.random() * 6);
+        let dmgMult = 1.0;
+
+        // Skill Configurations
+        if (pendingAction === 'FLASHBANG') { dmgMult = 0.4; actEnt.cooldowns.flashbang = 4; }
+        if (pendingAction === 'HEAVY_WRENCH') { dmgMult = 1.5; actEnt.cooldowns.heavy_wrench = 3; }
+        if (pendingAction === 'FERAL_BITE') { dmgMult = 1.2; actEnt.cooldowns.feral_bite = 3; }
+        
+        // V21 Positional Skills
+        if (pendingAction === 'BUCKSHOT') {
+            if (dist === 0) dmgMult = 1.5; else dmgMult = 0.8;
+            actEnt.cooldowns.buckshot = 2;
+        }
+        if (pendingAction === 'DEADEYE') {
+            if (dist === livingEnemies.length - 1 && dist !== 0) dmgMult = 1.8; else dmgMult = 0.8;
+            actEnt.cooldowns.deadeye = 2;
+        }
+
+        // Apply hit
+        applyDamageHit(actEnt, target, Math.floor(baseDmg * dmgMult), atkType, pendingAction);
+
+        // V21 AoE Skill (Molotov)
+        if (pendingAction === 'MOLOTOV') {
+            actEnt.cooldowns.molotov = 3;
+            let secondaries = livingEnemies.filter(e => e.id !== targetId);
+            if (secondaries.length > 0) {
+                let sTarg = secondaries[Math.floor(Math.random() * secondaries.length)];
+                applyDamageHit(actEnt, sTarg, Math.floor(baseDmg * 0.7), atkType, null); // Secondary hit
+            }
+        }
     }
     pendingAction = null; checkWinState();
 }
 
-function applyAttackEffects(attacker, target, ability, didHit) {
-    if (!didHit || target.hp <= 0) return; 
-    if (ability === 'RAD_SHOT') {
-        if (Math.random() < 0.6) { target.bleedingTurns = 3; log(`> ${target.name} begins bleeding!`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300); }
-    } else if (ability === 'HEAVY_WRENCH' || ability === 'FLASHBANG') {
-        let stunChance = (ability === 'FLASHBANG') ? 0.35 : 0.2; if (ability === 'FLASHBANG' && target.resistances.energy < 0) stunChance *= 2;
-        if (Math.random() < stunChance) { target.stunnedTurns = 1; log(`> ${target.name} is stunned!`, "log-status"); setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300); }
+function applyDamageHit(attacker, target, calcDmg, atkType, abilityStr) {
+    if (target.hp <= 0) return;
+    let resistValue = target.resistances[atkType] || 0;
+    
+    // Feral Bite ignores armor
+    let armorCalc = abilityStr === 'FERAL_BITE' ? 0 : target.armor;
+    let netDmg = Math.max(1, calcDmg - resistValue - armorCalc); 
+    
+    if (resistValue >= 100) netDmg = 0;
+    target.hp = Math.max(0, target.hp - netDmg);
+
+    let logStyle = "log-dmg"; let logMsg = `> ${attacker.name} hits ${target.name} for ${netDmg}`;
+
+    if (netDmg === 0 && resistValue >= 100) { logMsg += " (Immune)."; spawnFCT(target.id, "IMMUNE", "fct-status");
+    } else if (resistValue > 5) { logMsg += " (Resisted)."; spawnFCT(target.id, `-${netDmg}`, "fct-dmg");
+    } else if (resistValue < 0) { logMsg += " (Weakness!)."; logStyle = "log-dmg"; spawnFCT(target.id, `-${netDmg}!`, "fct-weak"); 
+    } else { spawnFCT(target.id, `-${netDmg}`, "fct-dmg"); }
+    
+    log(logMsg, logStyle);
+
+    if (abilityStr === 'RAD_SHOT' || abilityStr === 'FERAL_BITE') {
+        if (Math.random() < (abilityStr === 'FERAL_BITE' ? 0.9 : 0.6)) { 
+            target.bleedingTurns = 3; log(`> ${target.name} bleeding!`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300); 
+        }
+    } else if (abilityStr === 'HEAVY_WRENCH' || abilityStr === 'FLASHBANG') {
+        let sc = (abilityStr === 'FLASHBANG') ? 0.35 : 0.2; if (abilityStr === 'FLASHBANG' && target.resistances.energy < 0) sc *= 2;
+        if (Math.random() < sc) { target.stunnedTurns = 1; log(`> ${target.name} stunned!`, "log-status"); setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300); }
     }
+}
+
+function executeSelfAction(actionType) {
+    let actEnt = turnQueue[activeIndex];
+    if (actionType === 'IRON_GUARD') { actEnt.armor += 20; actEnt.armorTurns = 2; actEnt.cooldowns.iron_guard = 4; spawnFCT(actEnt.id, "+ARMOR", "fct-heal"); }
+    checkWinState();
 }
 
 function executeEnemyAi(enemy) {
     if (!combatActive) return;
-
-    // V20: Boss Phase 2 Check (Intercepts normal attack)
     if (enemy.classType === 'BOSS' && enemy.phase === 1 && enemy.hp <= (enemy.maxHp / 2)) {
-        enemy.phase = 2;
-        log(`> WARLORD ENTERS BLOOD RAGE!`, "log-dmg");
-        spawnFCT(enemy.id, "ENRAGED!", "fct-status");
-        enemy.dmgBase = Math.floor(enemy.dmgBase * 1.5);
-        
-        const mult = 1 + ((currentTier - 1) * 0.4);
-        const e_dog = { name: "War Hound", classType: "BEAST", maxHp: Math.floor(30*mult), hp: Math.floor(30*mult), speed: 18, armor: 0, isPlayer: false, dmgBase: Math.floor(12*mult), img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } };
-
-        for(let i = 0; i < 2; i++) {
-            let newDog = JSON.parse(JSON.stringify(e_dog));
-            newDog.id = `summon_${Date.now()}_${i}`;
-            activeEntities.push(newDog);
-            turnQueue.push(newDog); // Appended to end of queue to avoid loop shifting bugs
-        }
-        
-        log(`> Warlord summons War Hounds!`, "log-status");
-        renderField();
-        setTimeout(nextTurn, 1000); // Boss burns his turn doing this
-        return;
+        enemy.phase = 2; log(`> WARLORD ENRAGED!`, "log-dmg"); spawnFCT(enemy.id, "ENRAGED!", "fct-status"); enemy.dmgBase = Math.floor(enemy.dmgBase * 1.5);
+        const m = 1 + ((currentTier - 1) * 0.4); const d = { name: "War Hound", classType: "BEAST", maxHp: Math.floor(30*m), hp: Math.floor(30*m), speed: 18, armor: 0, isPlayer: false, dmgBase: Math.floor(12*m), img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } };
+        for(let i = 0; i < 2; i++) { let n = JSON.parse(JSON.stringify(d)); n.id = `summon_${Date.now()}_${i}`; activeEntities.push(n); turnQueue.push(n); }
+        renderField(); setTimeout(nextTurn, 1000); return;
     }
 
-    let validTargets = activeEntities.filter(e => e.isPlayer && e.hp > 0); 
-    let target = validTargets.sort(() => 0.5 - Math.random())[0];
-
+    let val = activeEntities.filter(e => e.isPlayer && e.hp > 0); let target = val.sort(() => 0.5 - Math.random())[0];
     if (target) {
-        let atkType = enemy.dmgType || 'phys'; let dmg = enemy.dmgBase + Math.floor(Math.random() * 5);
-        let resistValue = target.resistances[atkType] || 0; let netDmg = Math.max(1, dmg - resistValue - target.armor);
-        target.hp = Math.max(0, target.hp - netDmg);
-        log(`> ${enemy.name} attacks ${target.name} for ${netDmg} ${atkType.toUpperCase()} DMG!`, "log-dmg"); spawnFCT(target.id, `-${netDmg}`, "fct-dmg");
+        let t = enemy.dmgType || 'phys'; let d = enemy.dmgBase + Math.floor(Math.random() * 5);
+        let res = target.resistances[t] || 0; let net = Math.max(1, d - res - target.armor); target.hp = Math.max(0, target.hp - net);
+        log(`> ${enemy.name} hits ${target.name} for ${net}`, "log-dmg"); spawnFCT(target.id, `-${net}`, "fct-dmg");
 
-        if ((enemy.name === "Mutant" || enemy.name === "Attack Dog" || enemy.name === "War Hound" || enemy.name === "Chem Fiend") && Math.random() < 0.4) {
-            target.bleedingTurns = 2; log(`> ${enemy.name} caused ${target.name} to bleed.`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300);
+        if (["Mutant", "Attack Dog", "War Hound", "Chem Fiend"].includes(enemy.name) && Math.random() < 0.4) {
+            target.bleedingTurns = 2; setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300);
         } else if ((enemy.name === "Sniper" || enemy.classType === "BOSS") && Math.random() < 0.25) {
-            target.stunnedTurns = 1; log(`> ${enemy.name} hit stunned ${target.name}.`, "log-status"); setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300);
+            target.stunnedTurns = 1; setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300);
         }
     }
     checkWinState();
@@ -582,38 +468,20 @@ function executeEnemyAi(enemy) {
 
 function handleSquadWipe() {
     currentTier = 1;
-    playerRoster.forEach(char => {
-        char.hp = char.maxHp;
-        char.stunnedTurns = 0; char.bleedingTurns = 0; char.armor = 0; char.armorTurns = 0;
-        if(char.cooldowns) { for (let skill in char.cooldowns) char.cooldowns[skill] = 0; }
-    });
+    playerRoster.forEach(char => { char.hp = char.maxHp; char.stunnedTurns = 0; char.bleedingTurns = 0; char.armor = 0; char.armorTurns = 0; if(char.cooldowns) { for (let s in char.cooldowns) char.cooldowns[s] = 0; } });
     saveGameState(); renderMap();
 }
 
 function checkWinState() {
     renderField();
-    const playersAlive = activeEntities.some(e => e.isPlayer && e.hp > 0); const enemiesAlive = activeEntities.some(e => !e.isPlayer && e.hp > 0);
-
-    if (!playersAlive) { 
-        log("> SQUAD WIPED.", "log-dmg"); combatActive = false; 
-        document.getElementById('command-deck').innerHTML = `<button onclick="handleSquadWipe()">EXPEDITION FAILED - RESTART</button>`;
-    } else if (!enemiesAlive) { 
-        log("> HOSTILES ELIMINATED.", "log-heal"); combatActive = false; 
-        let scrapGained = Math.floor(Math.random() * 30) + (currentTier * 20); 
-        document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${scrapGained})">LOOT ${scrapGained}</button>`;
-    } else { 
-        if (pendingAction === null) setTimeout(nextTurn, 800); 
-    }
+    const pA = activeEntities.some(e => e.isPlayer && e.hp > 0); const eA = activeEntities.some(e => !e.isPlayer && e.hp > 0);
+    if (!pA) { document.getElementById('command-deck').innerHTML = `<button onclick="handleSquadWipe()">EXPEDITION FAILED - RESTART</button>`; combatActive = false; } 
+    else if (!eA) { let s = Math.floor(Math.random() * 30) + (currentTier * 20); document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${s})">LOOT ${s}</button>`; combatActive = false; } 
+    else { if (pendingAction === null) setTimeout(nextTurn, 800); }
 }
 
-function collectLoot(amount) {
-    scrap += amount; currentTier++; playerRoster.forEach(p => p.armor = 0);
-    saveGameState(); renderMap();
-}
-
+function collectLoot(a) { scrap += a; currentTier++; playerRoster.forEach(p => p.armor = 0); saveGameState(); renderMap(); }
 function nextTurn() { activeIndex++; if (activeIndex >= turnQueue.length) activeIndex = 0; processTurn(); }
-
-// --- INITIALIZATION ---
 renderTitleScreen();
 </script>
 </body>
