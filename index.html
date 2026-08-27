@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wasteland RPG - Engine V9.6</title>
+    <title>Wasteland RPG - Engine V9.7</title>
     <style>
         body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
         #engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -78,8 +78,8 @@
         .entity.targetable-enemy:active .portrait { filter: drop-shadow(0 0 20px #ff0000) brightness(1.5); }
 
         /* Compressed HP Elements */
-        .hp-text { font-size: clamp(9px, 2.5vw, 12px); font-weight: bold; margin-bottom: 0; color: #fff; text-shadow: 1px 1px 3px #000; text-align: center; white-space: nowrap; }
-        .hp-container { background: #111; height: 6px; width: 85%; border: 1px solid #000; box-shadow: 0 0 4px #000; z-index: 5; }
+        .hp-text { font-size: clamp(9px, 2.5vw, 12px); font-weight: bold; margin-bottom: 2px; color: #fff; text-shadow: 1px 1px 3px #000; text-align: center; white-space: nowrap; }
+        .hp-container { background: #111; height: 6px; width: 85%; border: 1px solid #000; box-shadow: 0 0 4px #000; margin: 0 auto; }
         .hp-fill { height: 100%; transition: width 0.3s ease; }
         .player-hp { background-color: #8B0000; }
         .enemy-hp { background-color: #8B0000; }
@@ -174,11 +174,11 @@
     let scrap = 0;
     let currentTier = 1;
     
-    // Engine V9.6: Fluid percentage-based hpDrop calibration
+    // Engine V9.7: Decoupled hpDrop translation
     const playerRoster = [
         { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0 },
         { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0 },
-        { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: 10 }
+        { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: 12 }
     ];
     
     let activeEntities = []; 
@@ -283,11 +283,13 @@
             
             const html = `
                 <div class="entity ${isActive} ${deadClass} ${targetClass}" id="${ent.id}" ${clickHandler} style="--sprite-scale: ${ent.scale || 1};">
-                    <div class="hp-text">${ent.hp}/${ent.maxHp}</div>
-                    <div class="hp-container">
-                        <div class="hp-fill ${ent.isPlayer ? 'player-hp' : 'enemy-hp'}" style="width: ${(ent.hp / ent.maxHp) * 100}%"></div>
+                    <div style="width: 100%; position: relative; z-index: 10; transform: translateY(${ent.hpDrop || 0}px);">
+                        <div class="hp-text">${ent.hp}/${ent.maxHp}</div>
+                        <div class="hp-container">
+                            <div class="hp-fill ${ent.isPlayer ? 'player-hp' : 'enemy-hp'}" style="width: ${(ent.hp / ent.maxHp) * 100}%"></div>
+                        </div>
                     </div>
-                    <img class="portrait" src="${ent.img}" alt="${ent.name}" style="margin-top: -${ent.hpDrop || 0}%;">
+                    <img class="portrait" src="${ent.img}" alt="${ent.name}">
                 </div>
             `;
             if (ent.isPlayer) pTeam.innerHTML += html;
