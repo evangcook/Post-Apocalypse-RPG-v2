@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V31.0 (Tactical Positioning)</title>
+<title>Wasteland RPG - Engine V31.1 (Inline UI & No Popups)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -50,10 +50,8 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .upg-btn { flex: 1; min-width: 30%; padding: 10px; background: #111; color: #ccc; border: 1px solid #444; cursor: pointer; font-family: monospace; font-size: 12px; transition: 0.2s;}
 .upg-btn:hover:not(:disabled) { background: #333; border-color: #888; color: #fff;}
 .upg-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.sub-menu-btn { min-width: 45%; } /* Forces 2x2 stacking for inline submenus */
 
-/* V31 Tactical Dropdown Styles */
-select.upg-btn { appearance: none; outline: none; text-align: center; text-transform: uppercase; font-weight: bold;}
-select.upg-btn option { background: #000; color: #fff; }
 .pos-btn-1 { border-color: #8B0000; color: #ff5555; background: #2a0a0a; } /* Front */
 .pos-btn-2 { border-color: #B8860B; color: #ffaa00; background: #2a2a0a; } /* Mid */
 .pos-btn-3 { border-color: #6B8E23; color: #aaffaa; background: #0a2a0a; } /* Back */
@@ -81,7 +79,7 @@ select.upg-btn option { background: #000; color: #fff; }
 #queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; }
 .battlefield { display: flex; justify-content: center; gap: 2vw; flex-grow: 1; align-items: flex-end; padding: 0 5px; box-sizing: border-box; margin-bottom: 12vh; }
 .team { display: flex; align-items: flex-end; justify-content: center; }
-#player-team { flex-direction: row-reverse; } /* Makes first array item render closest to enemy */
+#player-team { flex-direction: row-reverse; } 
 #enemy-team { flex-direction: row; }
 .entity { width: clamp(55px, 16vw, 110px); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; position: relative; transition: transform 0.2s; gap: 2px; margin: 0 -1.5vw; z-index: 1; }
 .entity:nth-child(1) { z-index: 3; } .entity:nth-child(2) { z-index: 2; } .entity:nth-child(3) { z-index: 1; } .entity:nth-child(4) { z-index: 4; }
@@ -120,7 +118,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V31.0</div>
+        <div class="title-sub">ENGINE V31.1</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -129,7 +127,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
             <span>SECTOR 1</span>
             <span>SCRAP: <span id="scrap-display">0</span></span>
         </div>
-        <button class="outpost-btn" onclick="renderOutpost()">⛺ TACTICAL OUTPOST (SQUAD POSITIONS)</button>
+        <button class="outpost-btn" onclick="renderOutpost()">⛺ TACTICAL OUTPOST</button>
         <div class="map-viewport" id="map-nodes"></div>
     </div>
 
@@ -162,16 +160,19 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 </div>
 
 <script>
-const SAVE_KEY = 'wasteland_rpg_engine_v31'; 
+const SAVE_KEY = 'wasteland_rpg_engine_v31.1'; 
 let scrap = 0; let currentTier = 1;
 let inventory = []; 
+
+// UI State Variables for Inline Menus
+let activePosSelector = null;
+let activePerkSelector = null;
 
 const SECTOR_LAYOUT = [
     ['BOSS'], ['MECH', 'RAIDERS'], ['BEASTS', 'MECH', 'RAIDERS'], ['RAIDERS', 'BEASTS'], ['MECH', 'RAIDERS', 'BEASTS'], ['BEASTS', 'MECH'], ['RAIDERS', 'BEASTS', 'RAIDERS'], ['MECH', 'RAIDERS'], ['BEASTS', 'RAIDERS', 'MECH'], ['RAIDERS']
 ];
 const TOTAL_TIERS = SECTOR_LAYOUT.length;
 
-// V31 Roster: Replaced `isActive` with `gridPos` (0 = benched, 1 = front, 2 = mid, 3 = back)
 const ROSTER_TEMPLATE = [
     { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 1, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
     { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 2, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { cauterize: 0 } },
@@ -225,25 +226,51 @@ function renderOutpost() {
     playerRoster.forEach(char => {
         let cost = 30 + (char.upgradeCount * 25); let canUpg = scrap >= cost; let isDead = char.hp <= 0; let isInj = char.hp < char.maxHp && char.hp > 0;
         let medHtml = isDead ? `<button class="upg-btn revive-btn" ${scrap < 50 ? 'disabled' : ''} onclick="medBay('${char.id}', 'REVIVE')">DEFIB (50)</button>` : `<button class="upg-btn med-btn" ${!isInj || scrap < 10 ? 'disabled' : ''} onclick="medBay('${char.id}', 'HEAL')">TRIAGE (10)</button>`;
-        let traitDisplay = char.trait ? `TRAIT: ${char.trait}` : (char.perkPoints > 0 ? `<button class="upg-btn perk-btn" onclick="openPerkMenu('${char.id}')">CHOOSE PERK (!)</button>` : `LVL ${char.level} (${char.xp}/${char.xpToNext} XP)`);
         
-        // V31 Positional Selector UI
+        let traitDisplay = '';
+        if (char.trait) {
+            traitDisplay = `TRAIT: ${char.trait}`;
+        } else if (char.perkPoints > 0) {
+            traitDisplay = `<button class="upg-btn perk-btn" style="padding:2px 5px;" onclick="activePerkSelector='${char.id}'; activePosSelector=null; renderOutpost()">CHOOSE PERK (!)</button>`;
+        } else {
+            traitDisplay = `LVL ${char.level} (${char.xp}/${char.xpToNext} XP)`;
+        }
+
+        let posText = char.gridPos === 1 ? '[1] FRONTLINE' : char.gridPos === 2 ? '[2] MIDLINE' : char.gridPos === 3 ? '[3] BACKLINE' : '[X] BENCHED';
         let posClass = `pos-btn-${char.gridPos}`;
         
+        let btnGroupHtml = '';
+
+        // V31.1 Inline UI Routers
+        if (activePosSelector === char.id) {
+            btnGroupHtml = `
+                <button class="upg-btn sub-menu-btn pos-btn-1" onclick="assignSlot('${char.id}', 1)">[1] FRONT</button>
+                <button class="upg-btn sub-menu-btn pos-btn-2" onclick="assignSlot('${char.id}', 2)">[2] MID</button>
+                <button class="upg-btn sub-menu-btn pos-btn-3" onclick="assignSlot('${char.id}', 3)">[3] BACK</button>
+                <button class="upg-btn sub-menu-btn pos-btn-0" onclick="assignSlot('${char.id}', 0)">[X] BENCH</button>
+                <button class="upg-btn sub-menu-btn" style="border-color:#888;" onclick="activePosSelector=null; renderOutpost()">CANCEL</button>
+            `;
+        } else if (activePerkSelector === char.id) {
+            btnGroupHtml = `
+                <button class="upg-btn sub-menu-btn perk-btn" onclick="assignPerk('${char.id}', 'VETERAN')">VETERAN (+5 DMG)</button>
+                <button class="upg-btn sub-menu-btn perk-btn" onclick="assignPerk('${char.id}', 'FORTIFIED')">FORTIFIED (+25 HP)</button>
+                <button class="upg-btn sub-menu-btn" style="border-color:#888;" onclick="activePerkSelector=null; renderOutpost()">CANCEL</button>
+            `;
+        } else {
+            btnGroupHtml = `
+                <button class="upg-btn ${posClass}" onclick="activePosSelector='${char.id}'; activePerkSelector=null; renderOutpost()">${posText}</button>
+                <button class="upg-btn" ${!canUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'HP', ${cost})">+10 HP</button>
+                <button class="upg-btn" ${!canUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'DMG', ${cost})">+3 DMG</button>
+                ${medHtml}
+            `;
+        }
+
         c.innerHTML += `
             <div class="upgrade-card" style="${isDead ? 'border-color: #8B0000; opacity: 0.8;' : ''}">
                 <div class="upgrade-header"><span>${char.name} (${char.classType})</span><span>${traitDisplay}</span></div>
                 <div class="upgrade-stats"><span>HP: ${char.hp}/${char.maxHp}</span><span>DMG: ${char.dmgBase}</span><span>UPG: <span class="cost-txt">${cost}</span></span></div>
                 <div class="upgrade-btn-group">
-                    <select class="upg-btn ${posClass}" onchange="assignSlot('${char.id}', parseInt(this.value))">
-                        <option value="0" ${char.gridPos === 0 ? 'selected' : ''}>[X] BENCHED</option>
-                        <option value="1" ${char.gridPos === 1 ? 'selected' : ''}>[1] FRONTLINE</option>
-                        <option value="2" ${char.gridPos === 2 ? 'selected' : ''}>[2] MIDLINE</option>
-                        <option value="3" ${char.gridPos === 3 ? 'selected' : ''}>[3] BACKLINE</option>
-                    </select>
-                    <button class="upg-btn" ${!canUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'HP', ${cost})">+10 HP</button>
-                    <button class="upg-btn" ${!canUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'DMG', ${cost})">+3 DMG</button>
-                    ${medHtml}
+                    ${btnGroupHtml}
                 </div>
             </div>`;
     });
@@ -261,24 +288,24 @@ function renderOutpost() {
     }
 }
 
-// V31 Tactical Grid Swapping Logic
 function assignSlot(charId, newSlot) {
     let char = playerRoster.find(c => c.id === charId);
     let oldSlot = char.gridPos;
-    
     if (newSlot > 0) {
         let existingChar = playerRoster.find(c => c.gridPos === newSlot && c.id !== charId);
-        if (existingChar) existingChar.gridPos = oldSlot; // Swap them
+        if (existingChar) existingChar.gridPos = oldSlot; 
     }
     char.gridPos = newSlot;
+    activePosSelector = null;
     saveGameState(); renderOutpost();
 }
 
-function openPerkMenu(charId) {
+function assignPerk(charId, traitName) {
     let char = playerRoster.find(c => c.id === charId);
-    let choice = prompt(`Select Perk Trait for ${char.name}:\n1. VETERAN (Base DMG +5 permanently)\n2. FORTIFIED (Max HP +25 permanently)`);
-    if (choice === '1') { char.trait = 'VETERAN'; char.dmgBase += 5; char.perkPoints--; }
-    else if (choice === '2') { char.trait = 'FORTIFIED'; char.maxHp += 25; char.hp += 25; char.perkPoints--; }
+    if (traitName === 'VETERAN') { char.trait = 'VETERAN'; char.dmgBase += 5; }
+    else if (traitName === 'FORTIFIED') { char.trait = 'FORTIFIED'; char.maxHp += 25; char.hp += 25; }
+    char.perkPoints--;
+    activePerkSelector = null;
     saveGameState(); renderOutpost();
 }
 
@@ -298,7 +325,6 @@ function medBay(charId, action) {
     saveGameState(); renderOutpost();
 }
 
-// V31: Added `range` variable to enemy generation to allow shielding intercepts
 function generateEnemies(nodeType, mult) {
     const pool = {
         'BEASTS': [
@@ -350,7 +376,6 @@ function initiateCombat(nodeType) {
     switchScreen('screen-combat'); combatActive = true; document.getElementById('log').innerHTML = '';
     setCombatBackground(nodeType, currentTier);
 
-    // V31 Deployment validation: Load only operators with gridPos > 0 and sort them by gridPos ascending (1->2->3)
     let deployedRoster = playerRoster.filter(p => p.gridPos > 0);
     if (!deployedRoster.some(p => p.hp > 0)) { alert("All deployed units are dead. Adjust squad at Outpost."); renderOutpost(); return; }
     deployedRoster.sort((a, b) => a.gridPos - b.gridPos);
@@ -550,10 +575,9 @@ function executeEnemyAi(enemy) {
     if (validTargets.length === 0) return;
     
     let target;
-    // V31 Positional AI: Melee targets frontline first, Ranged targets randomly
     if (enemy.range === 'melee') {
         validTargets.sort((a, b) => a.gridPos - b.gridPos);
-        target = validTargets[0]; // Lowest active gridPos number (1=Front, 2=Mid, 3=Back)
+        target = validTargets[0]; 
     } else {
         target = validTargets.sort(() => 0.5 - Math.random())[0];
     }
