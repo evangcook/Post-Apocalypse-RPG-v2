@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V40.0 (Difficulty Balancing)</title>
+<title>Wasteland RPG - Engine V41.0 (Sector Pacing & Spawn Weights)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -148,7 +148,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V40.0</div>
+        <div class="title-sub">ENGINE V41.0</div>
         <div class="title-menu" id="title-menu-container"></div>
         <div class="title-menu" id="difficulty-menu-container" style="display:none;">
             <button class="title-btn" style="border-color:#6B8E23; color:#6B8E23;" onclick="confirmNewGame(0.75)">[EASY] 0.75x STATS</button>
@@ -327,18 +327,19 @@ function playSFX(type) {
     }
 }
 
-// V40: Adjusted Map Layout to ramp slowly. Mechs start T4, Elites start T5.
+// V41: Map Blueprint 
+// Enforces exactly 3 Mechs and 1 Elite in Sector 1 to smooth the opening ramp.
 const SECTOR_LAYOUT = [
-    [{type:'BOSS', elite:false}], 
-    [{type:'MECH', elite:true}, {type:'RAIDERS', elite:true}], 
-    [{type:'BEASTS', elite:false}, {type:'MECH', elite:false}, {type:'RAIDERS', elite:true}], 
-    [{type:'RAIDERS', elite:false}, {type:'BEASTS', elite:true}, {type:'MECH', elite:true}], 
-    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:true}, {type:'BEASTS', elite:false}], 
-    [{type:'BEASTS', elite:true}, {type:'RAIDERS', elite:false}], 
-    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:false}, {type:'BEASTS', elite:false}], 
-    [{type:'RAIDERS', elite:false}, {type:'BEASTS', elite:false}], 
-    [{type:'BEASTS', elite:false}, {type:'RAIDERS', elite:false}], 
-    [{type:'RAIDERS', elite:false}] 
+    [{type:'BOSS', elite:false}],                                  // Tier 10
+    [{type:'RAIDERS', elite:true}, {type:'BEASTS', elite:false}], // Tier 9 (1 Elite)
+    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:false}],   // Tier 8 (Mech 3)
+    [{type:'BEASTS', elite:false}, {type:'RAIDERS', elite:false}, {type:'BEASTS', elite:false}], // Tier 7
+    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:false}, {type:'BEASTS', elite:false}], // Tier 6 (Mech 2)
+    [{type:'BEASTS', elite:false}, {type:'RAIDERS', elite:false}], // Tier 5
+    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:false}],   // Tier 4 (Mech 1)
+    [{type:'RAIDERS', elite:false}, {type:'BEASTS', elite:false}], // Tier 3
+    [{type:'BEASTS', elite:false}, {type:'RAIDERS', elite:false}], // Tier 2
+    [{type:'RAIDERS', elite:false}]                                // Tier 1
 ];
 const TOTAL_TIERS = SECTOR_LAYOUT.length;
 
@@ -502,35 +503,41 @@ function medBay(charId, action) {
     saveGameState(); renderOutpost(); 
 }
 
-// V40: Adjusted Spawn Gates (minTier) & Base Damages
+// V41 Weighted Spawns
 function generateEnemies(nodeType, mult, isEliteNode) {
     const pool = {
         'BEASTS': [
-            { name: "Attack Dog", minTier: 1, classType: "BEAST", range: 'melee', maxHp: 30, speed: 18, armor: 0, dmgBase: 10, img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } }, 
-            { name: "Mutant", minTier: 5, classType: "MUTANT", range: 'melee', maxHp: 70, speed: 7, armor: 0, dmgBase: 25, img: "enemy_mutant.png", scale: 1.5, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } }, 
-            { name: "Chem Fiend", minTier: 6, classType: "MUTANT", range: 'ranged', maxHp: 60, speed: 11, armor: 0, dmgBase: 15, img: "enemy_chem.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 50, energy: -5 } }
+            { name: "Attack Dog", minTier: 1, isHeavy: false, classType: "BEAST", range: 'melee', maxHp: 30, speed: 18, armor: 0, dmgBase: 10, img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } }, 
+            { name: "Mutant", minTier: 5, isHeavy: true, classType: "MUTANT", range: 'melee', maxHp: 70, speed: 7, armor: 0, dmgBase: 25, img: "enemy_mutant.png", scale: 1.5, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } }, 
+            { name: "Chem Fiend", minTier: 6, isHeavy: true, classType: "MUTANT", range: 'ranged', maxHp: 60, speed: 11, armor: 0, dmgBase: 15, img: "enemy_chem.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 50, energy: -5 } }
         ],
         'RAIDERS': [
-            { name: "Raider", minTier: 1, classType: "RAIDER", range: 'melee', maxHp: 40, speed: 10, armor: 0, dmgBase: 12, img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }, 
-            { name: "Psycho", minTier: 4, classType: "RAIDER", range: 'melee', maxHp: 45, speed: 14, armor: 0, dmgBase: 18, img: "enemy_psycho.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
-            { name: "Sniper", minTier: 5, classType: "RAIDER", range: 'ranged', maxHp: 35, speed: 16, armor: 0, dmgBase: 25, img: "enemy_sniper.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
-            { name: "Juggernaut", minTier: 7, classType: "RAIDER", range: 'melee', maxHp: 90, speed: 6, armor: 5, dmgBase: 18, img: "enemy_juggernaut.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 0, energy: -5 } }
+            { name: "Raider", minTier: 1, isHeavy: false, classType: "RAIDER", range: 'melee', maxHp: 40, speed: 10, armor: 0, dmgBase: 12, img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }, 
+            { name: "Psycho", minTier: 4, isHeavy: false, classType: "RAIDER", range: 'melee', maxHp: 45, speed: 14, armor: 0, dmgBase: 18, img: "enemy_psycho.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
+            { name: "Sniper", minTier: 5, isHeavy: false, classType: "RAIDER", range: 'ranged', maxHp: 35, speed: 16, armor: 0, dmgBase: 25, img: "enemy_sniper.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
+            { name: "Juggernaut", minTier: 7, isHeavy: true, classType: "RAIDER", range: 'melee', maxHp: 90, speed: 6, armor: 5, dmgBase: 18, img: "enemy_juggernaut.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 0, energy: -5 } }
         ],
         'MECH': [
-            { name: "Drone", minTier: 4, classType: "DRONE", range: 'ranged', isHovering: true, maxHp: 25, speed: 18, armor: 5, dmgBase: 8, img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } }, 
-            { name: "Turret", minTier: 5, classType: "MECH", range: 'ranged', maxHp: 50, speed: 2, armor: 8, dmgBase: 18, img: "enemy_turret.png", scale: 0.9, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 100, energy: -10 } }, 
-            { name: "War Rig", minTier: 8, classType: "MECH", range: 'ranged', maxHp: 150, speed: 5, armor: 10, dmgBase: 25, img: "enemy_warrig.png", scale: 1.8, hpDrop: -20, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 15, bio: 100, energy: -15 } }
+            { name: "Drone", minTier: 4, isHeavy: false, classType: "DRONE", range: 'ranged', isHovering: true, maxHp: 25, speed: 18, armor: 5, dmgBase: 8, img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } }, 
+            { name: "Turret", minTier: 5, isHeavy: false, classType: "MECH", range: 'ranged', maxHp: 50, speed: 2, armor: 8, dmgBase: 18, img: "enemy_turret.png", scale: 0.9, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 100, energy: -10 } }, 
+            { name: "War Rig", minTier: 8, isHeavy: true, classType: "MECH", range: 'ranged', maxHp: 150, speed: 5, armor: 10, dmgBase: 25, img: "enemy_warrig.png", scale: 1.8, hpDrop: -20, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 15, bio: 100, energy: -15 } }
         ]
     };
 
     if (nodeType === 'BOSS') return [{ id: 'b1', name: "Warlord", classType: "BOSS", range: 'melee', maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: Math.floor(40*mult), img: "enemy_boss.png", scale: 2.2, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 }, phase: 1 }];
     
-    let p = pool[nodeType].filter(e => currentSector > 1 || currentTier >= e.minTier);
-    if(p.length === 0) p = pool[nodeType]; 
+    let validEnemies = pool[nodeType].filter(e => currentSector > 1 || currentTier >= e.minTier);
+    if(validEnemies.length === 0) validEnemies = pool[nodeType]; 
     
+    let weightedPool = [];
+    validEnemies.forEach(e => {
+        let weight = (currentSector === 1 && e.isHeavy) ? 1 : 5;
+        for(let j=0; j<weight; j++) weightedPool.push(e);
+    });
+
     let sZ = Math.random() > 0.5 ? 3 : 2; let squad = [];
     for (let i = 0; i < sZ; i++) {
-        let t = JSON.parse(JSON.stringify(p[Math.floor(Math.random() * p.length)])); 
+        let t = JSON.parse(JSON.stringify(weightedPool[Math.floor(Math.random() * weightedPool.length)])); 
         let hp = Math.floor(t.maxHp * mult); t.hp = hp; t.maxHp = hp; t.dmgBase = Math.floor(t.dmgBase * mult);
         
         if (isEliteNode && Math.random() < 0.6) {
