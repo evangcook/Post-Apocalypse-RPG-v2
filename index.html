@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V15.0 (Tactical Cooldowns)</title>
+<title>Wasteland RPG - Engine V16.0 (Recovery & FCT)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -28,7 +28,7 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .outpost-btn { background: #0a110a; border-color: #6B8E23; color: #6B8E23; font-weight: bold; }
 .outpost-btn:hover { background: #6B8E23; color: #000; border-color: #fff; }
 
-/* --- OUTPOST SCREEN --- */
+/* --- OUTPOST SCREEN (V16 Med-Bay) --- */
 #screen-outpost { display: none; flex-direction: column; gap: 15px; padding: 20px; height: 100%; box-sizing: border-box; overflow-y: auto;}
 .outpost-roster { display: grid; grid-template-columns: 1fr; gap: 15px; }
 .upgrade-card { background: #0a0a0a; border: 1px solid #333; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
@@ -38,9 +38,13 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .upg-btn { flex: 1; padding: 10px; background: #111; color: #ccc; border: 1px solid #444; cursor: pointer; font-family: monospace; font-size: 12px; transition: 0.2s;}
 .upg-btn:hover:not(:disabled) { background: #333; border-color: #888; color: #fff;}
 .upg-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.med-btn { border-color: #6B8E23; color: #6B8E23; }
+.med-btn:hover:not(:disabled) { background: #6B8E23; color: #000; }
+.revive-btn { border-color: #8B0000; color: #ff4444; }
+.revive-btn:hover:not(:disabled) { background: #8B0000; color: #fff; }
 .cost-txt { color: #B8860B; }
 
-/* --- COMBAT SCREEN --- */
+/* --- COMBAT SCREEN & FCT --- */
 #screen-combat { display: none; flex-direction: column; height: 100%; }
 .sky-layer { background-image: linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('bg_combat.png'); background-size: cover; background-position: center bottom; flex-grow: 1; display: flex; flex-direction: column; position: relative; }
 #queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; }
@@ -64,6 +68,18 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .status-stun { background-color: rgba(184,134,11,0.7); color: #000; font-weight: bold; }
 .status-shield { background-color: rgba(107,142,35,0.7); color: #fff; }
 .portrait { width: calc(100% * var(--sprite-scale, 1)); height: auto; max-height: 25vh; object-fit: contain; object-position: bottom; transition: all 0.2s; filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.8)); }
+
+/* V16: FLOATING COMBAT TEXT (FCT) */
+@keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-50px) scale(1.3); }
+}
+.fct { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); font-weight: bold; font-size: clamp(14px, 4vw, 20px); text-shadow: 2px 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; animation: floatUp 1s ease-out forwards; pointer-events: none; z-index: 20; white-space: nowrap; }
+.fct-dmg { color: #ff4444; }
+.fct-heal { color: #6B8E23; }
+.fct-status { color: #B8860B; }
+.fct-weak { color: #ffaa00; font-size: clamp(18px, 5vw, 24px); } /* Larger for weakness */
+
 .dashboard { height: 35vh; max-height: 250px; background: #050505; border: 2px solid #333; display: grid; grid-template-columns: 1fr 1fr; box-sizing: border-box; margin: 5px; }
 #command-deck { border-right: 2px solid #333; padding: 10px; display: flex; flex-direction: column; justify-content: center; gap: 8px; overflow-y: auto;}
 #log { padding: 10px; overflow-y: auto; font-size: clamp(10px, 3vw, 12px); color: #555; display: flex; flex-direction: column; }
@@ -80,7 +96,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V15.0</div>
+        <div class="title-sub">ENGINE V16.0</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -109,7 +125,6 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
                 <div class="team" id="enemy-team"></div>
             </div>
         </div>
-
         <div class="dashboard">
             <div id="command-deck"></div>
             <div id="log"></div>
@@ -119,12 +134,11 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
 <script>
 // --- GLOBAL STATE ---
-const SAVE_KEY = 'wasteland_rpg_engine_v15'; // Incremented to wipe V14 and initialize cooldowns
+const SAVE_KEY = 'wasteland_rpg_engine_v16'; // V16 Wipe for stability
 
 let scrap = 0;
 let currentTier = 1;
 
-// V15 Roster Template: Introduced `cooldowns` object to track skill availability
 const ROSTER_TEMPLATE = [
     { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
     { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, cooldowns: { cauterize: 0 } },
@@ -151,9 +165,7 @@ function renderTitleScreen() {
     switchScreen('screen-title');
     const menuContainer = document.getElementById('title-menu-container');
     menuContainer.innerHTML = '';
-    const savedData = localStorage.getItem(SAVE_KEY);
-    
-    if (savedData) menuContainer.innerHTML += `<button class="title-btn btn-continue" onclick="continueGame()">Continue Expedition</button>`;
+    if (localStorage.getItem(SAVE_KEY)) menuContainer.innerHTML += `<button class="title-btn btn-continue" onclick="continueGame()">Continue Expedition</button>`;
     menuContainer.innerHTML += `<button class="title-btn" onclick="startNewGame()">New Expedition</button>`;
 }
 
@@ -168,7 +180,6 @@ function startNewGame() {
 
 function continueGame() { loadGameState(); renderMap(); }
 
-// --- SAVE/LOAD LOGIC ---
 function saveGameState() {
     const stateToSave = { scrap: scrap, tier: currentTier, roster: playerRoster };
     localStorage.setItem(SAVE_KEY, JSON.stringify(stateToSave));
@@ -184,7 +195,7 @@ function loadGameState() {
     }
 }
 
-// --- OUTPOST LOGIC ---
+// --- OUTPOST LOGIC (MED-BAY V16) ---
 function renderOutpost() {
     switchScreen('screen-outpost');
     document.getElementById('outpost-scrap').innerText = scrap;
@@ -193,15 +204,28 @@ function renderOutpost() {
     
     playerRoster.forEach(char => {
         let cost = 30 + (char.upgradeCount * 25);
-        let canAfford = scrap >= cost;
+        let canAffordUpg = scrap >= cost;
+        let isDead = char.hp <= 0;
+        let isInjured = char.hp < char.maxHp && char.hp > 0;
+        let canAffordHeal = scrap >= 10;
+        let canAffordRevive = scrap >= 50;
         
+        // V16: Med-Bay Buttons Injected
+        let medBayHtml = '';
+        if (isDead) {
+            medBayHtml = `<button class="upg-btn revive-btn" ${!canAffordRevive ? 'disabled' : ''} onclick="medBay('${char.id}', 'REVIVE')">DEFIB (50)</button>`;
+        } else {
+            medBayHtml = `<button class="upg-btn med-btn" ${!isInjured || !canAffordHeal ? 'disabled' : ''} onclick="medBay('${char.id}', 'HEAL')">TRIAGE (10)</button>`;
+        }
+
         container.innerHTML += `
-            <div class="upgrade-card">
+            <div class="upgrade-card" style="${isDead ? 'border-color: #8B0000; opacity: 0.8;' : ''}">
                 <div class="upgrade-header"><span>${char.name} (${char.classType})</span><span>LVL ${char.upgradeCount + 1}</span></div>
-                <div class="upgrade-stats"><span>HP: ${char.maxHp}</span><span>DMG: ${char.dmgBase}</span><span>Cost: <span class="cost-txt">${cost}</span></span></div>
+                <div class="upgrade-stats"><span>HP: ${char.hp}/${char.maxHp}</span><span>DMG: ${char.dmgBase}</span><span>UPG Cost: <span class="cost-txt">${cost}</span></span></div>
                 <div class="upgrade-btn-group">
-                    <button class="upg-btn" ${!canAfford ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'HP', ${cost})">+10 HP</button>
-                    <button class="upg-btn" ${!canAfford ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'DMG', ${cost})">+3 DMG</button>
+                    <button class="upg-btn" ${!canAffordUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'HP', ${cost})">+10 HP</button>
+                    <button class="upg-btn" ${!canAffordUpg || isDead ? 'disabled' : ''} onclick="buyUpgrade('${char.id}', 'DMG', ${cost})">+3 DMG</button>
+                    ${medBayHtml}
                 </div>
             </div>
         `;
@@ -212,13 +236,28 @@ function buyUpgrade(charId, type, cost) {
     if (scrap < cost) return;
     scrap -= cost;
     let char = playerRoster.find(c => c.id === charId);
+    if (char.hp <= 0) return; // Cant upgrade dead bodies
     
     if (type === 'HP') { char.maxHp += 10; char.hp += 10; } 
     else if (type === 'DMG') { char.dmgBase += 3; }
     
     char.upgradeCount++;
-    saveGameState(); 
-    renderOutpost(); 
+    saveGameState(); renderOutpost(); 
+}
+
+function medBay(charId, action) {
+    let char = playerRoster.find(c => c.id === charId);
+    
+    if (action === 'HEAL' && scrap >= 10 && char.hp > 0 && char.hp < char.maxHp) {
+        scrap -= 10;
+        let healAmount = Math.floor(char.maxHp * 0.4); // Heal 40%
+        char.hp = Math.min(char.maxHp, char.hp + healAmount);
+    } 
+    else if (action === 'REVIVE' && scrap >= 50 && char.hp <= 0) {
+        scrap -= 50;
+        char.hp = Math.floor(char.maxHp * 0.25); // Revive at 25%
+    }
+    saveGameState(); renderOutpost();
 }
 
 // --- MAP LOGIC ---
@@ -240,13 +279,39 @@ function renderMap() {
 }
 
 // --- COMBAT LOGIC ---
+// V16: FLOATING COMBAT TEXT FUNCTION
+function spawnFCT(entityId, msg, styleClass) {
+    const entityElement = document.getElementById(entityId);
+    if (!entityElement) return;
+
+    const fctElement = document.createElement('div');
+    fctElement.className = `fct ${styleClass}`;
+    fctElement.innerText = msg;
+    
+    // Append directly to the entity container so it tracks with them
+    entityElement.appendChild(fctElement);
+
+    // Auto-remove after animation completes (1s)
+    setTimeout(() => {
+        if (fctElement.parentNode) {
+            fctElement.parentNode.removeChild(fctElement);
+        }
+    }, 1000);
+}
+
 function initiateCombat(nodeType) {
     switchScreen('screen-combat');
     combatActive = true;
     document.getElementById('log').innerHTML = '';
 
-    // Reset temporary combat effects, but DO NOT reset cooldowns (they persist between fights for tactical depth)
     playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; });
+
+    // Prevent starting with a totally dead team by forcing a map return
+    if (!playerRoster.some(p => p.hp > 0)) {
+        alert("Your entire roster is dead. You must revive someone at the Outpost.");
+        renderMap();
+        return;
+    }
 
     let enemies = [];
     const mult = 1 + ((currentTier - 1) * 0.4);
@@ -284,9 +349,10 @@ function log(msg, styleClass = "log-dmg") {
 
 function renderQueue() {
     const queueStr = turnQueue.map(e => {
+        if (e.hp <= 0) return ''; // Skip dead in visual queue
         let pref = e.stunnedTurns > 0 ? '!' : '';
         return pref + e.name.substring(0,3).toUpperCase();
-    }).join(' > ');
+    }).filter(s => s !== '').join(' > ');
     document.getElementById('queue-display').innerText = `Q: ${queueStr}`;
 }
 
@@ -312,9 +378,9 @@ function renderField() {
         }
 
         let effectsHtml = '';
-        if (ent.bleedingTurns > 0) effectsHtml += `<span class="status-badge status-bleed">💧</span>`;
-        if (ent.stunnedTurns > 0) effectsHtml += `<span class="status-badge status-stun">💫</span>`;
-        if (ent.armorTurns > 0) effectsHtml += `<span class="status-badge status-shield">🛡️</span>`;
+        if (ent.bleedingTurns > 0 && !isDead) effectsHtml += `<span class="status-badge status-bleed">💧</span>`;
+        if (ent.stunnedTurns > 0 && !isDead) effectsHtml += `<span class="status-badge status-stun">💫</span>`;
+        if (ent.armorTurns > 0 && !isDead) effectsHtml += `<span class="status-badge status-shield">🛡️</span>`;
 
         const html = `
             <div class="entity ${isActive} ${deadClass} ${targetClass}" id="${ent.id}" ${clickHandler} style="--sprite-scale: ${ent.scale || 1};">
@@ -345,7 +411,6 @@ function renderCommandDeck() {
     if (!actEnt.isPlayer) { deck.innerHTML = `<div class="dash-msg">ENEMY TURN...</div>`; return; }
     if (actEnt.stunnedTurns > 0) { deck.innerHTML = `<div class="dash-msg">STUNNED</div><button onclick="skipStunnedTurn()">Skip Turn</button>`; return; }
 
-    // Phase 15: Cooldown Logic Intercept
     let cds = actEnt.cooldowns;
 
     if (actEnt.classType === 'BRUISER') {
@@ -378,6 +443,7 @@ function processTurn() {
     if (activeEntity.stunnedTurns > 0) {
         if (!activeEntity.isPlayer) {
             log(`${activeEntity.name} is stunned and skips turn.`, "log-status");
+            spawnFCT(activeEntity.id, "STUNNED", "fct-status");
             activeEntity.stunnedTurns--;
             setTimeout(nextTurn, 1000);
             return;
@@ -390,7 +456,6 @@ function processTurn() {
 function applyTurnStartEffects(ent) {
     let changed = false;
 
-    // V15: Cooldown Decrement Step
     if (ent.isPlayer && ent.cooldowns) {
         for (let skill in ent.cooldowns) {
             if (ent.cooldowns[skill] > 0) {
@@ -401,9 +466,10 @@ function applyTurnStartEffects(ent) {
     }
 
     if (ent.bleedingTurns > 0) {
-        const bleedDmg = Math.floor(ent.maxHp * 0.08); 
+        const bleedDmg = Math.max(1, Math.floor(ent.maxHp * 0.08)); 
         ent.hp = Math.max(0, ent.hp - bleedDmg);
         log(`> ${ent.name} bleeds for ${bleedDmg} DMG.`, "log-dmg");
+        spawnFCT(ent.id, `-${bleedDmg}`, "fct-dmg"); // V16 FCT
         ent.bleedingTurns--;
         changed = true;
     }
@@ -414,7 +480,10 @@ function applyTurnStartEffects(ent) {
         changed = true;
     }
 
-    if (changed) renderField();
+    if (changed) {
+        renderField();
+        checkWinState(); // Catch bleed deaths immediately
+    }
 }
 
 function skipStunnedTurn() {
@@ -435,14 +504,14 @@ function resolveAction(targetId) {
     if (pendingAction === 'CAUTERIZE') {
         let heal = 20 + Math.floor(Math.random() * 10);
         target.hp = Math.min(target.maxHp, target.hp + heal);
-        actEnt.cooldowns.cauterize = 3; // Put on CD
+        actEnt.cooldowns.cauterize = 3; 
         log(`> ${actEnt.name} heals ${target.name} for ${heal}.`, "log-heal");
+        spawnFCT(target.id, `+${heal}`, "fct-heal"); // V16 FCT
     } else {
         let atkType = 'phys'; 
         if(pendingAction === 'RAD_SHOT') atkType = 'bio';
         if(pendingAction === 'FLASHBANG') atkType = 'energy';
 
-        // Base DMG scaling for specific abilities
         let dmg = actEnt.dmgBase + Math.floor(Math.random() * 6);
         if (pendingAction === 'FLASHBANG') { dmg = Math.floor(dmg * 0.4); actEnt.cooldowns.flashbang = 4; }
         if (pendingAction === 'HEAVY_WRENCH') { dmg = Math.floor(dmg * 1.5); actEnt.cooldowns.heavy_wrench = 3; }
@@ -454,11 +523,19 @@ function resolveAction(targetId) {
         target.hp = Math.max(0, target.hp - netDmg);
 
         let logStyle = "log-dmg";
+        let fctStyle = "fct-dmg";
         let logMsg = `> ${actEnt.name} hits ${target.name} for ${netDmg} ${atkType.toUpperCase()} DMG`;
 
-        if (netDmg === 0 && resistValue >= 100) logMsg += " (Immune).";
-        else if (resistValue > 5) logMsg += " (Resisted).";
-        else if (resistValue < 0) { logMsg += " (Weakness!)."; logStyle = "log-dmg"; }
+        if (netDmg === 0 && resistValue >= 100) {
+            logMsg += " (Immune)."; spawnFCT(target.id, "IMMUNE", "fct-status");
+        } else if (resistValue > 5) {
+            logMsg += " (Resisted)."; spawnFCT(target.id, `-${netDmg}`, "fct-dmg");
+        } else if (resistValue < 0) { 
+            logMsg += " (Weakness!)."; logStyle = "log-dmg"; 
+            spawnFCT(target.id, `-${netDmg}!`, "fct-weak"); // V16 FCT Weakness
+        } else {
+            spawnFCT(target.id, `-${netDmg}`, "fct-dmg");
+        }
         
         log(logMsg, logStyle);
         applyAttackEffects(actEnt, target, pendingAction, netDmg > 0);
@@ -475,6 +552,7 @@ function applyAttackEffects(attacker, target, ability, didHit) {
         if (Math.random() < 0.6) { 
             target.bleedingTurns = 3;
             log(`> ${target.name} begins bleeding!`, "log-dmg");
+            setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300); // Delayed slightly so it doesn't overlap DMG num instantly
         }
     } else if (ability === 'HEAVY_WRENCH' || ability === 'FLASHBANG') {
         let stunChance = (ability === 'FLASHBANG') ? 0.35 : 0.2;
@@ -482,6 +560,7 @@ function applyAttackEffects(attacker, target, ability, didHit) {
         if (Math.random() < stunChance) {
             target.stunnedTurns = 1;
             log(`> ${target.name} is stunned!`, "log-status");
+            setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300);
         }
     }
 }
@@ -491,8 +570,9 @@ function executeSelfAction(actionType) {
     if (actionType === 'IRON_GUARD') {
         actEnt.armor += 20; 
         actEnt.armorTurns = 2; 
-        actEnt.cooldowns.iron_guard = 4; // Set Cooldown
+        actEnt.cooldowns.iron_guard = 4;
         log(`> ${actEnt.name} deployed IRON GUARD.`, "log-heal");
+        spawnFCT(actEnt.id, "+ARMOR", "fct-heal");
     }
     checkWinState();
 }
@@ -510,13 +590,15 @@ function executeEnemyAi(enemy) {
         let netDmg = Math.max(1, dmg - resistValue - target.armor);
 
         target.hp = Math.max(0, target.hp - netDmg);
-
         log(`> ${enemy.name} attacks ${target.name} for ${netDmg} ${atkType.toUpperCase()} DMG!`, "log-dmg");
+        spawnFCT(target.id, `-${netDmg}`, "fct-dmg");
 
         if (enemy.classType === 'MUTANT' && Math.random() < 0.3) {
             target.bleedingTurns = 2; log(`> Mutant bite caused ${target.name} to bleed.`, "log-dmg");
+            setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300);
         } else if (enemy.classType === 'BOSS' && Math.random() < 0.25) {
             target.stunnedTurns = 1; log(`> Warlord smash stunned ${target.name}.`, "log-status");
+            setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300);
         }
     }
     checkWinState();
@@ -529,12 +611,14 @@ function checkWinState() {
 
     if (!playersAlive) {
         log("> SQUAD WIPED.", "log-dmg"); combatActive = false;
-        document.getElementById('command-deck').innerHTML = `<button onclick="renderTitleScreen()">MAIN MENU</button>`;
+        document.getElementById('command-deck').innerHTML = `<button onclick="renderMap()">RETREAT TO MAP</button>`;
     } else if (!enemiesAlive) {
         log("> HOSTILES ELIMINATED.", "log-heal"); combatActive = false;
         let scrapGained = Math.floor(Math.random() * 30) + (currentTier * 20);
         document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${scrapGained})">LOOT ${scrapGained}</button>`;
-    } else { setTimeout(nextTurn, 800); }
+    } else { 
+        if (pendingAction === null) setTimeout(nextTurn, 800); 
+    }
 }
 
 function collectLoot(amount) {
