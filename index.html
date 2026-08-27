@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wasteland RPG - Engine V11.0 (Status Effects)</title>
+    <title>Wasteland RPG - Engine V12.0 (Complex Damage)</title>
     <style>
         body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
         #engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -67,7 +67,7 @@
         .entity:nth-child(2) { z-index: 2; }
         .entity:nth-child(3) { z-index: 1; }
         
-        /* Highlights - Turn-based idle animation removed */
+        /* Targeting Highlights - Idle animation removed */
         .entity.active .portrait { 
             filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.9)); 
         }
@@ -133,7 +133,7 @@
         .log-turn { color: #aaa; margin-top: 5px; }
         .log-heal { color: #6B8E23; }
         .log-dmg { color: #8B0000; }
-        .log-status { color: #B8860B; } /* Gold color for dot logs */
+        .log-status { color: #B8860B; }
         
         button { background: #111; color: #ccc; border: 1px solid #444; padding: clamp(10px, 3vh, 15px); font-family: monospace; font-size: clamp(10px, 3vw, 13px); cursor: pointer; text-transform: uppercase; transition: 0.2s; }
         button:hover:not(:disabled) { background: #222; border-color: #888; }
@@ -179,16 +179,17 @@
     // --- GLOBAL STATE ---
     
     // Save State Setup
-    const SAVE_KEY = 'wasteland_rpg_engine_v11';
+    const SAVE_KEY = 'wasteland_rpg_engine_v12';
     
     let scrap = 0;
     let currentTier = 1;
     
-    // Engine V11.0: Effects logic integrated intoGlobal State
+    // Engine V12.0: Complex Damage Mechanics (Resistances) integrated
+    // resistances: { phys, bio, energy }. Values are FLAT reduction. Negative is WEAKNESS (amplification).
     const playerRoster = [
-        { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 },
-        { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 },
-        { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 }
+        { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 } },
+        { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 } },
+        { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 } }
     ];
     
     let activeEntities = []; 
@@ -251,29 +252,29 @@
         combatActive = true;
         document.getElementById('log').innerHTML = ''; 
         
-        // Reset effects on players for new combat
+        // Reset temporary effects/armor on players
         playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; });
         
         let enemies = [];
         const mult = 1 + ((currentTier - 1) * 0.4); 
         
         if (nodeType === 'BOSS') {
-            enemies = [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: 40, img: "enemy_boss.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 }];
+            enemies = [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: 40, img: "enemy_boss.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 } }];
         } else if (nodeType === 'AMBUSH') {
             enemies = [
-                { id: 'e1', name: "Raider A", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 10, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 },
-                { id: 'e2', name: "Raider B", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 12, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 }
+                { id: 'e1', name: "Raider A", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 10, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }, // bio resist, phys weak
+                { id: 'e2', name: "Raider B", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 12, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }
             ];
         } else {
             enemies = [
-                { id: 'e1', name: "Mutant", classType: "MUTANT", maxHp: Math.floor(70*mult), hp: Math.floor(70*mult), speed: 7, armor: 0, isPlayer: false, dmgBase: Math.floor(25*mult), img: "enemy_mutant.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 },
-                { id: 'e2', name: "Drone", classType: "DRONE", maxHp: Math.floor(25*mult), hp: Math.floor(25*mult), speed: 18, armor: 5, isPlayer: false, dmgBase: Math.floor(10*mult), img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 }
+                { id: 'e1', name: "Mutant", classType: "MUTANT", maxHp: Math.floor(70*mult), hp: Math.floor(70*mult), speed: 7, armor: 0, isPlayer: false, dmgBase: Math.floor(25*mult), img: "enemy_mutant.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } }, // bio immune (dot still applies), energy weak
+                { id: 'e2', name: "Drone", classType: "DRONE", maxHp: Math.floor(25*mult), hp: Math.floor(25*mult), speed: 18, armor: 5, isPlayer: false, dmgBase: Math.floor(10*mult), img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } } // phys plating, bio immune, energy very weak
             ];
         }
         
         activeEntities = [...playerRoster, ...enemies];
         turnQueue = [...activeEntities].sort((a, b) => b.speed - a.speed);
-        activeIndex = 0;
+        activeIndex = 0; 
         
         log("> COMBAT INITIATED.", "log-turn");
         processTurn();
@@ -290,7 +291,7 @@
 
     function renderQueue() {
         const queueStr = turnQueue.map(e => {
-            let pref = e.isStunned ? '!' : '';
+            let pref = e.stunnedTurns > 0 ? '!' : '';
             return pref + e.name.substring(0,3).toUpperCase();
         }).join(' > ');
         document.getElementById('queue-display').innerText = `Q: ${queueStr}`;
@@ -380,7 +381,6 @@
         }
     }
 
-    // --- PHASE 11: CORE LOOP OVERHAUL ---
     function processTurn() {
         if (!combatActive) return;
         pendingAction = null;
@@ -393,22 +393,22 @@
 
         renderField();
 
-        // 1. Foundation: Buff/Effect Tick Phase (START of Turn)
+        // 1. Buff/Effect Tick Phase (START of Turn)
         applyTurnStartEffects(activeEntity);
 
-        if (!combatActive) return; // Winstate check inside effects logic
-        if (!activeEntity.hp > 0) return checkWinState(); // Check if bleed killed them
+        if (!combatActive) return; 
+        if (!activeEntity.hp > 0) return checkWinState(); // Bleed killed them
 
-        // 2. Foundation: Stun Check denial logic
+        // 2. Stun Check denial logic
         if (activeEntity.stunnedTurns > 0) {
             if (!activeEntity.isPlayer) {
-                // AI automatically skips stunned turn
+                // AI skips
                 log(`${activeEntity.name} is stunned and skips turn.`, "log-status");
                 activeEntity.stunnedTurns--;
                 setTimeout(nextTurn, 1000);
                 return;
             } else {
-                // Player must interact to skip (rendered in command deck)
+                // Player skip
                 return;
             }
         }
@@ -419,15 +419,15 @@
         }
     }
 
-    // New phase function to handle bleed dots and stunned logic
+    // Handles bleed dots and temporary buff decay
     function applyTurnStartEffects(ent) {
         let changed = false;
 
-        // Apply Bleed (DoT) damage before turn actions
+        // Apply Bleed (DoT) damage
         if (ent.bleedingTurns > 0) {
-            const bleedDmg = Math.floor(ent.maxHp * 0.08); // Simple 8% dot
+            const bleedDmg = Math.floor(ent.maxHp * 0.08); // 8% dot
             ent.hp = Math.max(0, ent.hp - bleedDmg);
-            log(`> ${ent.name} bleeds for ${bleedDmg} DMG (1/${ent.bleedingTurns}).`, "log-dmg");
+            log(`> ${ent.name} bleeds for ${bleedDmg} DMG (DoT).`, "log-dmg");
             ent.bleedingTurns--;
             changed = true;
         }
@@ -445,7 +445,6 @@
         if (changed) renderField();
     }
 
-    // Required player interaction to skip stunned turn
     function skipStunnedTurn() {
         let activeEntity = turnQueue[activeIndex];
         log(`${activeEntity.name} recovers from stun.`, "log-status");
@@ -464,6 +463,7 @@
         renderField();
     }
 
+    // --- PHASE 12: COMPLEX DAMAGE RESOLUTION ---
     function resolveAction(targetId) {
         let activeEntity = turnQueue[activeIndex];
         let target = activeEntities.find(e => e.id === targetId);
@@ -473,25 +473,52 @@
             target.hp = Math.min(target.maxHp, target.hp + heal);
             log(`> ${activeEntity.name} heals ${target.name} for ${heal}.`, "log-heal");
         } else {
-            // DMG calculation
-            let dmg = activeEntity.dmgBase + Math.floor(Math.random() * 6);
-            if (pendingAction === 'FLASHBANG') dmg = Math.floor(dmg * 0.4); // massive reduction
+            // DMG logic V12.0
             
-            let netDmg = Math.max(1, dmg - target.armor);
-            target.hp = Math.max(0, target.hp - netDmg);
-            log(`> ${activeEntity.name} attacks ${target.name} for ${netDmg} DMG.`);
+            // 1. Determine Damage Type
+            let atkType = 'phys'; // Default
+            if(pendingAction === 'RAD_SHOT') atkType = 'bio';
+            if(pendingAction === 'FLASHBANG') atkType = 'energy';
 
-            // FOUNDATION Phase 11: Effect Application logic (on HIT)
-            applyAttackEffects(activeEntity, target, pendingAction);
+            // 2. Base Damage Calculation
+            let dmg = activeEntity.dmgBase + Math.floor(Math.random() * 6);
+            if (pendingAction === 'FLASHBANG') dmg = Math.floor(dmg * 0.4); // Flashbang utility dmg reduction
+
+            // 3. Foundation Check: Resistances (Type vs Type)
+            let resistValue = target.resistances[atkType] || 0;
+            
+            // 4. Final Calculation (Base - Type Resist - Temp Armor)
+            let netDmg = Math.max(1, dmg - resistValue - target.armor);
+            
+            // Handle Immune/Absorb edge case
+            if (resistValue >= 100) netDmg = 0;
+
+            target.hp = Math.max(0, target.hp - netDmg);
+            
+            // Enhanced Logging
+            let logStyle = "log-dmg";
+            let typeAbbr = atkType.substring(0,3).toUpperCase();
+            let logMsg = `> ${activeEntity.name} hits ${target.name} for ${netDmg} ${typeAbbr} DMG`;
+            
+            if (netDmg === 0 && resistValue >= 100) logMsg += " (Immune).";
+            else if (resistValue > 5) logMsg += " (Resisted).";
+            else if (resistValue < 0) {
+                logMsg += " (Weakness!).";
+                logStyle = "log-dmg"; // intensifies visual if we had a style for it
+            }
+            log(logMsg, logStyle);
+
+            // Foundational Phase 11 check: Effects on HIT
+            applyAttackEffects(activeEntity, target, pendingAction, netDmg > 0);
         }
         
         pendingAction = null;
         checkWinState();
     }
 
-    // Handles application chance based on ability type
-    function applyAttackEffects(attacker, target, ability) {
-        if (target.hp <= 0) return; // Don't stun dead things
+    // Handles application chance based on ability type (integrated into V12 for complex checks)
+    function applyAttackEffects(attacker, target, ability, didHit) {
+        if (!didHit || target.hp <= 0) return; // Don't stun dead things or if damage was fully absorbed
 
         if (ability === 'RAD_SHOT') {
             // Apply Bleed (3 turn duration)
@@ -502,7 +529,11 @@
             }
         } else if (ability === 'HEAVY_WRENCH' || ability === 'FLASHBANG') {
             // Apply Stun (Turn Denial)
-            const stunChance = (ability === 'FLASHBANG') ? 0.35 : 0.2; // Wrench lower, FB higher
+            let stunChance = (ability === 'FLASHBANG') ? 0.35 : 0.2; 
+            
+            // Flashbang logic: Double stun chance against energy weakness
+            if (ability === 'FLASHBANG' && target.resistances.energy < 0) stunChance *= 2;
+
             if (Math.random() < stunChance) {
                 target.stunnedTurns = 1;
                 log(`> ${target.name} is stunned!`, "log-status");
@@ -515,7 +546,6 @@
         let activeEntity = turnQueue[activeIndex];
         if (actionType === 'IRON_GUARD') {
             activeEntity.armor += 20; // intensified armor value
-            // FOUNDATION V11: Persistent Buff duration
             activeEntity.armorTurns = 2; // Lasts 2 turn ticks
             log(`> ${activeEntity.name} deployed IRON GUARD (lasts 2 turns).`, "log-heal");
         }
@@ -529,12 +559,19 @@
         let target = validTargets.sort(() => 0.5 - Math.random())[0]; 
         
         if (target) {
+            // Enemy DMG V12.0
+            let atkType = enemy.dmgType || 'phys'; // standard roamer atk type
+
             let dmg = enemy.dmgBase + Math.floor(Math.random() * 5);
-            let netDmg = Math.max(1, dmg - target.armor);
-            target.hp = Math.max(0, target.hp - netDmg);
-            log(`> ${enemy.name} attacks ${target.name} for ${netDmg} DMG!`, "log-dmg");
+            let resistValue = target.resistances[atkType] || 0;
+            let netDmg = Math.max(1, dmg - resistValue - target.armor);
             
-            // FOUNDATION Phase 11: Enemy effect logic (simplistic)
+            target.hp = Math.max(0, target.hp - netDmg);
+            
+            let typeAbbr = atkType.substring(0,3).toUpperCase();
+            log(`> ${enemy.name} attacks ${target.name} for ${netDmg} ${typeAbbr} DMG!`, "log-dmg");
+            
+            // Phase 11: Enemy effect logic
             if (enemy.classType === 'MUTANT' && Math.random() < 0.3) {
                 target.bleedingTurns = 2; // Mutant bite causes bleed
                 log(`> Mutant bite caused ${target.name} to bleed.`, "log-dmg");
@@ -555,32 +592,27 @@
         if (!playersAlive) {
             log("> SQUAD WIPED.", "log-dmg");
             combatActive = false;
-            document.getElementById('command-deck').innerHTML = `<button onclick="location.reload()">RESTART</button>`;
+            document.getElementById('command-deck').innerHTML = `<button onclick="resetData()">RESTART</button>`;
         } else if (!enemiesAlive) {
             log("> HOSTILES ELIMINATED.", "log-heal");
             combatActive = false;
             
             let scrapGained = Math.floor(Math.random() * 30) + (currentTier * 20);
-            
-            // Reconstructed onclick calls the looting function directly
             document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${scrapGained})">LOOT ${scrapGained}</button>`;
         } else {
             setTimeout(nextTurn, 800);
         }
     }
 
-    // New combined Loot & Save function
     function collectLoot(amount) {
         scrap += amount;
         currentTier++;
         playerRoster.forEach(p => p.armor = 0);
         
-        saveGameState(); // Commit progress before returning to map
-        
+        saveGameState(); 
         renderMap();
     }
 
-    // Utility function to reset game
     function resetData() {
         localStorage.removeItem(SAVE_KEY);
         location.reload();
