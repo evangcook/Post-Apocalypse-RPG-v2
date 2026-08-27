@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wasteland RPG - Engine V4</title>
+    <title>Wasteland RPG - Engine V5</title>
     <style>
         body { background-color: #0a0a0a; color: #c0c0c0; font-family: monospace; margin: 0; padding: 10px; display: flex; justify-content: center; }
         #engine { width: 100%; max-width: 800px; background: #111; border: 2px solid #555; padding: 15px; box-sizing: border-box; }
@@ -16,22 +16,15 @@
         .entity.active { border-color: #00CED1; box-shadow: 0 0 8px #00CED1; }
         .entity.dead { opacity: 0.3; border-color: #8B0000; filter: grayscale(100%); }
         
-        .entity.targetable { border-color: #B8860B; box-shadow: 0 0 12px #B8860B; cursor: pointer; }
-        .entity.targetable:active { background: #333; }
+        .entity.targetable-enemy { border-color: #B8860B; box-shadow: 0 0 12px #B8860B; cursor: pointer; }
+        .entity.targetable-enemy:active { background: #333; }
+        
+        .entity.targetable-ally { border-color: #6B8E23; box-shadow: 0 0 12px #6B8E23; cursor: pointer; }
+        .entity.targetable-ally:active { background: #333; }
 
         .name { font-size: 14px; font-weight: bold; margin-bottom: 5px; }
         
-        /* The Portrait Frame */
-        .portrait { 
-            height: 120px; 
-            width: 100%; 
-            background-color: #000; 
-            border: 1px solid #333; 
-            margin-bottom: 8px; 
-            background-size: contain; 
-            background-repeat: no-repeat; 
-            background-position: center; 
-        }
+        .portrait { height: 120px; width: 100%; background-color: #000; border: 1px solid #333; margin-bottom: 8px; background-size: contain; background-repeat: no-repeat; background-position: center; }
         
         .hp-container { background: #333; height: 15px; width: 100%; border: 1px solid #000; margin-bottom: 5px; }
         .hp-fill { height: 100%; transition: width 0.3s ease; }
@@ -41,6 +34,7 @@
 
         #log { height: 150px; overflow-y: auto; background: #000; border: 1px solid #333; padding: 10px; margin-bottom: 15px; font-size: 12px; color: #888; }
         .log-turn { color: #00CED1; margin-top: 5px; }
+        .log-heal { color: #6B8E23; }
         .log-dmg { color: #fff; }
         .log-enemy { color: #8B0000; }
         .log-warn { color: #B8860B; }
@@ -63,21 +57,16 @@
     </div>
     
     <div id="log"></div>
-    
-    <div class="controls" id="command-deck">
-        <button onclick="queueAction('ATTACK')" id="btn-attack">Attack</button>
-        <button onclick="executeSelfAction('DEFEND')" id="btn-defend">Defend</button>
-    </div>
+    <div class="controls" id="command-deck"></div>
 </div>
 
 <script>
     const entities = [
-        // Notice the new 'img' property linking to your local files
-        { id: 'p1', name: "Scrap Bruiser", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png" },
-        { id: 'p2', name: "Wastes Medic", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "" },
-        { id: 'p3', name: "Scavenger", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "" },
-        { id: 'e1', name: "Mutant", maxHp: 70, hp: 70, speed: 7, armor: 0, isPlayer: false, dmgBase: 25, img: "" },
-        { id: 'e2', name: "Raider", maxHp: 40, hp: 40, speed: 10, armor: 0, isPlayer: false, dmgBase: 15, img: "" }
+        { id: 'p1', name: "Scrap Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png" },
+        { id: 'p2', name: "Wastes Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png" },
+        { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png" },
+        { id: 'e1', name: "Mutant", classType: "MUTANT", maxHp: 70, hp: 70, speed: 7, armor: 0, isPlayer: false, dmgBase: 25, img: "enemy_mutant.png" },
+        { id: 'e2', name: "Raider", classType: "RAIDER", maxHp: 40, hp: 40, speed: 10, armor: 0, isPlayer: false, dmgBase: 15, img: "enemy_raider.png" }
     ];
 
     let turnQueue = [];
@@ -105,9 +94,19 @@
             const isActive = (!isDead && turnQueue.length > 0 && turnQueue[activeIndex].id === ent.id) ? 'active' : '';
             const deadClass = isDead ? 'dead' : '';
             
-            const isTargetable = (pendingAction !== null && !ent.isPlayer && !isDead);
-            const targetClass = isTargetable ? 'targetable' : '';
-            const clickHandler = isTargetable ? `onclick="resolveAction('${ent.id}')"` : '';
+            let targetClass = '';
+            let clickHandler = '';
+            
+            // Dynamic Targeting Logic
+            if (pendingAction !== null && !isDead) {
+                if (pendingAction === 'CAUTERIZE' && ent.isPlayer) {
+                    targetClass = 'targetable-ally';
+                    clickHandler = `onclick="resolveAction('${ent.id}')"`;
+                } else if (pendingAction !== 'CAUTERIZE' && !ent.isPlayer) {
+                    targetClass = 'targetable-enemy';
+                    clickHandler = `onclick="resolveAction('${ent.id}')"`;
+                }
+            }
             
             const html = `
                 <div class="entity ${isActive} ${deadClass} ${targetClass}" id="${ent.id}" ${clickHandler}>
@@ -123,20 +122,34 @@
             else eTeam.innerHTML += html;
         });
 
-        const btnAttack = document.getElementById('btn-attack');
-        const btnDefend = document.getElementById('btn-defend');
-        
+        renderCommandDeck();
+    }
+
+    function renderCommandDeck() {
+        const deck = document.getElementById('command-deck');
+        deck.innerHTML = '';
+
         if (pendingAction) {
-            btnAttack.innerText = "CANCEL ORDERS";
-            btnAttack.className = "btn-cancel";
-            btnAttack.onclick = cancelAction;
-            btnDefend.disabled = true;
-        } else {
-            btnAttack.innerText = "ATTACK";
-            btnAttack.className = "";
-            btnAttack.onclick = () => queueAction('ATTACK');
-            btnDefend.disabled = !turnQueue[activeIndex]?.isPlayer || !combatActive;
-            btnAttack.disabled = !turnQueue[activeIndex]?.isPlayer || !combatActive;
+            deck.innerHTML = `<button class="btn-cancel" onclick="cancelAction()" style="grid-column: span 2;">CANCEL ORDERS</button>`;
+            return;
+        }
+
+        let activeEntity = turnQueue[activeIndex];
+        if (!activeEntity.isPlayer || !combatActive) {
+            deck.innerHTML = `<button disabled style="grid-column: span 2;">AWAITING TURN...</button>`;
+            return;
+        }
+
+        // The Arsenal Injection
+        if (activeEntity.classType === 'BRUISER') {
+            deck.innerHTML += `<button onclick="queueAction('HEAVY_WRENCH')">Heavy Wrench</button>`;
+            deck.innerHTML += `<button onclick="executeSelfAction('IRON_GUARD')">Iron Guard</button>`;
+        } else if (activeEntity.classType === 'MEDIC') {
+            deck.innerHTML += `<button onclick="queueAction('RAD_SHOT')">Rad Shot</button>`;
+            deck.innerHTML += `<button onclick="queueAction('CAUTERIZE')">Cauterize</button>`;
+        } else if (activeEntity.classType === 'SCAVENGER') {
+            deck.innerHTML += `<button onclick="queueAction('PIPE_RIFLE')">Pipe Rifle</button>`;
+            deck.innerHTML += `<button onclick="queueAction('FLASHBANG')">Flashbang</button>`;
         }
     }
 
@@ -170,7 +183,8 @@
 
     function queueAction(actionType) {
         pendingAction = actionType;
-        log("Select target...", "log-warn");
+        if (actionType === 'CAUTERIZE') log("Select ally to heal...", "log-heal");
+        else log("Select hostile target...", "log-warn");
         renderField();
     }
 
@@ -184,11 +198,19 @@
         let activeEntity = turnQueue[activeIndex];
         let target = entities.find(e => e.id === targetId);
         
-        if (pendingAction === 'ATTACK') {
+        if (pendingAction === 'CAUTERIZE') {
+            let heal = 20 + Math.floor(Math.random() * 10);
+            target.hp = Math.min(target.maxHp, target.hp + heal);
+            log(`${activeEntity.name} cauterizes ${target.name} for ${heal} HP!`, "log-heal");
+        } else {
             let dmg = activeEntity.dmgBase + Math.floor(Math.random() * 6);
+            if (pendingAction === 'FLASHBANG') dmg = Math.floor(dmg * 0.5); // Flashbang does half damage + stuns
+            
             let netDmg = Math.max(1, dmg - target.armor);
             target.hp = Math.max(0, target.hp - netDmg);
-            log(`${activeEntity.name} strikes ${target.name} for ${netDmg} DMG!`);
+            log(`${activeEntity.name} uses ${pendingAction.replace('_', ' ')} on ${target.name} for ${netDmg} DMG!`);
+            
+            if (pendingAction === 'FLASHBANG') log(`${target.name} is dazed!`, "log-warn");
         }
         
         pendingAction = null;
@@ -197,9 +219,9 @@
 
     function executeSelfAction(actionType) {
         let activeEntity = turnQueue[activeIndex];
-        if (actionType === 'DEFEND') {
-            activeEntity.armor = 10;
-            log(`${activeEntity.name} deploys IRON GUARD (+10 ARMOR).`);
+        if (actionType === 'IRON_GUARD') {
+            activeEntity.armor += 15;
+            log(`${activeEntity.name} deploys IRON GUARD (+15 ARMOR).`);
         }
         checkWinState();
     }
@@ -232,8 +254,7 @@
             log("ALL HOSTILES ELIMINATED. COMBAT CLEAR.", "log-turn");
             combatActive = false;
         } else {
-            document.getElementById('btn-attack').disabled = true;
-            document.getElementById('btn-defend').disabled = true;
+            document.getElementById('command-deck').innerHTML = `<button disabled style="grid-column: span 2;">RESOLVING...</button>`;
             setTimeout(nextTurn, 800);
         }
     }
