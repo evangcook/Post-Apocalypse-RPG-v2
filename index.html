@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V33.0 (Weather & Hazards)</title>
+<title>Wasteland RPG - Engine V34.0 (Cybernetics & Augmentations)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -43,8 +43,8 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 
 #screen-outpost { display: none; flex-direction: column; gap: 15px; padding: 20px; height: 100%; box-sizing: border-box; overflow-y: auto;}
 
-.op-tabs { display: flex; gap: 10px; margin-bottom: 10px; }
-.op-tab-btn { flex: 1; padding: 10px; background: #111; border: 1px solid #444; color: #888; cursor: pointer; font-weight: bold; }
+.op-tabs { display: flex; gap: 10px; margin-bottom: 5px; flex-wrap: wrap; }
+.op-tab-btn { flex: 1; min-width: 30%; padding: 10px; background: #111; border: 1px solid #444; color: #888; cursor: pointer; font-weight: bold; font-family: monospace; font-size: 12px; }
 .op-tab-active { background: #B8860B; color: #000; border-color: #B8860B; }
 
 .outpost-roster { display: grid; grid-template-columns: 1fr; gap: 15px; }
@@ -82,7 +82,6 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .sky-layer { background-size: cover; background-position: center bottom; flex-grow: 1; display: flex; flex-direction: column; position: relative; }
 #queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; border-bottom: 1px solid #222; }
 
-/* V33 Weather Banner */
 #weather-banner { text-align: center; font-size: 11px; font-weight: bold; padding: 4px; letter-spacing: 1px; display: none; text-shadow: 1px 1px 2px #000; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
 .weather-smog { background: rgba(40, 60, 10, 0.8); color: #aaffaa; display: block !important; border-bottom: 1px solid #6B8E23; }
 .weather-sand { background: rgba(80, 50, 10, 0.8); color: #ffcc66; display: block !important; border-bottom: 1px solid #B8860B; }
@@ -133,7 +132,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V33.0</div>
+        <div class="title-sub">ENGINE V34.0</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -142,7 +141,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
             <span>SECTOR 1</span>
             <span>SCRAP: <span id="scrap-display">0</span></span>
         </div>
-        <button class="outpost-btn" onclick="renderOutpost()">⛺ TACTICAL OUTPOST</button>
+        <button class="outpost-btn" onclick="renderOutpost()">⛺ OUTPOST COMMAND</button>
         <div class="map-viewport" id="map-nodes"></div>
     </div>
 
@@ -155,6 +154,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
         <div class="op-tabs">
             <button id="tab-roster" class="op-tab-btn op-tab-active" onclick="setOutpostTab('ROSTER')">SQUAD ROSTER</button>
             <button id="tab-workbench" class="op-tab-btn" onclick="setOutpostTab('WORKBENCH')">WORKBENCH</button>
+            <button id="tab-cyber" class="op-tab-btn" onclick="setOutpostTab('CYBER')">CYBERNETICS</button>
         </div>
 
         <div id="outpost-roster-view" style="display:flex; flex-direction:column; gap:15px; flex-grow:1; overflow-y:auto;">
@@ -165,19 +165,31 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
             <div class="upgrade-card">
                 <div class="upgrade-header">RAW MATERIALS</div>
                 <div class="upgrade-stats" style="font-size: 14px; color: #fff; padding: 10px 0;">
-                    <span id="mat-parts">⚙️ PARTS: 0</span>
-                    <span id="mat-chems">🧪 CHEMS: 0</span>
-                    <span id="mat-tech">💻 TECH: 0</span>
+                    <span id="mat-parts-wb">⚙️ PARTS: 0</span>
+                    <span id="mat-chems-wb">🧪 CHEMS: 0</span>
+                    <span id="mat-tech-wb">💻 TECH: 0</span>
                 </div>
                 <div class="upgrade-btn-group" style="margin-top: 5px;">
                     <button class="upg-btn" id="btn-breakdown" onclick="breakdownScrap()">BREAKDOWN SCRAP (25 SCRAP)</button>
                 </div>
             </div>
-
             <div class="upgrade-card">
                 <div class="upgrade-header">CRAFTING SCHEMATICS</div>
                 <div class="upgrade-btn-group" id="crafting-grid"></div>
             </div>
+        </div>
+
+        <!-- V34 Cybernetics View -->
+        <div id="outpost-cyber-view" style="display:none; flex-direction:column; gap:15px; flex-grow:1; overflow-y:auto;">
+            <div class="upgrade-card" style="border-color: #4488ff;">
+                <div class="upgrade-header" style="color: #4488ff;">CLINIC STORAGE</div>
+                <div class="upgrade-stats" style="font-size: 14px; color: #fff; padding: 5px 0;">
+                    <span id="mat-parts-cb">⚙️ PARTS: 0</span>
+                    <span id="mat-chems-cb">🧪 CHEMS: 0</span>
+                    <span id="mat-tech-cb">💻 TECH: 0</span>
+                </div>
+            </div>
+            <div id="cybernetics-roster" class="outpost-roster"></div>
         </div>
 
         <div class="inventory-sect">
@@ -205,16 +217,13 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 </div>
 
 <script>
-const SAVE_KEY = 'wasteland_rpg_engine_v33'; 
+const SAVE_KEY = 'wasteland_rpg_engine_v34'; 
 let scrap = 0; let currentTier = 1;
 let inventory = []; 
 let materials = { parts: 0, chems: 0, tech: 0 }; 
 let outpostTab = 'ROSTER';
-
 let activePosSelector = null;
 let activePerkSelector = null;
-
-// V33: Global Weather State
 let currentWeather = 'CLEAR';
 
 const SECTOR_LAYOUT = [
@@ -222,14 +231,15 @@ const SECTOR_LAYOUT = [
 ];
 const TOTAL_TIERS = SECTOR_LAYOUT.length;
 
+// V34 Roster adds `augments: []`
 const ROSTER_TEMPLATE = [
-    { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 1, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
-    { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 2, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { cauterize: 0 } },
-    { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 }, upgradeCount: 0, gridPos: 3, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { flashbang: 0 } },
-    { id: 'p4', name: "Pyro", classType: "PYROMANIAC", maxHp: 55, hp: 55, speed: 11, armor: 0, isPlayer: true, dmgBase: 12, img: "hero_pyro.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 10 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { molotov: 0 } },
-    { id: 'p5', name: "Breacher", classType: "SHOTGUNNER", maxHp: 65, hp: 65, speed: 9, armor: 5, isPlayer: true, dmgBase: 22, img: "hero_shotgunner.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { buckshot: 0 } },
-    { id: 'p6', name: "Ghost", classType: "SNIPER", maxHp: 40, hp: 40, speed: 16, armor: 0, isPlayer: true, dmgBase: 28, img: "hero_sniper.png", scale: 0.9, hpDrop: -10, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { deadeye: 0 } },
-    { id: 'p7', name: "War Hound", classType: "HOUND", maxHp: 35, hp: 35, speed: 19, armor: 0, isPlayer: true, dmgBase: 16, img: "hero_hound.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { feral_bite: 0 } }
+    { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 1, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
+    { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 2, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { cauterize: 0 } },
+    { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 }, upgradeCount: 0, gridPos: 3, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { flashbang: 0 } },
+    { id: 'p4', name: "Pyro", classType: "PYROMANIAC", maxHp: 55, hp: 55, speed: 11, armor: 0, isPlayer: true, dmgBase: 12, img: "hero_pyro.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 10 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { molotov: 0 } },
+    { id: 'p5', name: "Breacher", classType: "SHOTGUNNER", maxHp: 65, hp: 65, speed: 9, armor: 5, isPlayer: true, dmgBase: 22, img: "hero_shotgunner.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { buckshot: 0 } },
+    { id: 'p6', name: "Ghost", classType: "SNIPER", maxHp: 40, hp: 40, speed: 16, armor: 0, isPlayer: true, dmgBase: 28, img: "hero_sniper.png", scale: 0.9, hpDrop: -10, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { deadeye: 0 } },
+    { id: 'p7', name: "War Hound", classType: "HOUND", maxHp: 35, hp: 35, speed: 19, armor: 0, isPlayer: true, dmgBase: 16, img: "hero_hound.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { feral_bite: 0 } }
 ];
 
 let playerRoster = []; let activeEntities = []; let turnQueue = []; let activeIndex = -1; let combatActive = false; let pendingAction = null;
@@ -272,22 +282,23 @@ function setOutpostTab(tab) {
     outpostTab = tab;
     document.getElementById('tab-roster').className = `op-tab-btn ${tab === 'ROSTER' ? 'op-tab-active' : ''}`;
     document.getElementById('tab-workbench').className = `op-tab-btn ${tab === 'WORKBENCH' ? 'op-tab-active' : ''}`;
+    document.getElementById('tab-cyber').className = `op-tab-btn ${tab === 'CYBER' ? 'op-tab-active' : ''}`;
     document.getElementById('outpost-roster-view').style.display = tab === 'ROSTER' ? 'flex' : 'none';
     document.getElementById('outpost-workbench-view').style.display = tab === 'WORKBENCH' ? 'flex' : 'none';
+    document.getElementById('outpost-cyber-view').style.display = tab === 'CYBER' ? 'flex' : 'none';
     renderOutpost();
 }
 
 function renderOutpost() {
     switchScreen('screen-outpost'); document.getElementById('outpost-scrap').innerText = scrap; 
     
+    // Tab 1: ROSTER
     const c = document.getElementById('outpost-roster'); c.innerHTML = '';
     playerRoster.forEach(char => {
         let cost = 30 + (char.upgradeCount * 25); let canUpg = scrap >= cost; let isDead = char.hp <= 0; let isInj = char.hp < char.maxHp && char.hp > 0;
         let medHtml = isDead ? `<button class="upg-btn revive-btn" ${scrap < 50 ? 'disabled' : ''} onclick="medBay('${char.id}', 'REVIVE')">DEFIB (50)</button>` : `<button class="upg-btn med-btn" ${!isInj || scrap < 10 ? 'disabled' : ''} onclick="medBay('${char.id}', 'HEAL')">TRIAGE (10)</button>`;
         
-        let traitDisplay = '';
-        if (char.trait) { traitDisplay = `TRAIT: ${char.trait}`; } else if (char.perkPoints > 0) { traitDisplay = `<button class="upg-btn perk-btn" style="padding:2px 5px;" onclick="activePerkSelector='${char.id}'; activePosSelector=null; renderOutpost()">CHOOSE PERK (!)</button>`; } else { traitDisplay = `LVL ${char.level} (${char.xp}/${char.xpToNext} XP)`; }
-
+        let traitDisplay = char.trait ? `TRAIT: ${char.trait}` : (char.perkPoints > 0 ? `<button class="upg-btn perk-btn" style="padding:2px 5px;" onclick="activePerkSelector='${char.id}'; activePosSelector=null; renderOutpost()">CHOOSE PERK (!)</button>` : `LVL ${char.level} (${char.xp}/${char.xpToNext} XP)`);
         let posText = char.gridPos === 1 ? '[1] FRONTLINE' : char.gridPos === 2 ? '[2] MIDLINE' : char.gridPos === 3 ? '[3] BACKLINE' : '[X] BENCHED';
         let posClass = `pos-btn-${char.gridPos}`;
         let btnGroupHtml = '';
@@ -303,9 +314,10 @@ function renderOutpost() {
         c.innerHTML += `<div class="upgrade-card" style="${isDead ? 'border-color: #8B0000; opacity: 0.8;' : ''}"> <div class="upgrade-header"><span>${char.name} (${char.classType})</span><span>${traitDisplay}</span></div> <div class="upgrade-stats"><span>HP: ${char.hp}/${char.maxHp}</span><span>DMG: ${char.dmgBase}</span><span>UPG: <span class="cost-txt">${cost}</span></span></div> <div class="upgrade-btn-group">${btnGroupHtml}</div> </div>`;
     });
 
-    document.getElementById('mat-parts').innerText = `⚙️ PARTS: ${materials.parts}`;
-    document.getElementById('mat-chems').innerText = `🧪 CHEMS: ${materials.chems}`;
-    document.getElementById('mat-tech').innerText = `💻 TECH: ${materials.tech}`;
+    // Tab 2: WORKBENCH
+    document.getElementById('mat-parts-wb').innerText = `⚙️ PARTS: ${materials.parts}`;
+    document.getElementById('mat-chems-wb').innerText = `🧪 CHEMS: ${materials.chems}`;
+    document.getElementById('mat-tech-wb').innerText = `💻 TECH: ${materials.tech}`;
     document.getElementById('btn-breakdown').disabled = scrap < 25;
 
     let wbHtml = ''; let invFull = inventory.length >= 4;
@@ -315,6 +327,31 @@ function renderOutpost() {
     wbHtml += `<button class="upg-btn" ${materials.tech < 2 || invFull ? 'disabled' : ''} onclick="craftItem('EMP_CHARGE')">CRAFT EMP CHARGE (2 💻)</button>`;
     document.getElementById('crafting-grid').innerHTML = wbHtml;
 
+    // Tab 3: CYBERNETICS
+    document.getElementById('mat-parts-cb').innerText = `⚙️ PARTS: ${materials.parts}`;
+    document.getElementById('mat-chems-cb').innerText = `🧪 CHEMS: ${materials.chems}`;
+    document.getElementById('mat-tech-cb').innerText = `💻 TECH: ${materials.tech}`;
+    
+    const cybC = document.getElementById('cybernetics-roster'); cybC.innerHTML = '';
+    playerRoster.forEach(char => {
+        let augList = char.augments && char.augments.length > 0 ? char.augments.join(', ') : 'NONE';
+        let canPlating = materials.parts >= 3;
+        let canOptics = materials.tech >= 2;
+        let canPump = materials.chems >= 2;
+
+        cybC.innerHTML += `
+            <div class="upgrade-card">
+                <div class="upgrade-header"><span>${char.name}</span><span style="color:#4488ff; font-size:10px;">AUGS: ${augList}</span></div>
+                <div class="upgrade-stats"><span>MAX HP: ${char.maxHp}</span><span>BASE DMG: ${char.dmgBase}</span><span>SPEED: ${char.speed}</span></div>
+                <div class="upgrade-btn-group">
+                    <button class="upg-btn" style="border-color:#4488ff;" ${!canPlating ? 'disabled' : ''} onclick="installAugment('${char.id}', 'PLATING')">SUB-DERMAL PLATING (+20 HP) [3 ⚙️]</button>
+                    <button class="upg-btn" style="border-color:#4488ff;" ${!canOptics ? 'disabled' : ''} onclick="installAugment('${char.id}', 'OPTICS')">OPTICS (+4 DMG) [2 💻]</button>
+                    <button class="upg-btn" style="border-color:#4488ff;" ${!canPump ? 'disabled' : ''} onclick="installAugment('${char.id}', 'PUMP')">ADRENAL PUMP (+3 SPD) [2 🧪]</button>
+                </div>
+            </div>`;
+    });
+
+    // Inventory Rendering
     document.getElementById('inv-count').innerText = `${inventory.length}/4`;
     const invC = document.getElementById('outpost-inventory'); invC.innerHTML = '';
     for (let i = 0; i < 4; i++) {
@@ -335,6 +372,21 @@ function craftItem(item) {
     else if (item === 'SCRAP_BOMB' && materials.parts >= 2) { materials.parts -= 2; inventory.push(item); }
     else if (item === 'ADRENALINE' && materials.chems >= 1 && materials.tech >= 1) { materials.chems -= 1; materials.tech -= 1; inventory.push(item); }
     else if (item === 'EMP_CHARGE' && materials.tech >= 2) { materials.tech -= 2; inventory.push(item); }
+    saveGameState(); renderOutpost();
+}
+
+// V34 Cybernetics Logic
+function installAugment(charId, type) {
+    let char = playerRoster.find(c => c.id === charId);
+    if (!char.augments) char.augments = [];
+    
+    if (type === 'PLATING' && materials.parts >= 3) {
+        materials.parts -= 3; char.maxHp += 20; char.hp += 20; char.augments.push('Plating');
+    } else if (type === 'OPTICS' && materials.tech >= 2) {
+        materials.tech -= 2; char.dmgBase += 4; char.augments.push('Optics');
+    } else if (type === 'PUMP' && materials.chems >= 2) {
+        materials.chems -= 2; char.speed += 3; char.augments.push('Pump');
+    }
     saveGameState(); renderOutpost();
 }
 
@@ -373,6 +425,18 @@ function generateEnemies(nodeType, mult) {
     return squad;
 }
 
+function setCombatBackground(nodeType, tier) {
+    let bgFile = 'bg_combat.png'; 
+    if (tier === 1) { bgFile = 'bg_combat.png'; } 
+    else {
+        if (nodeType === 'BOSS') bgFile = 'bg_thunderdome.png';
+        else if (nodeType === 'MECH') bgFile = 'bg_refinery.png';
+        else if (nodeType === 'RAIDERS') bgFile = 'bg_highway.png';
+        else if (nodeType === 'BEASTS') bgFile = 'bg_canyon.png';
+    }
+    document.getElementById('combat-sky-layer').style.backgroundImage = `linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('${bgFile}')`;
+}
+
 function spawnFCT(entityId, msg, styleClass) {
     const el = document.getElementById(entityId); if (!el) return;
     const f = document.createElement('div'); f.className = `fct ${styleClass}`; f.innerText = msg; el.appendChild(f);
@@ -382,24 +446,16 @@ function spawnFCT(entityId, msg, styleClass) {
 function initiateCombat(nodeType) {
     switchScreen('screen-combat'); combatActive = true; document.getElementById('log').innerHTML = '';
     
-    let bgFile = 'bg_combat.png'; 
-    currentWeather = 'CLEAR'; // Default
-
-    // V33 Dynamic Weather Rolls
-    if (currentTier === 1) { 
-        bgFile = 'bg_combat.png'; 
-    } else {
+    let bgFile = 'bg_combat.png'; currentWeather = 'CLEAR';
+    if (currentTier === 1) { bgFile = 'bg_combat.png'; } else {
         if (nodeType === 'BOSS') { bgFile = 'bg_thunderdome.png'; currentWeather = 'BLOODLUST'; }
         else if (nodeType === 'MECH') { bgFile = 'bg_refinery.png'; if (Math.random() < 0.4) currentWeather = 'TOXIC_SMOG'; }
         else if (nodeType === 'RAIDERS') { bgFile = 'bg_highway.png'; if (Math.random() < 0.4) currentWeather = 'SHRAPNEL_WINDS'; }
         else if (nodeType === 'BEASTS') { bgFile = 'bg_canyon.png'; if (Math.random() < 0.4) currentWeather = 'SANDSTORM'; }
     }
-
     document.getElementById('combat-sky-layer').style.backgroundImage = `linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('${bgFile}')`;
     
-    // UI Banner Update
-    const wBanner = document.getElementById('weather-banner');
-    wBanner.className = ''; 
+    const wBanner = document.getElementById('weather-banner'); wBanner.className = ''; 
     if (currentWeather === 'CLEAR') { wBanner.style.display = 'none'; }
     else if (currentWeather === 'TOXIC_SMOG') { wBanner.className = 'weather-smog'; wBanner.innerText = '⚠️ TOXIC SMOG: Passive Bio DMG to Active Units ⚠️'; }
     else if (currentWeather === 'SANDSTORM') { wBanner.className = 'weather-sand'; wBanner.innerText = '⚠️ SANDSTORM: Ranged Abilities deal -25% DMG ⚠️'; }
@@ -533,25 +589,14 @@ function processTurn() {
     if (!aE.isPlayer) setTimeout(() => executeEnemyAi(aE), 1000);
 }
 
-// V33: Apply Weather DoTs
 function applyTurnStartEffects(ent) {
     let chg = false; if (ent.isPlayer && ent.cooldowns) { for (let s in ent.cooldowns) { if (ent.cooldowns[s] > 0) { ent.cooldowns[s]--; chg = true; } } }
     
-    // Toxic Smog Passive Bio DMG
-    if (currentWeather === 'TOXIC_SMOG') {
-        let sDmg = Math.floor(2 * (1 + ((currentTier - 1) * 0.4)));
-        ent.hp = Math.max(0, ent.hp - sDmg); log(`> ${ent.name} choked by Smog for ${sDmg} DMG.`, "log-dmg"); spawnFCT(ent.id, `-${sDmg}`, "fct-status"); chg = true;
-    }
-
-    // Shrapnel Winds Random Hit
-    if (currentWeather === 'SHRAPNEL_WINDS' && Math.random() < 0.3) {
-        let shrapDmg = Math.floor(5 * (1 + ((currentTier - 1) * 0.4)));
-        ent.hp = Math.max(0, ent.hp - shrapDmg); log(`> Shrapnel struck ${ent.name} for ${shrapDmg} DMG!`, "log-dmg"); spawnFCT(ent.id, `-${shrapDmg}`, "fct-dmg"); chg = true;
-    }
+    if (currentWeather === 'TOXIC_SMOG') { let sDmg = Math.floor(2 * (1 + ((currentTier - 1) * 0.4))); ent.hp = Math.max(0, ent.hp - sDmg); log(`> ${ent.name} choked by Smog for ${sDmg} DMG.`, "log-dmg"); spawnFCT(ent.id, `-${sDmg}`, "fct-status"); chg = true; }
+    if (currentWeather === 'SHRAPNEL_WINDS' && Math.random() < 0.3) { let shrapDmg = Math.floor(5 * (1 + ((currentTier - 1) * 0.4))); ent.hp = Math.max(0, ent.hp - shrapDmg); log(`> Shrapnel struck ${ent.name} for ${shrapDmg} DMG!`, "log-dmg"); spawnFCT(ent.id, `-${shrapDmg}`, "fct-dmg"); chg = true; }
 
     if (ent.bleedingTurns > 0) { let b = Math.max(1, Math.floor(ent.maxHp * 0.08)); ent.hp = Math.max(0, ent.hp - b); log(`> ${ent.name} bleeds for ${b}.`, "log-dmg"); spawnFCT(ent.id, `-${b}`, "fct-dmg"); ent.bleedingTurns--; chg = true; }
     if (ent.armorTurns > 0) { ent.armorTurns--; if (ent.armorTurns === 0) { ent.armor = 0; } chg = true; }
-    
     if (chg) renderField();
 }
 
@@ -559,7 +604,6 @@ function skipStunnedTurn() { turnQueue[activeIndex].stunnedTurns--; renderField(
 function queueAction(a) { pendingAction = a; renderField(); }
 function cancelAction() { pendingAction = null; renderField(); }
 
-// V33: Apply Weather Modifiers to Player Attacks
 function resolveAction(targetId) {
     let actEnt = turnQueue[activeIndex]; let target = activeEntities.find(e => e.id === targetId);
     let livingEnemies = activeEntities.filter(e => !e.isPlayer && e.hp > 0);
@@ -579,7 +623,6 @@ function resolveAction(targetId) {
         if (pendingAction === 'BUCKSHOT') { if (dist === 0) dmgMult = 1.5; else dmgMult = 0.8; actEnt.cooldowns.buckshot = 2; }
         if (pendingAction === 'DEADEYE') { if (dist === livingEnemies.length - 1 && dist !== 0) dmgMult = 1.8; else dmgMult = 0.8; actEnt.cooldowns.deadeye = 2; }
 
-        // V33 Weather Inject
         const rangedMoves = ['PISTOL', 'RAD_SHOT', 'PIPE_RIFLE', 'FLASHBANG', 'FLARE_GUN', 'QUICK_SHOT', 'DEADEYE'];
         if (currentWeather === 'SANDSTORM' && rangedMoves.includes(pendingAction)) { dmgMult *= 0.75; }
         if (currentWeather === 'BLOODLUST') { dmgMult *= 1.2; }
@@ -620,7 +663,6 @@ function executeSelfAction(actionType) {
     checkWinState();
 }
 
-// V33: Apply Weather Modifiers to Enemy Attacks
 function executeEnemyAi(enemy) {
     if (!combatActive) return;
     if (enemy.classType === 'BOSS' && enemy.phase === 1 && enemy.hp <= (enemy.maxHp / 2)) {
@@ -634,40 +676,24 @@ function executeEnemyAi(enemy) {
     if (validTargets.length === 0) return;
     
     let target;
-    if (enemy.range === 'melee') {
-        validTargets.sort((a, b) => a.gridPos - b.gridPos);
-        target = validTargets[0]; 
-    } else {
-        target = validTargets.sort(() => 0.5 - Math.random())[0];
-    }
+    if (enemy.range === 'melee') { validTargets.sort((a, b) => a.gridPos - b.gridPos); target = validTargets[0]; } else { target = validTargets.sort(() => 0.5 - Math.random())[0]; }
 
     if (target) {
-        let t = enemy.dmgType || 'phys'; 
-        let rawDmg = enemy.dmgBase + Math.floor(Math.random() * 5);
-        
-        // V33 Weather Inject
+        let t = enemy.dmgType || 'phys'; let rawDmg = enemy.dmgBase + Math.floor(Math.random() * 5);
         if (currentWeather === 'SANDSTORM' && enemy.range === 'ranged') rawDmg = Math.floor(rawDmg * 0.75);
         if (currentWeather === 'BLOODLUST') rawDmg = Math.floor(rawDmg * 1.2);
 
         let res = target.resistances[t] || 0; let net = Math.max(1, rawDmg - res - target.armor); target.hp = Math.max(0, target.hp - net);
-        
         let posStr = target.gridPos === 1 ? 'Front' : target.gridPos === 2 ? 'Mid' : 'Back';
         log(`> ${enemy.name} hits ${target.name} [${posStr}] for ${net}`, "log-dmg"); spawnFCT(target.id, `-${net}`, "fct-dmg");
 
-        if (["Mutant", "Attack Dog", "War Hound", "Chem Fiend"].includes(enemy.name) && Math.random() < 0.4) {
-            target.bleedingTurns = 2; setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300);
-        } else if ((enemy.name === "Sniper" || enemy.classType === "BOSS") && Math.random() < 0.25) {
-            target.stunnedTurns = 1; setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300);
-        }
+        if (["Mutant", "Attack Dog", "War Hound", "Chem Fiend"].includes(enemy.name) && Math.random() < 0.4) { target.bleedingTurns = 2; setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300); } 
+        else if ((enemy.name === "Sniper" || enemy.classType === "BOSS") && Math.random() < 0.25) { target.stunnedTurns = 1; setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300); }
     }
     checkWinState();
 }
 
-function handleSquadWipe() {
-    currentTier = 1;
-    playerRoster.forEach(char => { char.hp = char.maxHp; char.stunnedTurns = 0; char.bleedingTurns = 0; char.armor = 0; char.armorTurns = 0; if(char.cooldowns) { for (let s in char.cooldowns) char.cooldowns[s] = 0; } });
-    saveGameState(); renderMap();
-}
+function handleSquadWipe() { currentTier = 1; playerRoster.forEach(char => { char.hp = char.maxHp; char.stunnedTurns = 0; char.bleedingTurns = 0; char.armor = 0; char.armorTurns = 0; if(char.cooldowns) { for (let s in char.cooldowns) char.cooldowns[s] = 0; } }); saveGameState(); renderMap(); }
 
 function checkWinState() {
     renderField();
@@ -675,23 +701,13 @@ function checkWinState() {
     if (!pA) { document.getElementById('command-deck').innerHTML = `<button onclick="handleSquadWipe()">EXPEDITION FAILED - RESTART</button>`; combatActive = false; } 
     else if (!eA) { 
         let s = Math.floor(Math.random() * 30) + (currentTier * 20); 
-        playerRoster.forEach(char => {
-            if (char.gridPos > 0 && char.hp > 0) {
-                char.xp += 35;
-                if (char.xp >= char.xpToNext) { char.level++; char.xp -= char.xpToNext; char.xpToNext = Math.floor(char.xpToNext * 1.5); char.perkPoints++; log(`> ${char.name} reached Level ${char.level}! Perk point available.`, "log-heal"); }
-            }
-        });
+        playerRoster.forEach(char => { if (char.gridPos > 0 && char.hp > 0) { char.xp += 35; if (char.xp >= char.xpToNext) { char.level++; char.xp -= char.xpToNext; char.xpToNext = Math.floor(char.xpToNext * 1.5); char.perkPoints++; log(`> ${char.name} reached Level ${char.level}! Perk point available.`, "log-heal"); } } });
 
         let matDrops = 1 + Math.floor(Math.random() * 2);
-        for(let i=0; i<matDrops; i++) {
-            let m = ['parts', 'chems', 'tech'][Math.floor(Math.random() * 3)];
-            materials[m]++;
-            log(`> Salvaged: 1 ${m.toUpperCase()}`, "log-heal");
-        }
+        for(let i=0; i<matDrops; i++) { let m = ['parts', 'chems', 'tech'][Math.floor(Math.random() * 3)]; materials[m]++; log(`> Salvaged: 1 ${m.toUpperCase()}`, "log-heal"); }
 
         document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${s})">LOOT ${s}</button>`; combatActive = false; 
-    } 
-    else { if (pendingAction === null) setTimeout(nextTurn, 800); }
+    } else { if (pendingAction === null) setTimeout(nextTurn, 800); }
 }
 
 function collectLoot(a) { scrap += a; currentTier++; playerRoster.forEach(p => p.armor = 0); saveGameState(); renderMap(); }
