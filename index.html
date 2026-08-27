@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V24.0 (Consumables & Inventory)</title>
+<title>Wasteland RPG - Engine V25.0 (Operator Traits & Perks)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -46,7 +46,7 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .outpost-roster { display: grid; grid-template-columns: 1fr; gap: 15px; }
 .upgrade-card { background: #0a0a0a; border: 1px solid #333; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
 .upgrade-header { display: flex; justify-content: space-between; align-items: center; color: #B8860B; font-weight: bold; border-bottom: 1px solid #222; padding-bottom: 5px;}
-.upgrade-stats { display: flex; justify-content: space-between; font-size: 12px; color: #888; }
+.upgrade-stats { display: flex; justify-content: space-between; font-size: 11px; color: #888; }
 .upgrade-btn-group { display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap;}
 .upg-btn { flex: 1; min-width: 30%; padding: 10px; background: #111; color: #ccc; border: 1px solid #444; cursor: pointer; font-family: monospace; font-size: 12px; transition: 0.2s;}
 .upg-btn:hover:not(:disabled) { background: #333; border-color: #888; color: #fff;}
@@ -57,11 +57,12 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .revive-btn:hover:not(:disabled) { background: #8B0000; color: #fff; }
 .deploy-btn-active { background: #1a2a1a; border-color: #6B8E23; color: #6B8E23; font-weight: bold;}
 .deploy-btn-benched { background: #2a1a1a; border-color: #8B0000; color: #8B0000; }
+.perk-btn { background: #1a1a2a; border-color: #4488ff; color: #4488ff; font-weight: bold; }
+.perk-btn:hover:not(:disabled) { background: #2a2a4a; color: #fff; }
 .cost-txt { color: #B8860B; }
 .return-btn { background: #111; color: #ccc; border: 1px solid #444; padding: 15px; font-family: monospace; font-size: 14px; cursor: pointer; text-transform: uppercase; margin-top: auto; transition: 0.2s; flex-shrink:0;}
 .return-btn:hover { background: #222; border-color: #888; }
 
-/* V24: Inventory styles */
 .inventory-sect { background: #111; border: 1px solid #444; padding: 10px; margin-top: 10px; }
 .inventory-title { color: #B8860B; font-weight: bold; font-size: 13px; margin-bottom: 5px; }
 .inventory-grid { display: flex; gap: 5px; flex-wrap: wrap; }
@@ -113,7 +114,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V24.0</div>
+        <div class="title-sub">ENGINE V25.0</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -155,23 +156,24 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 </div>
 
 <script>
-const SAVE_KEY = 'wasteland_rpg_engine_v24'; 
+const SAVE_KEY = 'wasteland_rpg_engine_v25'; 
 let scrap = 0; let currentTier = 1;
-let inventory = []; // V24 Consumables Inventory Array (Max 4 slots)
+let inventory = []; 
 
 const SECTOR_LAYOUT = [
     ['BOSS'], ['MECH', 'RAIDERS'], ['BEASTS', 'MECH', 'RAIDERS'], ['RAIDERS', 'BEASTS'], ['MECH', 'RAIDERS', 'BEASTS'], ['BEASTS', 'MECH'], ['RAIDERS', 'BEASTS', 'RAIDERS'], ['MECH', 'RAIDERS'], ['BEASTS', 'RAIDERS', 'MECH'], ['RAIDERS']
 ];
 const TOTAL_TIERS = SECTOR_LAYOUT.length;
 
+// V25 Roster with Level, XP, and Perk Tree state
 const ROSTER_TEMPLATE = [
-    { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, isActive: true, cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
-    { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, isActive: true, cooldowns: { cauterize: 0 } },
-    { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 }, upgradeCount: 0, isActive: true, cooldowns: { flashbang: 0 } },
-    { id: 'p4', name: "Pyro", classType: "PYROMANIAC", maxHp: 55, hp: 55, speed: 11, armor: 0, isPlayer: true, dmgBase: 12, img: "hero_pyro.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 10 }, upgradeCount: 0, isActive: false, cooldowns: { molotov: 0 } },
-    { id: 'p5', name: "Breacher", classType: "SHOTGUNNER", maxHp: 65, hp: 65, speed: 9, armor: 5, isPlayer: true, dmgBase: 22, img: "hero_shotgunner.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, isActive: false, cooldowns: { buckshot: 0 } },
-    { id: 'p6', name: "Ghost", classType: "SNIPER", maxHp: 40, hp: 40, speed: 16, armor: 0, isPlayer: true, dmgBase: 28, img: "hero_sniper.png", scale: 0.9, hpDrop: -10, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 }, upgradeCount: 0, isActive: false, cooldowns: { deadeye: 0 } },
-    { id: 'p7', name: "War Hound", classType: "HOUND", maxHp: 35, hp: 35, speed: 19, armor: 0, isPlayer: true, dmgBase: 16, img: "hero_hound.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 10, energy: 0 }, upgradeCount: 0, isActive: false, cooldowns: { feral_bite: 0 } }
+    { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, isActive: true, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
+    { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, isActive: true, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { cauterize: 0 } },
+    { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 }, upgradeCount: 0, isActive: true, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { flashbang: 0 } },
+    { id: 'p4', name: "Pyro", classType: "PYROMANIAC", maxHp: 55, hp: 55, speed: 11, armor: 0, isPlayer: true, dmgBase: 12, img: "hero_pyro.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 10 }, upgradeCount: 0, isActive: false, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { molotov: 0 } },
+    { id: 'p5', name: "Breacher", classType: "SHOTGUNNER", maxHp: 65, hp: 65, speed: 9, armor: 5, isPlayer: true, dmgBase: 22, img: "hero_shotgunner.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, isActive: false, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { buckshot: 0 } },
+    { id: 'p6', name: "Ghost", classType: "SNIPER", maxHp: 40, hp: 40, speed: 16, armor: 0, isPlayer: true, dmgBase: 28, img: "hero_sniper.png", scale: 0.9, hpDrop: -10, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 }, upgradeCount: 0, isActive: false, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { deadeye: 0 } },
+    { id: 'p7', name: "War Hound", classType: "HOUND", maxHp: 35, hp: 35, speed: 19, armor: 0, isPlayer: true, dmgBase: 16, img: "hero_hound.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 10, energy: 0 }, upgradeCount: 0, isActive: false, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, cooldowns: { feral_bite: 0 } }
 ];
 
 let playerRoster = []; let activeEntities = []; let turnQueue = []; let activeIndex = -1; let combatActive = false; let pendingAction = null;
@@ -220,9 +222,11 @@ function renderOutpost() {
         let deployClass = char.isActive ? 'deploy-btn-active' : 'deploy-btn-benched';
         let deployText = char.isActive ? 'DEPLOYED [✓]' : 'BENCHED [X]';
         
+        let traitDisplay = char.trait ? `TRAIT: ${char.trait}` : (char.perkPoints > 0 ? `<button class="upg-btn perk-btn" onclick="openPerkMenu('${char.id}')">CHOOSE PERK (!)</button>` : `LVL ${char.level} (${char.xp}/${char.xpToNext} XP)`);
+        
         c.innerHTML += `
             <div class="upgrade-card" style="${isDead ? 'border-color: #8B0000; opacity: 0.8;' : ''}">
-                <div class="upgrade-header"><span>${char.name} (${char.classType})</span><span>LVL ${char.upgradeCount + 1}</span></div>
+                <div class="upgrade-header"><span>${char.name} (${char.classType})</span><span>${traitDisplay}</span></div>
                 <div class="upgrade-stats"><span>HP: ${char.hp}/${char.maxHp}</span><span>DMG: ${char.dmgBase}</span><span>UPG: <span class="cost-txt">${cost}</span></span></div>
                 <div class="upgrade-btn-group">
                     <button class="upg-btn ${deployClass}" onclick="toggleDeploy('${char.id}')">${deployText}</button>
@@ -233,12 +237,11 @@ function renderOutpost() {
             </div>`;
     });
 
-    // Render Inventory / Buy Consumables
     const invC = document.getElementById('outpost-inventory'); invC.innerHTML = '';
     for (let i = 0; i < 4; i++) {
         let item = inventory[i];
         if (item) {
-            let label = item === 'MED_STIM' ? '💉 Med-Stim (+30HP)' : item === 'SCRAP_BOMB' ? '💣 Scrap Bomb (AoE)' : '⚡ Adrenaline (Cleanse)';
+            let label = item === 'MED_STIM' ? '💉 Med-Stim' : item === 'SCRAP_BOMB' ? '💣 Scrap Bomb' : '⚡ Adrenaline';
             invC.innerHTML += `<button class="inv-slot" onclick="useOutpostItem(${i})">${label} [SELL]</button>`;
         } else {
             let canBuy = scrap >= 40 && inventory.length < 4;
@@ -247,18 +250,16 @@ function renderOutpost() {
     }
 }
 
-function buyItem(itemType) {
-    if (scrap < 40 || inventory.length >= 4) return;
-    scrap -= 40; inventory.push(itemType);
+function openPerkMenu(charId) {
+    let char = playerRoster.find(c => c.id === charId);
+    let choice = prompt(`Select Perk Trait for ${char.name}:\n1. VETERAN (Base DMG +5 permanently)\n2. FORTIFIED (Max HP +25 permanently)`);
+    if (choice === '1') { char.trait = 'VETERAN'; char.dmgBase += 5; char.perkPoints--; }
+    else if (choice === '2') { char.trait = 'FORTIFIED'; char.maxHp += 25; char.hp += 25; char.perkPoints--; }
     saveGameState(); renderOutpost();
 }
 
-function useOutpostItem(index) {
-    // Sell item back for 20 scrap if clicked in outpost
-    inventory.splice(index, 1);
-    scrap += 20;
-    saveGameState(); renderOutpost();
-}
+function buyItem(itemType) { if (scrap < 40 || inventory.length >= 4) return; scrap -= 40; inventory.push(itemType); saveGameState(); renderOutpost(); }
+function useOutpostItem(index) { inventory.splice(index, 1); scrap += 20; saveGameState(); renderOutpost(); }
 
 function toggleDeploy(charId) {
     let char = playerRoster.find(c => c.id === charId);
@@ -410,7 +411,6 @@ function renderCommandDeck() {
         deckHtml += `<button ${cds.feral_bite > 0 ? 'disabled' : ''} onclick="queueAction('FERAL_BITE')">Feral Bite (Bleed) ${cds.feral_bite > 0 ? `[${cds.feral_bite}]` : ''}</button>`;
     }
 
-    // V24: Inject Inventory Access Button into Command Deck
     if (inventory.length > 0) {
         deckHtml += `<button style="border-color:#B8860B; color:#B8860B;" onclick="openInventoryMenu()">BAG (${inventory.length})</button>`;
     }
@@ -451,7 +451,6 @@ function resolveConsumableItem(targetId) {
         log(`> Used Adrenaline on ${target.name}. Cleared effects!`, "log-heal");
         spawnFCT(target.id, "CLEANSE", "fct-heal");
     } else if (item === 'SCRAP_BOMB') {
-        // AoE damage to all enemies
         inventory.splice(inventoryToConsume, 1);
         activeEntities.forEach(e => {
             if (!e.isPlayer && e.hp > 0) {
@@ -466,7 +465,6 @@ function resolveConsumableItem(targetId) {
         return;
     }
 
-    // Consume item from array
     inventory.splice(inventoryToConsume, 1);
     inventoryToConsume = -1;
     pendingAction = null;
@@ -605,7 +603,21 @@ function checkWinState() {
     if (!pA) { document.getElementById('command-deck').innerHTML = `<button onclick="handleSquadWipe()">EXPEDITION FAILED - RESTART</button>`; combatActive = false; } 
     else if (!eA) { 
         let s = Math.floor(Math.random() * 30) + (currentTier * 20); 
-        // V24: 35% chance to drop a random consumable on combat win if inventory space permits
+        
+        // V25: Grant XP to surviving active roster members upon combat win
+        playerRoster.forEach(char => {
+            if (char.isActive && char.hp > 0) {
+                char.xp += 35;
+                if (char.xp >= char.xpToNext) {
+                    char.level++;
+                    char.xp -= char.xpToNext;
+                    char.xpToNext = Math.floor(char.xpToNext * 1.5);
+                    char.perkPoints++;
+                    log(`> ${char.name} reached Level ${char.level}! Perk point available.`, "log-heal");
+                }
+            }
+        });
+
         if (Math.random() < 0.35 && inventory.length < 4) {
             let drops = ['MED_STIM', 'SCRAP_BOMB', 'ADRENALINE'];
             let found = drops[Math.floor(Math.random() * drops.length)];
