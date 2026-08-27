@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V22.1 (Massive Juggernaut & Mutant)</title>
+<title>Wasteland RPG - Engine V23.0 (Dynamic Biomes & Thunderdome)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -62,7 +62,7 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .return-btn:hover { background: #222; border-color: #888; }
 
 #screen-combat { display: none; flex-direction: column; height: 100%; }
-.sky-layer { background-image: linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('bg_combat.png'); background-size: cover; background-position: center bottom; flex-grow: 1; display: flex; flex-direction: column; position: relative; }
+.sky-layer { background-size: cover; background-position: center bottom; flex-grow: 1; display: flex; flex-direction: column; position: relative; }
 #queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; }
 .battlefield { display: flex; justify-content: center; gap: 2vw; flex-grow: 1; align-items: flex-end; padding: 0 5px; box-sizing: border-box; margin-bottom: 12vh; }
 .team { display: flex; align-items: flex-end; justify-content: center; }
@@ -105,7 +105,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V22.1</div>
+        <div class="title-sub">ENGINE V23.0</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -128,7 +128,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
     </div>
 
     <div id="screen-combat">
-        <div class="sky-layer">
+        <div class="sky-layer" id="combat-sky-layer">
             <div id="queue-display">Q: INITIATING...</div>
             <div class="battlefield">
                 <div class="team" id="player-team"></div>
@@ -143,7 +143,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 </div>
 
 <script>
-const SAVE_KEY = 'wasteland_rpg_engine_v22.1'; 
+const SAVE_KEY = 'wasteland_rpg_engine_v23'; 
 let scrap = 0; let currentTier = 1;
 
 const SECTOR_LAYOUT = [
@@ -250,7 +250,6 @@ function generateEnemies(nodeType, mult) {
             { name: "Raider", classType: "RAIDER", maxHp: 40, speed: 10, armor: 0, dmgBase: 15, img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }, 
             { name: "Psycho", classType: "RAIDER", maxHp: 45, speed: 14, armor: 0, dmgBase: 22, img: "enemy_psycho.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
             { name: "Sniper", classType: "RAIDER", maxHp: 35, speed: 16, armor: 0, dmgBase: 30, img: "enemy_sniper.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
-            // V22.1: Juggernaut scale boosted to 1.8
             { name: "Juggernaut", classType: "RAIDER", maxHp: 90, speed: 6, armor: 5, dmgBase: 18, img: "enemy_juggernaut.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 0, energy: -5 } }
         ],
         'MECH': [
@@ -269,6 +268,17 @@ function generateEnemies(nodeType, mult) {
     return squad;
 }
 
+// V23: Dynamic Environment Background Selector
+function setCombatBackground(nodeType) {
+    let bgFile = 'bg_combat.png'; // Default fallback
+    if (nodeType === 'BOSS') bgFile = 'bg_thunderdome.png';
+    else if (nodeType === 'MECH') bgFile = 'bg_refinery.png';
+    else if (nodeType === 'RAIDERS') bgFile = 'bg_highway.png';
+    else if (nodeType === 'BEASTS') bgFile = 'bg_canyon.png';
+
+    document.getElementById('combat-sky-layer').style.backgroundImage = `linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('${bgFile}')`;
+}
+
 function spawnFCT(entityId, msg, styleClass) {
     const el = document.getElementById(entityId); if (!el) return;
     const f = document.createElement('div'); f.className = `fct ${styleClass}`; f.innerText = msg; el.appendChild(f);
@@ -278,6 +288,9 @@ function spawnFCT(entityId, msg, styleClass) {
 function initiateCombat(nodeType) {
     switchScreen('screen-combat'); combatActive = true; document.getElementById('log').innerHTML = '';
     
+    // Set Dynamic Background Biome
+    setCombatBackground(nodeType);
+
     let deployedRoster = playerRoster.filter(p => p.isActive);
     if (!deployedRoster.some(p => p.hp > 0)) { alert("All deployed units are dead. Adjust squad at Outpost."); renderOutpost(); return; }
     
