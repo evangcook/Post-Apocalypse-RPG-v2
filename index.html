@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wasteland RPG - Engine V9.2</title>
+    <title>Wasteland RPG - Engine V9.3</title>
     <style>
         body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
         #engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -67,10 +67,10 @@
         .entity:nth-child(2) { z-index: 2; }
         .entity:nth-child(3) { z-index: 1; }
         
-        /* Targeting Highlights & Scale Retention */
+        /* Targeting Highlights - Fixed to prevent overlap */
         .entity.active .portrait { 
             filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6)); 
-            transform: scale(var(--sprite-scale, 1)) translateY(-8px); 
+            transform: translateY(-8px); 
         }
         .entity.dead { opacity: 0.3; filter: grayscale(100%); transform: scale(0.9); }
         .entity.targetable-enemy .portrait { filter: drop-shadow(0 0 12px #ff0000); cursor: pointer; }
@@ -84,17 +84,15 @@
         .player-hp { background-color: #8B0000; }
         .enemy-hp { background-color: #8B0000; }
 
-        /* Dynamic Image Tag with Variable Scaling */
+        /* Dynamic Image Tag - Restructured to push HP bar upwards naturally */
         .portrait { 
-            width: 100%; 
+            width: calc(100% * var(--sprite-scale, 1)); 
             height: auto; 
             max-height: 25vh; 
             object-fit: contain; 
             object-position: bottom; 
             transition: all 0.2s;
             filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.8));
-            transform: scale(var(--sprite-scale, 1));
-            transform-origin: bottom center;
         }
         
         /* The Dashboard */
@@ -177,8 +175,8 @@
     let currentTier = 1;
     
     const playerRoster = [
-        { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.5 },
-        { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 0.85 },
+        { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15 },
+        { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 0.95 },
         { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.0 }
     ];
     
