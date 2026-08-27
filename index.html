@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V19.1 (Loop Patch)</title>
+<title>Wasteland RPG - Engine V20.0 (Dynamic Warlord)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -70,8 +70,8 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .team { display: flex; align-items: flex-end; justify-content: center; }
 #player-team { flex-direction: row-reverse; }
 #enemy-team { flex-direction: row; }
-.entity { width: clamp(60px, 18vw, 120px); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; position: relative; transition: transform 0.2s; gap: 2px; margin: 0 -1.5vw; z-index: 1; }
-.entity:nth-child(1) { z-index: 3; } .entity:nth-child(2) { z-index: 2; } .entity:nth-child(3) { z-index: 1; }
+.entity { width: clamp(55px, 16vw, 110px); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; position: relative; transition: transform 0.2s; gap: 2px; margin: 0 -1.5vw; z-index: 1; }
+.entity:nth-child(1) { z-index: 3; } .entity:nth-child(2) { z-index: 2; } .entity:nth-child(3) { z-index: 1; } .entity:nth-child(4) { z-index: 4; }
 .entity.active .portrait { filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.9)); }
 .entity.dead { opacity: 0.3; filter: grayscale(100%); transform: scale(0.9); }
 .entity.targetable-enemy .portrait { filter: drop-shadow(0 0 12px #ff0000); cursor: pointer; }
@@ -107,7 +107,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V19.1</div>
+        <div class="title-sub">ENGINE V20.0</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -146,7 +146,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
 <script>
 // --- GLOBAL STATE ---
-const SAVE_KEY = 'wasteland_rpg_engine_v19'; 
+const SAVE_KEY = 'wasteland_rpg_engine_v20'; 
 
 let scrap = 0;
 let currentTier = 1;
@@ -311,7 +311,7 @@ function medBay(charId, action) {
     saveGameState(); renderOutpost();
 }
 
-// --- V18 ENEMY GENERATOR ---
+// --- ENEMY GENERATOR ---
 function generateEnemies(nodeType, mult) {
     const e_dog = { name: "Attack Dog", classType: "BEAST", maxHp: 30, speed: 18, armor: 0, dmgBase: 12, img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } };
     const e_mutant = { name: "Mutant", classType: "MUTANT", maxHp: 70, speed: 7, armor: 0, dmgBase: 25, img: "enemy_mutant.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } };
@@ -331,7 +331,8 @@ function generateEnemies(nodeType, mult) {
     else if (nodeType === 'RAIDERS') pool = [e_raider, e_psycho, e_sniper, e_jug, e_raider];
     else if (nodeType === 'MECH') pool = [e_drone, e_turret, e_warrig, e_drone];
     else if (nodeType === 'BOSS') {
-        return [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: Math.floor(40*mult), img: "enemy_boss.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 } }];
+        // V20: Boss given `phase: 1`
+        return [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: Math.floor(40*mult), img: "enemy_boss.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 }, phase: 1 }];
     }
 
     let squadSize = Math.random() > 0.5 ? 3 : 2;
@@ -364,7 +365,6 @@ function initiateCombat(nodeType) {
 
     playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; });
 
-    // Failsafe 
     if (!playerRoster.some(p => p.hp > 0)) {
         handleSquadWipe(); return;
     }
@@ -476,7 +476,6 @@ function processTurn() {
     if (!activeEntity.isPlayer) setTimeout(() => executeEnemyAi(activeEntity), 1000);
 }
 
-// V19.1 PATCH: Removed redundant checkWinState() that caused loop hijacking
 function applyTurnStartEffects(ent) {
     let changed = false;
     if (ent.isPlayer && ent.cooldowns) { for (let skill in ent.cooldowns) { if (ent.cooldowns[skill] > 0) { ent.cooldowns[skill]--; changed = true; } } }
@@ -539,7 +538,32 @@ function applyAttackEffects(attacker, target, ability, didHit) {
 
 function executeEnemyAi(enemy) {
     if (!combatActive) return;
-    let validTargets = activeEntities.filter(e => e.isPlayer && e.hp > 0); let target = validTargets.sort(() => 0.5 - Math.random())[0];
+
+    // V20: Boss Phase 2 Check (Intercepts normal attack)
+    if (enemy.classType === 'BOSS' && enemy.phase === 1 && enemy.hp <= (enemy.maxHp / 2)) {
+        enemy.phase = 2;
+        log(`> WARLORD ENTERS BLOOD RAGE!`, "log-dmg");
+        spawnFCT(enemy.id, "ENRAGED!", "fct-status");
+        enemy.dmgBase = Math.floor(enemy.dmgBase * 1.5);
+        
+        const mult = 1 + ((currentTier - 1) * 0.4);
+        const e_dog = { name: "War Hound", classType: "BEAST", maxHp: Math.floor(30*mult), hp: Math.floor(30*mult), speed: 18, armor: 0, isPlayer: false, dmgBase: Math.floor(12*mult), img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } };
+
+        for(let i = 0; i < 2; i++) {
+            let newDog = JSON.parse(JSON.stringify(e_dog));
+            newDog.id = `summon_${Date.now()}_${i}`;
+            activeEntities.push(newDog);
+            turnQueue.push(newDog); // Appended to end of queue to avoid loop shifting bugs
+        }
+        
+        log(`> Warlord summons War Hounds!`, "log-status");
+        renderField();
+        setTimeout(nextTurn, 1000); // Boss burns his turn doing this
+        return;
+    }
+
+    let validTargets = activeEntities.filter(e => e.isPlayer && e.hp > 0); 
+    let target = validTargets.sort(() => 0.5 - Math.random())[0];
 
     if (target) {
         let atkType = enemy.dmgType || 'phys'; let dmg = enemy.dmgBase + Math.floor(Math.random() * 5);
@@ -547,7 +571,7 @@ function executeEnemyAi(enemy) {
         target.hp = Math.max(0, target.hp - netDmg);
         log(`> ${enemy.name} attacks ${target.name} for ${netDmg} ${atkType.toUpperCase()} DMG!`, "log-dmg"); spawnFCT(target.id, `-${netDmg}`, "fct-dmg");
 
-        if ((enemy.name === "Mutant" || enemy.name === "Attack Dog" || enemy.name === "Chem Fiend") && Math.random() < 0.4) {
+        if ((enemy.name === "Mutant" || enemy.name === "Attack Dog" || enemy.name === "War Hound" || enemy.name === "Chem Fiend") && Math.random() < 0.4) {
             target.bleedingTurns = 2; log(`> ${enemy.name} caused ${target.name} to bleed.`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300);
         } else if ((enemy.name === "Sniper" || enemy.classType === "BOSS") && Math.random() < 0.25) {
             target.stunnedTurns = 1; log(`> ${enemy.name} hit stunned ${target.name}.`, "log-status"); setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300);
@@ -556,19 +580,14 @@ function executeEnemyAi(enemy) {
     checkWinState();
 }
 
-// --- V19 LOGIC ---
 function handleSquadWipe() {
     currentTier = 1;
     playerRoster.forEach(char => {
         char.hp = char.maxHp;
-        char.stunnedTurns = 0;
-        char.bleedingTurns = 0;
-        char.armor = 0;
-        char.armorTurns = 0;
+        char.stunnedTurns = 0; char.bleedingTurns = 0; char.armor = 0; char.armorTurns = 0;
         if(char.cooldowns) { for (let skill in char.cooldowns) char.cooldowns[skill] = 0; }
     });
-    saveGameState();
-    renderMap();
+    saveGameState(); renderMap();
 }
 
 function checkWinState() {
