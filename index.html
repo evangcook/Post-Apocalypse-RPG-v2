@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V23.0 (Dynamic Biomes & Thunderdome)</title>
+<title>Wasteland RPG - Engine V23.1 (Tier 1 Combat Biome Lock)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -105,7 +105,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V23.0</div>
+        <div class="title-sub">ENGINE V23.1</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -143,7 +143,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 </div>
 
 <script>
-const SAVE_KEY = 'wasteland_rpg_engine_v23'; 
+const SAVE_KEY = 'wasteland_rpg_engine_v23.1'; 
 let scrap = 0; let currentTier = 1;
 
 const SECTOR_LAYOUT = [
@@ -268,13 +268,18 @@ function generateEnemies(nodeType, mult) {
     return squad;
 }
 
-// V23: Dynamic Environment Background Selector
-function setCombatBackground(nodeType) {
+// V23.1: Tier 1 Locked Biome + Dynamic Rotation
+function setCombatBackground(nodeType, tier) {
     let bgFile = 'bg_combat.png'; // Default fallback
-    if (nodeType === 'BOSS') bgFile = 'bg_thunderdome.png';
-    else if (nodeType === 'MECH') bgFile = 'bg_refinery.png';
-    else if (nodeType === 'RAIDERS') bgFile = 'bg_highway.png';
-    else if (nodeType === 'BEASTS') bgFile = 'bg_canyon.png';
+    
+    if (tier === 1) {
+        bgFile = 'bg_combat.png'; // Tier 1 explicitly locked to classic combat background
+    } else {
+        if (nodeType === 'BOSS') bgFile = 'bg_thunderdome.png';
+        else if (nodeType === 'MECH') bgFile = 'bg_refinery.png';
+        else if (nodeType === 'RAIDERS') bgFile = 'bg_highway.png';
+        else if (nodeType === 'BEASTS') bgFile = 'bg_canyon.png';
+    }
 
     document.getElementById('combat-sky-layer').style.backgroundImage = `linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('${bgFile}')`;
 }
@@ -288,8 +293,8 @@ function spawnFCT(entityId, msg, styleClass) {
 function initiateCombat(nodeType) {
     switchScreen('screen-combat'); combatActive = true; document.getElementById('log').innerHTML = '';
     
-    // Set Dynamic Background Biome
-    setCombatBackground(nodeType);
+    // Pass currentTier to set background (Tier 1 locks to bg_combat.png)
+    setCombatBackground(nodeType, currentTier);
 
     let deployedRoster = playerRoster.filter(p => p.isActive);
     if (!deployedRoster.some(p => p.hp > 0)) { alert("All deployed units are dead. Adjust squad at Outpost."); renderOutpost(); return; }
