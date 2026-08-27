@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Wasteland RPG - Engine V9</title>
-    <style>
+        <style>
         body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
         #engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
         
@@ -19,10 +19,9 @@
         /* Combat Screen */
         #screen-combat { display: none; flex-direction: column; height: 100%; }
         
-        /* The Environment - Now accepts an image with a dark gradient overlay */
+        /* The Environment */
         .sky-layer { 
-            /* Replace bg_combat.png with your actual background file name */
-            background-image: linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.9) 100%), url('bg_combat.png'); 
+            background-image: linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('bg_combat.png'); 
             background-size: cover;
             background-position: center bottom;
             flex-grow: 1; 
@@ -31,51 +30,54 @@
             position: relative; 
         }
         
-        #queue-display { text-align: center; color: #888; padding: 10px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.5); }
+        #queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; }
         
-        /* The Floor - Fluid Spacing */
+        /* The Floor - Lifted to match the road */
         .battlefield { 
             display: flex; 
             justify-content: center; 
-            gap: 2vw; /* Dynamic gap between teams */
+            gap: 4vw; /* Space between the two teams */
             flex-grow: 1;
             align-items: flex-end; 
-            padding: 0 5px 15px 5px;
+            padding: 0 5px;
             box-sizing: border-box;
-            border-bottom: 2px dashed #222; 
+            
+            /* THIS IS THE ELEVATION PROTOCOL. Change 15vh to move them higher/lower on the background */
+            margin-bottom: 15vh; 
         }
         
-        .team { display: flex; gap: 1vw; align-items: flex-end; }
+        .team { display: flex; gap: 2vw; align-items: flex-end; }
         #player-team { flex-direction: row-reverse; }
         #enemy-team { flex-direction: row; }
         
-        /* Fluid Sprites - Scales to screen width/height */
+        /* Fluid Sprites - Massively Increased Size */
         .entity { 
-            width: clamp(45px, 18vw, 100px); 
+            width: clamp(70px, 22vw, 150px); 
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-end;
             position: relative; 
             transition: transform 0.2s; 
+            gap: 4px; /* Locks HP bar to the head */
         }
         
         /* Targeting Highlights */
-        .entity.active .portrait { filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.6)); transform: translateY(-8px); }
-        .entity.dead { opacity: 0.2; filter: grayscale(100%); transform: scale(0.9); }
-        .entity.targetable-enemy .portrait { filter: drop-shadow(0 0 10px #ff0000); cursor: pointer; }
-        .entity.targetable-ally .portrait { filter: drop-shadow(0 0 10px #6B8E23); cursor: pointer; }
+        .entity.active .portrait { filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6)); transform: translateY(-8px); }
+        .entity.dead { opacity: 0.3; filter: grayscale(100%); transform: scale(0.9); }
+        .entity.targetable-enemy .portrait { filter: drop-shadow(0 0 12px #ff0000); cursor: pointer; }
+        .entity.targetable-ally .portrait { filter: drop-shadow(0 0 12px #6B8E23); cursor: pointer; }
         .entity.targetable-enemy:active .portrait { filter: drop-shadow(0 0 20px #ff0000) brightness(1.5); }
 
         /* Floating HP Elements */
-        .hp-text { font-size: clamp(8px, 2.5vw, 10px); font-weight: bold; margin-bottom: 4px; color: #aaa; text-align: center; white-space: nowrap; }
-        .hp-container { background: #222; height: 5px; width: 85%; border: 1px solid #000; margin-bottom: 8px; }
+        .hp-text { font-size: clamp(10px, 3vw, 13px); font-weight: bold; margin-bottom: 0; color: #fff; text-shadow: 1px 1px 3px #000; text-align: center; white-space: nowrap; }
+        .hp-container { background: #111; height: 7px; width: 85%; border: 1px solid #000; box-shadow: 0 0 4px #000; }
         .hp-fill { height: 100%; transition: width 0.3s ease; }
         .player-hp { background-color: #8B0000; }
         .enemy-hp { background-color: #8B0000; }
 
         .portrait { 
-            height: clamp(70px, 15vh, 140px); 
+            height: clamp(110px, 22vh, 220px); /* Taller maximum height limits */
             width: 100%; 
             background-color: transparent; 
             background-size: contain; 
