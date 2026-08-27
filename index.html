@@ -3,96 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wasteland RPG - Engine V7</title>
+    <title>Wasteland RPG - Engine V8</title>
     <style>
-        body { background-color: #050505; color: #c0c0c0; font-family: monospace; margin: 0; padding: 10px; display: flex; justify-content: center; }
-        #engine { width: 100%; max-width: 900px; background: #0a0a0a; border: 2px solid #333; padding: 15px; box-sizing: border-box; position: relative; }
-        h2 { color: #8B0000; text-align: center; margin-top: 0; text-transform: uppercase; border-bottom: 1px solid #222; padding-bottom: 10px; letter-spacing: 2px; }
+        body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; }
+        #engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
         
-        /* Map Screen Elements */
-        #screen-map { display: flex; flex-direction: column; gap: 15px; }
+        /* Map Screen Elements (Unchanged) */
+        #screen-map { display: flex; flex-direction: column; gap: 15px; padding: 20px; }
         .map-header { display: flex; justify-content: space-between; color: #B8860B; font-weight: bold; font-size: 18px; }
         .map-tier { border: 1px solid #222; padding: 15px; text-align: center; background: #111; }
         .map-tier-title { margin-bottom: 10px; color: #666; letter-spacing: 1px; }
         .node-btn { background: #1a1a1a; color: #888; border: 1px solid #444; padding: 15px; margin: 5px; cursor: pointer; font-family: monospace; font-size: 14px; text-transform: uppercase; transition: 0.2s; }
         .node-btn:hover { background: #8B0000; color: #fff; border-color: #ff0000; }
         
-        /* Combat Screen - Side-Scrolling Geometry */
-        #screen-combat { display: none; }
+        /* Combat Screen - The Darkest Aesthetic */
+        #screen-combat { display: none; flex-direction: column; height: 100%; }
         
-        /* The Floor Line */
+        /* The Sky & Queue */
+        .sky-layer { background: linear-gradient(to bottom, #2b0a0a 0%, #000000 80%); flex-grow: 1; display: flex; flex-direction: column; position: relative; }
+        #queue-display { text-align: center; color: #666; padding: 15px; font-size: 12px; letter-spacing: 2px; }
+        
+        /* The Floor */
         .battlefield { 
             display: flex; 
             justify-content: center; 
-            gap: 40px; /* The No-Mans-Land between teams */
-            margin-bottom: 20px; 
-            padding-bottom: 10px;
-            border-bottom: 3px solid #222; /* The Ground */
-            min-height: 220px;
-            align-items: flex-end; /* Forces entities to stand on the ground */
-        }
-        
-        .team { 
-            display: flex; 
-            gap: 8px; 
+            gap: 20px; /* Space between teams */
+            flex-grow: 1;
             align-items: flex-end; 
+            padding-bottom: 20px;
+            border-bottom: 2px dashed #222; 
         }
         
-        #player-team { flex-direction: row-reverse; /* Puts first character on the right (frontline) */ }
-        #enemy-team { flex-direction: row; /* Puts first character on the left (frontline) */ }
+        .team { display: flex; gap: 5px; align-items: flex-end; }
+        #player-team { flex-direction: row-reverse; }
+        #enemy-team { flex-direction: row; }
         
+        /* The Sprites (No Boxes) */
         .entity { 
-            background: #000; 
-            border: 1px solid #333; 
-            padding: 5px; 
-            width: 100px; /* Narrower, vertical cards */
-            position: relative; 
-            transition: all 0.2s; 
-            text-align: center; 
+            width: 90px; 
             display: flex;
             flex-direction: column;
+            align-items: center;
             justify-content: flex-end;
+            position: relative; 
+            transition: transform 0.2s; 
         }
         
-        .entity.active { border-color: #f5f5f5; box-shadow: 0 0 10px rgba(255,255,255,0.2); transform: translateY(-5px); }
-        .entity.dead { opacity: 0.2; border-color: #8B0000; filter: grayscale(100%); }
-        .entity.targetable-enemy { border-color: #8B0000; box-shadow: 0 0 15px #8B0000; cursor: pointer; }
-        .entity.targetable-enemy:active { background: #222; }
-        .entity.targetable-ally { border-color: #6B8E23; box-shadow: 0 0 15px #6B8E23; cursor: pointer; }
-        .entity.targetable-ally:active { background: #222; }
+        /* Targeting Highlights via CSS Filters instead of borders */
+        .entity.active .portrait { filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4)); transform: translateY(-10px); }
+        .entity.dead { opacity: 0.2; filter: grayscale(100%); }
+        .entity.targetable-enemy .portrait { filter: drop-shadow(0 0 10px #ff0000); cursor: pointer; }
+        .entity.targetable-ally .portrait { filter: drop-shadow(0 0 10px #6B8E23); cursor: pointer; }
+        .entity.targetable-enemy:active .portrait { filter: drop-shadow(0 0 20px #ff0000) brightness(1.5); }
 
-        .name { font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
+        /* Floating HP Elements */
+        .hp-text { font-size: 10px; font-weight: bold; margin-bottom: 4px; color: #aaa; text-align: center; }
+        .hp-container { background: #222; height: 6px; width: 80%; border: 1px solid #000; margin-bottom: 10px; }
+        .hp-fill { height: 100%; transition: width 0.3s ease; }
+        .player-hp { background-color: #8B0000; }
+        .enemy-hp { background-color: #8B0000; }
+
         .portrait { 
-            height: 100px; 
+            height: 140px; 
             width: 100%; 
             background-color: transparent; 
-            margin-bottom: 8px; 
             background-size: contain; 
             background-repeat: no-repeat; 
-            background-position: bottom center; /* Anchor images to the feet */
+            background-position: bottom center; 
+            transition: all 0.2s;
         }
         
-        .hp-container { background: #222; height: 10px; width: 100%; border: 1px solid #000; margin-bottom: 3px; }
-        .hp-fill { height: 100%; transition: width 0.3s ease; }
-        .player-hp { background-color: #8B0000; /* Darkest Dungeon uses red for player health too */ }
-        .enemy-hp { background-color: #8B0000; }
-        .stats { font-size: 10px; color: #666; }
+        /* The Dashboard (Split Pane) */
+        .dashboard { 
+            height: 220px; 
+            background: #050505; 
+            border: 2px solid #333; 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            box-sizing: border-box;
+            margin: 10px;
+        }
+        
+        #command-deck { 
+            border-right: 2px solid #333; 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            gap: 10px;
+        }
+        
+        #log { 
+            padding: 15px; 
+            overflow-y: auto; 
+            font-size: 12px; 
+            color: #555; 
+            display: flex;
+            flex-direction: column;
+        }
 
-        #log { height: 120px; overflow-y: auto; background: #000; border: 1px solid #222; padding: 10px; margin-bottom: 15px; font-size: 12px; color: #555; }
-        .log-turn { color: #aaa; margin-top: 5px; border-top: 1px dashed #222; padding-top: 5px; }
+        .log-turn { color: #aaa; margin-top: 5px; }
         .log-heal { color: #6B8E23; }
-        .log-dmg { color: #fff; }
-        .log-enemy { color: #ff4444; }
+        .log-dmg { color: #8B0000; }
         .log-warn { color: #B8860B; }
         
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         button { background: #111; color: #ccc; border: 1px solid #444; padding: 15px; font-family: monospace; font-size: 13px; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
-        button:hover:not(:disabled) { background: #333; border-color: #888; }
+        button:hover:not(:disabled) { background: #222; border-color: #888; }
         button:active { background: #000; }
-        button:disabled { opacity: 0.2; cursor: not-allowed; }
-        .btn-cancel { border-color: #8B0000; color: #8B0000; }
-        .btn-victory { background-color: #222; color: #B8860B; border-color: #B8860B; }
+        button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
+        
+        /* Specialized Dashboard states */
+        .dash-msg { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 14px; color: #666; text-align: center; }
     </style>
 </head>
 <body>
@@ -106,19 +127,23 @@
             <span>TIER: <span id="tier-display">1</span>/4</span>
             <span>SCRAP: <span id="scrap-display">0</span></span>
         </div>
-        
         <div id="map-nodes"></div>
     </div>
 
     <!-- COMBAT SCREEN -->
     <div id="screen-combat">
-        <h2 id="turn-indicator">Initializing...</h2>
-        <div class="battlefield">
-            <div class="team" id="player-team"></div>
-            <div class="team" id="enemy-team"></div>
+        <div class="sky-layer">
+            <div id="queue-display">Q: INITIATING...</div>
+            <div class="battlefield">
+                <div class="team" id="player-team"></div>
+                <div class="team" id="enemy-team"></div>
+            </div>
         </div>
-        <div id="log"></div>
-        <div class="controls" id="command-deck"></div>
+        
+        <div class="dashboard">
+            <div id="command-deck"></div>
+            <div id="log"></div>
+        </div>
     </div>
 
 </div>
@@ -140,47 +165,34 @@
     let combatActive = false;
     let pendingAction = null; 
 
-    // --- UI ROUTING ---
     function switchScreen(screenId) {
         document.getElementById('screen-map').style.display = 'none';
         document.getElementById('screen-combat').style.display = 'none';
-        document.getElementById(screenId).style.display = 'flex';
-        document.getElementById(screenId).style.flexDirection = 'column';
+        
+        const target = document.getElementById(screenId);
+        target.style.display = 'flex';
     }
 
-    // --- MAP ENGINE ---
     function renderMap() {
         switchScreen('screen-map');
         document.getElementById('scrap-display').innerText = scrap;
         document.getElementById('tier-display').innerText = currentTier;
         
         const mapContainer = document.getElementById('map-nodes');
-        mapContainer.innerHTML = '';
         
         if (currentTier > 4) {
             mapContainer.innerHTML = `<div class="map-tier"><h3 style="color:#8B0000">WARLORD DEFEATED.</h3><button onclick="location.reload()">Return to Citadel</button></div>`;
             return;
         }
         
-        let nodesHTML = '';
-        if (currentTier === 4) {
-            nodesHTML = `<button class="node-btn" onclick="initiateCombat('BOSS')" style="border-color:#8B0000; color:#8B0000;">💀 Warlord Stronghold</button>`;
-        } else {
-            nodesHTML = `
-                <button class="node-btn" onclick="initiateCombat('SKIRMISH')">Mutant Skirmish</button>
-                <button class="node-btn" onclick="initiateCombat('AMBUSH')">Raider Ambush</button>
-            `;
-        }
+        let nodesHTML = currentTier === 4 
+            ? `<button class="node-btn" onclick="initiateCombat('BOSS')" style="border-color:#8B0000; color:#8B0000;">💀 Warlord Stronghold</button>`
+            : `<button class="node-btn" onclick="initiateCombat('SKIRMISH')">Mutant Skirmish</button>
+               <button class="node-btn" onclick="initiateCombat('AMBUSH')">Raider Ambush</button>`;
         
-        mapContainer.innerHTML = `
-            <div class="map-tier">
-                <div class="map-tier-title">EXPEDITION ROUTE</div>
-                ${nodesHTML}
-            </div>
-        `;
+        mapContainer.innerHTML = `<div class="map-tier"><div class="map-tier-title">EXPEDITION ROUTE</div>${nodesHTML}</div>`;
     }
 
-    // --- COMBAT ENGINE ---
     function initiateCombat(nodeType) {
         switchScreen('screen-combat');
         combatActive = true;
@@ -207,7 +219,7 @@
         turnQueue = [...activeEntities].sort((a, b) => b.speed - a.speed);
         activeIndex = 0;
         
-        log("NODE BREACHED.", "log-turn");
+        log("> COMBAT INITIATED.", "log-turn");
         processTurn();
     }
 
@@ -220,7 +232,13 @@
         logEl.scrollTop = logEl.scrollHeight;
     }
 
+    function renderQueue() {
+        const queueStr = turnQueue.map(e => e.name.substring(0,3).toUpperCase()).join(' > ');
+        document.getElementById('queue-display').innerText = `Q: ${queueStr}`;
+    }
+
     function renderField() {
+        renderQueue();
         const pTeam = document.getElementById('player-team');
         const eTeam = document.getElementById('enemy-team');
         pTeam.innerHTML = ''; eTeam.innerHTML = '';
@@ -243,14 +261,14 @@
                 }
             }
             
+            // Reconstructed HTML: Float HP above portrait, remove box elements
             const html = `
                 <div class="entity ${isActive} ${deadClass} ${targetClass}" id="${ent.id}" ${clickHandler}>
-                    <div class="name">${ent.name}</div>
-                    <div class="portrait" style="background-image: url('${ent.img}');"></div>
+                    <div class="hp-text">${ent.hp}/${ent.maxHp}</div>
                     <div class="hp-container">
                         <div class="hp-fill ${ent.isPlayer ? 'player-hp' : 'enemy-hp'}" style="width: ${(ent.hp / ent.maxHp) * 100}%"></div>
                     </div>
-                    <div class="stats">${ent.hp}/${ent.maxHp} HP | ${ent.armor} ARM</div>
+                    <div class="portrait" style="background-image: url('${ent.img}');"></div>
                 </div>
             `;
             if (ent.isPlayer) pTeam.innerHTML += html;
@@ -267,13 +285,13 @@
         if (!combatActive) return; 
 
         if (pendingAction) {
-            deck.innerHTML = `<button class="btn-cancel" onclick="cancelAction()" style="grid-column: span 2;">CANCEL ORDERS</button>`;
+            deck.innerHTML = `<button style="color:#8B0000; border-color:#8B0000" onclick="cancelAction()">CANCEL ORDERS</button>`;
             return;
         }
 
         let activeEntity = turnQueue[activeIndex];
         if (!activeEntity.isPlayer) {
-            deck.innerHTML = `<button disabled style="grid-column: span 2;">AWAITING TURN...</button>`;
+            deck.innerHTML = `<div class="dash-msg">ENEMY TURN...</div>`;
             return;
         }
 
@@ -300,26 +318,19 @@
         }
 
         renderField();
-        document.getElementById('turn-indicator').innerText = `Active: ${activeEntity.name}`;
 
-        if (activeEntity.isPlayer) {
-            log(`[ ${activeEntity.name.toUpperCase()} ] awaits orders.`, "log-turn");
-        } else {
-            log(`[ ${activeEntity.name.toUpperCase()} ] is striking...`, "log-turn");
+        if (!activeEntity.isPlayer) {
             setTimeout(() => executeEnemyAi(activeEntity), 1000);
         }
     }
 
     function queueAction(actionType) {
         pendingAction = actionType;
-        if (actionType === 'CAUTERIZE') log("Select ally to heal...", "log-heal");
-        else log("Select hostile target...", "log-warn");
         renderField();
     }
 
     function cancelAction() {
         pendingAction = null;
-        log("Orders cancelled.", "log-warn");
         renderField();
     }
 
@@ -330,14 +341,14 @@
         if (pendingAction === 'CAUTERIZE') {
             let heal = 20 + Math.floor(Math.random() * 10);
             target.hp = Math.min(target.maxHp, target.hp + heal);
-            log(`> ${activeEntity.name} cauterizes ${target.name} for ${heal} HP!`, "log-heal");
+            log(`> ${activeEntity.name} heals ${target.name} for ${heal}.`, "log-heal");
         } else {
             let dmg = activeEntity.dmgBase + Math.floor(Math.random() * 6);
             if (pendingAction === 'FLASHBANG') dmg = Math.floor(dmg * 0.5); 
             
             let netDmg = Math.max(1, dmg - target.armor);
             target.hp = Math.max(0, target.hp - netDmg);
-            log(`> ${activeEntity.name} uses ${pendingAction.replace('_', ' ')} on ${target.name} for ${netDmg} DMG!`);
+            log(`> ${activeEntity.name} attacks ${target.name} for ${netDmg} DMG.`);
         }
         
         pendingAction = null;
@@ -348,7 +359,7 @@
         let activeEntity = turnQueue[activeIndex];
         if (actionType === 'IRON_GUARD') {
             activeEntity.armor += 15;
-            log(`> ${activeEntity.name} deploys IRON GUARD (+15 ARMOR).`);
+            log(`> ${activeEntity.name} deployed IRON GUARD.`);
         }
         checkWinState();
     }
@@ -363,7 +374,7 @@
             let dmg = enemy.dmgBase + Math.floor(Math.random() * 5);
             let netDmg = Math.max(1, dmg - target.armor);
             target.hp = Math.max(0, target.hp - netDmg);
-            log(`> ${enemy.name} attacks ${target.name} for ${netDmg} DMG!`, "log-enemy");
+            log(`> ${enemy.name} attacks ${target.name} for ${netDmg} DMG!`, "log-dmg");
             target.armor = 0; 
         }
         checkWinState();
@@ -376,11 +387,11 @@
         const enemiesAlive = activeEntities.some(e => !e.isPlayer && e.hp > 0);
 
         if (!playersAlive) {
-            log("SQUAD WIPED.", "log-enemy");
+            log("> SQUAD WIPED.", "log-dmg");
             combatActive = false;
-            document.getElementById('command-deck').innerHTML = `<button onclick="location.reload()" style="grid-column: span 2; border-color: #8B0000; color: #8B0000;">RESTART CAMPAIGN</button>`;
+            document.getElementById('command-deck').innerHTML = `<button onclick="location.reload()">RESTART</button>`;
         } else if (!enemiesAlive) {
-            log("HOSTILES ELIMINATED.", "log-heal");
+            log("> HOSTILES ELIMINATED.", "log-heal");
             combatActive = false;
             
             let scrapGained = Math.floor(Math.random() * 30) + (currentTier * 20);
@@ -388,10 +399,8 @@
             currentTier++;
             
             playerRoster.forEach(p => p.armor = 0);
-            
-            document.getElementById('command-deck').innerHTML = `<button class="btn-victory" onclick="renderMap()" style="grid-column: span 2;">LOOT ${scrapGained} SCRAP & CONTINUE</button>`;
+            document.getElementById('command-deck').innerHTML = `<button onclick="renderMap()">LOOT ${scrapGained}</button>`;
         } else {
-            document.getElementById('command-deck').innerHTML = `<button disabled style="grid-column: span 2;">RESOLVING...</button>`;
             setTimeout(nextTurn, 800);
         }
     }
