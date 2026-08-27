@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V32.0 (Crafting & Drone Flight)</title>
+<title>Wasteland RPG - Engine V33.0 (Weather & Hazards)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -80,7 +80,15 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 
 #screen-combat { display: none; flex-direction: column; height: 100%; }
 .sky-layer { background-size: cover; background-position: center bottom; flex-grow: 1; display: flex; flex-direction: column; position: relative; }
-#queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; }
+#queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; border-bottom: 1px solid #222; }
+
+/* V33 Weather Banner */
+#weather-banner { text-align: center; font-size: 11px; font-weight: bold; padding: 4px; letter-spacing: 1px; display: none; text-shadow: 1px 1px 2px #000; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+.weather-smog { background: rgba(40, 60, 10, 0.8); color: #aaffaa; display: block !important; border-bottom: 1px solid #6B8E23; }
+.weather-sand { background: rgba(80, 50, 10, 0.8); color: #ffcc66; display: block !important; border-bottom: 1px solid #B8860B; }
+.weather-shrap { background: rgba(40, 40, 40, 0.8); color: #cccccc; display: block !important; border-bottom: 1px solid #888; }
+.weather-blood { background: rgba(80, 10, 10, 0.8); color: #ff4444; display: block !important; border-bottom: 1px solid #ff0000; }
+
 .battlefield { display: flex; justify-content: center; gap: 2vw; flex-grow: 1; align-items: flex-end; padding: 0 5px; box-sizing: border-box; margin-bottom: 12vh; }
 .team { display: flex; align-items: flex-end; justify-content: center; }
 #player-team { flex-direction: row-reverse; } 
@@ -102,7 +110,6 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .status-shield { background-color: rgba(107,142,35,0.7); color: #fff; }
 .portrait { width: calc(100% * var(--sprite-scale, 1)); height: auto; max-height: 25vh; object-fit: contain; object-position: bottom; transition: all 0.2s; filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.8)); }
 
-/* V32 Drone Hover Animation */
 @keyframes hoverSprite { 0% { transform: translateY(0); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0); } }
 .hovering { animation: hoverSprite 3s ease-in-out infinite; margin-bottom: 40px; }
 
@@ -126,7 +133,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V32.0</div>
+        <div class="title-sub">ENGINE V33.0</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -154,7 +161,6 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
             <div id="outpost-roster" class="outpost-roster"></div>
         </div>
 
-        <!-- V32 Workbench View -->
         <div id="outpost-workbench-view" style="display:none; flex-direction:column; gap:15px; flex-grow:1; overflow-y:auto;">
             <div class="upgrade-card">
                 <div class="upgrade-header">RAW MATERIALS</div>
@@ -170,9 +176,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
             <div class="upgrade-card">
                 <div class="upgrade-header">CRAFTING SCHEMATICS</div>
-                <div class="upgrade-btn-group" id="crafting-grid">
-                    <!-- Injected by JS based on materials -->
-                </div>
+                <div class="upgrade-btn-group" id="crafting-grid"></div>
             </div>
         </div>
 
@@ -187,6 +191,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
     <div id="screen-combat">
         <div class="sky-layer" id="combat-sky-layer">
             <div id="queue-display">Q: INITIATING...</div>
+            <div id="weather-banner"></div>
             <div class="battlefield">
                 <div class="team" id="player-team"></div>
                 <div class="team" id="enemy-team"></div>
@@ -200,14 +205,17 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 </div>
 
 <script>
-const SAVE_KEY = 'wasteland_rpg_engine_v32'; 
+const SAVE_KEY = 'wasteland_rpg_engine_v33'; 
 let scrap = 0; let currentTier = 1;
 let inventory = []; 
-let materials = { parts: 0, chems: 0, tech: 0 }; // V32 Crafting Mats
+let materials = { parts: 0, chems: 0, tech: 0 }; 
 let outpostTab = 'ROSTER';
 
 let activePosSelector = null;
 let activePerkSelector = null;
+
+// V33: Global Weather State
+let currentWeather = 'CLEAR';
 
 const SECTOR_LAYOUT = [
     ['BOSS'], ['MECH', 'RAIDERS'], ['BEASTS', 'MECH', 'RAIDERS'], ['RAIDERS', 'BEASTS'], ['MECH', 'RAIDERS', 'BEASTS'], ['BEASTS', 'MECH'], ['RAIDERS', 'BEASTS', 'RAIDERS'], ['MECH', 'RAIDERS'], ['BEASTS', 'RAIDERS', 'MECH'], ['RAIDERS']
@@ -272,7 +280,6 @@ function setOutpostTab(tab) {
 function renderOutpost() {
     switchScreen('screen-outpost'); document.getElementById('outpost-scrap').innerText = scrap; 
     
-    // Render Roster
     const c = document.getElementById('outpost-roster'); c.innerHTML = '';
     playerRoster.forEach(char => {
         let cost = 30 + (char.upgradeCount * 25); let canUpg = scrap >= cost; let isDead = char.hp <= 0; let isInj = char.hp < char.maxHp && char.hp > 0;
@@ -296,21 +303,18 @@ function renderOutpost() {
         c.innerHTML += `<div class="upgrade-card" style="${isDead ? 'border-color: #8B0000; opacity: 0.8;' : ''}"> <div class="upgrade-header"><span>${char.name} (${char.classType})</span><span>${traitDisplay}</span></div> <div class="upgrade-stats"><span>HP: ${char.hp}/${char.maxHp}</span><span>DMG: ${char.dmgBase}</span><span>UPG: <span class="cost-txt">${cost}</span></span></div> <div class="upgrade-btn-group">${btnGroupHtml}</div> </div>`;
     });
 
-    // Render Workbench
     document.getElementById('mat-parts').innerText = `⚙️ PARTS: ${materials.parts}`;
     document.getElementById('mat-chems').innerText = `🧪 CHEMS: ${materials.chems}`;
     document.getElementById('mat-tech').innerText = `💻 TECH: ${materials.tech}`;
     document.getElementById('btn-breakdown').disabled = scrap < 25;
 
-    let wbHtml = '';
-    let invFull = inventory.length >= 4;
+    let wbHtml = ''; let invFull = inventory.length >= 4;
     wbHtml += `<button class="upg-btn" ${materials.chems < 2 || invFull ? 'disabled' : ''} onclick="craftItem('MED_STIM')">CRAFT MED-STIM (2 🧪)</button>`;
     wbHtml += `<button class="upg-btn" ${materials.parts < 2 || invFull ? 'disabled' : ''} onclick="craftItem('SCRAP_BOMB')">CRAFT SCRAP BOMB (2 ⚙️)</button>`;
     wbHtml += `<button class="upg-btn" ${materials.chems < 1 || materials.tech < 1 || invFull ? 'disabled' : ''} onclick="craftItem('ADRENALINE')">CRAFT ADRENALINE (1 🧪, 1 💻)</button>`;
     wbHtml += `<button class="upg-btn" ${materials.tech < 2 || invFull ? 'disabled' : ''} onclick="craftItem('EMP_CHARGE')">CRAFT EMP CHARGE (2 💻)</button>`;
     document.getElementById('crafting-grid').innerHTML = wbHtml;
 
-    // Render Inventory
     document.getElementById('inv-count').innerText = `${inventory.length}/4`;
     const invC = document.getElementById('outpost-inventory'); invC.innerHTML = '';
     for (let i = 0; i < 4; i++) {
@@ -324,15 +328,7 @@ function renderOutpost() {
     }
 }
 
-// V32 Workbench Logic
-function breakdownScrap() {
-    if (scrap < 25) return;
-    scrap -= 25;
-    let m = ['parts', 'chems', 'tech'][Math.floor(Math.random() * 3)];
-    materials[m]++;
-    saveGameState(); renderOutpost();
-}
-
+function breakdownScrap() { if (scrap < 25) return; scrap -= 25; let m = ['parts', 'chems', 'tech'][Math.floor(Math.random() * 3)]; materials[m]++; saveGameState(); renderOutpost(); }
 function craftItem(item) {
     if (inventory.length >= 4) return;
     if (item === 'MED_STIM' && materials.chems >= 2) { materials.chems -= 2; inventory.push(item); }
@@ -362,7 +358,6 @@ function generateEnemies(nodeType, mult) {
             { name: "Juggernaut", classType: "RAIDER", range: 'melee', maxHp: 90, speed: 6, armor: 5, dmgBase: 18, img: "enemy_juggernaut.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 0, energy: -5 } }
         ],
         'MECH': [
-            // V32: Drone given `isHovering: true` to engage CSS animation
             { name: "Drone", classType: "DRONE", range: 'ranged', isHovering: true, maxHp: 25, speed: 18, armor: 5, dmgBase: 10, img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } }, 
             { name: "Turret", classType: "MECH", range: 'ranged', maxHp: 50, speed: 2, armor: 8, dmgBase: 20, img: "enemy_turret.png", scale: 0.9, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 100, energy: -10 } }, 
             { name: "War Rig", classType: "MECH", range: 'ranged', maxHp: 150, speed: 5, armor: 10, dmgBase: 25, img: "enemy_warrig.png", scale: 1.8, hpDrop: -20, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 15, bio: 100, energy: -15 } }
@@ -378,18 +373,6 @@ function generateEnemies(nodeType, mult) {
     return squad;
 }
 
-function setCombatBackground(nodeType, tier) {
-    let bgFile = 'bg_combat.png'; 
-    if (tier === 1) { bgFile = 'bg_combat.png'; } 
-    else {
-        if (nodeType === 'BOSS') bgFile = 'bg_thunderdome.png';
-        else if (nodeType === 'MECH') bgFile = 'bg_refinery.png';
-        else if (nodeType === 'RAIDERS') bgFile = 'bg_highway.png';
-        else if (nodeType === 'BEASTS') bgFile = 'bg_canyon.png';
-    }
-    document.getElementById('combat-sky-layer').style.backgroundImage = `linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('${bgFile}')`;
-}
-
 function spawnFCT(entityId, msg, styleClass) {
     const el = document.getElementById(entityId); if (!el) return;
     const f = document.createElement('div'); f.className = `fct ${styleClass}`; f.innerText = msg; el.appendChild(f);
@@ -398,7 +381,30 @@ function spawnFCT(entityId, msg, styleClass) {
 
 function initiateCombat(nodeType) {
     switchScreen('screen-combat'); combatActive = true; document.getElementById('log').innerHTML = '';
-    setCombatBackground(nodeType, currentTier);
+    
+    let bgFile = 'bg_combat.png'; 
+    currentWeather = 'CLEAR'; // Default
+
+    // V33 Dynamic Weather Rolls
+    if (currentTier === 1) { 
+        bgFile = 'bg_combat.png'; 
+    } else {
+        if (nodeType === 'BOSS') { bgFile = 'bg_thunderdome.png'; currentWeather = 'BLOODLUST'; }
+        else if (nodeType === 'MECH') { bgFile = 'bg_refinery.png'; if (Math.random() < 0.4) currentWeather = 'TOXIC_SMOG'; }
+        else if (nodeType === 'RAIDERS') { bgFile = 'bg_highway.png'; if (Math.random() < 0.4) currentWeather = 'SHRAPNEL_WINDS'; }
+        else if (nodeType === 'BEASTS') { bgFile = 'bg_canyon.png'; if (Math.random() < 0.4) currentWeather = 'SANDSTORM'; }
+    }
+
+    document.getElementById('combat-sky-layer').style.backgroundImage = `linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('${bgFile}')`;
+    
+    // UI Banner Update
+    const wBanner = document.getElementById('weather-banner');
+    wBanner.className = ''; 
+    if (currentWeather === 'CLEAR') { wBanner.style.display = 'none'; }
+    else if (currentWeather === 'TOXIC_SMOG') { wBanner.className = 'weather-smog'; wBanner.innerText = '⚠️ TOXIC SMOG: Passive Bio DMG to Active Units ⚠️'; }
+    else if (currentWeather === 'SANDSTORM') { wBanner.className = 'weather-sand'; wBanner.innerText = '⚠️ SANDSTORM: Ranged Abilities deal -25% DMG ⚠️'; }
+    else if (currentWeather === 'SHRAPNEL_WINDS') { wBanner.className = 'weather-shrap'; wBanner.innerText = '⚠️ SHRAPNEL WINDS: 30% chance for random DMG at Turn Start ⚠️'; }
+    else if (currentWeather === 'BLOODLUST') { wBanner.className = 'weather-blood'; wBanner.innerText = '💀 THUNDERDOME BLOODLUST: All units deal +20% DMG 💀'; }
 
     let deployedRoster = playerRoster.filter(p => p.gridPos > 0);
     if (!deployedRoster.some(p => p.hp > 0)) { alert("All deployed units are dead. Adjust squad at Outpost."); renderOutpost(); return; }
@@ -527,10 +533,25 @@ function processTurn() {
     if (!aE.isPlayer) setTimeout(() => executeEnemyAi(aE), 1000);
 }
 
+// V33: Apply Weather DoTs
 function applyTurnStartEffects(ent) {
     let chg = false; if (ent.isPlayer && ent.cooldowns) { for (let s in ent.cooldowns) { if (ent.cooldowns[s] > 0) { ent.cooldowns[s]--; chg = true; } } }
+    
+    // Toxic Smog Passive Bio DMG
+    if (currentWeather === 'TOXIC_SMOG') {
+        let sDmg = Math.floor(2 * (1 + ((currentTier - 1) * 0.4)));
+        ent.hp = Math.max(0, ent.hp - sDmg); log(`> ${ent.name} choked by Smog for ${sDmg} DMG.`, "log-dmg"); spawnFCT(ent.id, `-${sDmg}`, "fct-status"); chg = true;
+    }
+
+    // Shrapnel Winds Random Hit
+    if (currentWeather === 'SHRAPNEL_WINDS' && Math.random() < 0.3) {
+        let shrapDmg = Math.floor(5 * (1 + ((currentTier - 1) * 0.4)));
+        ent.hp = Math.max(0, ent.hp - shrapDmg); log(`> Shrapnel struck ${ent.name} for ${shrapDmg} DMG!`, "log-dmg"); spawnFCT(ent.id, `-${shrapDmg}`, "fct-dmg"); chg = true;
+    }
+
     if (ent.bleedingTurns > 0) { let b = Math.max(1, Math.floor(ent.maxHp * 0.08)); ent.hp = Math.max(0, ent.hp - b); log(`> ${ent.name} bleeds for ${b}.`, "log-dmg"); spawnFCT(ent.id, `-${b}`, "fct-dmg"); ent.bleedingTurns--; chg = true; }
     if (ent.armorTurns > 0) { ent.armorTurns--; if (ent.armorTurns === 0) { ent.armor = 0; } chg = true; }
+    
     if (chg) renderField();
 }
 
@@ -538,6 +559,7 @@ function skipStunnedTurn() { turnQueue[activeIndex].stunnedTurns--; renderField(
 function queueAction(a) { pendingAction = a; renderField(); }
 function cancelAction() { pendingAction = null; renderField(); }
 
+// V33: Apply Weather Modifiers to Player Attacks
 function resolveAction(targetId) {
     let actEnt = turnQueue[activeIndex]; let target = activeEntities.find(e => e.id === targetId);
     let livingEnemies = activeEntities.filter(e => !e.isPlayer && e.hp > 0);
@@ -556,6 +578,11 @@ function resolveAction(targetId) {
         
         if (pendingAction === 'BUCKSHOT') { if (dist === 0) dmgMult = 1.5; else dmgMult = 0.8; actEnt.cooldowns.buckshot = 2; }
         if (pendingAction === 'DEADEYE') { if (dist === livingEnemies.length - 1 && dist !== 0) dmgMult = 1.8; else dmgMult = 0.8; actEnt.cooldowns.deadeye = 2; }
+
+        // V33 Weather Inject
+        const rangedMoves = ['PISTOL', 'RAD_SHOT', 'PIPE_RIFLE', 'FLASHBANG', 'FLARE_GUN', 'QUICK_SHOT', 'DEADEYE'];
+        if (currentWeather === 'SANDSTORM' && rangedMoves.includes(pendingAction)) { dmgMult *= 0.75; }
+        if (currentWeather === 'BLOODLUST') { dmgMult *= 1.2; }
 
         applyDamageHit(actEnt, target, Math.floor(baseDmg * dmgMult), atkType, pendingAction);
 
@@ -593,6 +620,7 @@ function executeSelfAction(actionType) {
     checkWinState();
 }
 
+// V33: Apply Weather Modifiers to Enemy Attacks
 function executeEnemyAi(enemy) {
     if (!combatActive) return;
     if (enemy.classType === 'BOSS' && enemy.phase === 1 && enemy.hp <= (enemy.maxHp / 2)) {
@@ -614,8 +642,14 @@ function executeEnemyAi(enemy) {
     }
 
     if (target) {
-        let t = enemy.dmgType || 'phys'; let d = enemy.dmgBase + Math.floor(Math.random() * 5);
-        let res = target.resistances[t] || 0; let net = Math.max(1, d - res - target.armor); target.hp = Math.max(0, target.hp - net);
+        let t = enemy.dmgType || 'phys'; 
+        let rawDmg = enemy.dmgBase + Math.floor(Math.random() * 5);
+        
+        // V33 Weather Inject
+        if (currentWeather === 'SANDSTORM' && enemy.range === 'ranged') rawDmg = Math.floor(rawDmg * 0.75);
+        if (currentWeather === 'BLOODLUST') rawDmg = Math.floor(rawDmg * 1.2);
+
+        let res = target.resistances[t] || 0; let net = Math.max(1, rawDmg - res - target.armor); target.hp = Math.max(0, target.hp - net);
         
         let posStr = target.gridPos === 1 ? 'Front' : target.gridPos === 2 ? 'Mid' : 'Back';
         log(`> ${enemy.name} hits ${target.name} [${posStr}] for ${net}`, "log-dmg"); spawnFCT(target.id, `-${net}`, "fct-dmg");
@@ -648,7 +682,6 @@ function checkWinState() {
             }
         });
 
-        // V32 Loot Drops (Replaced fixed consumables with raw materials)
         let matDrops = 1 + Math.floor(Math.random() * 2);
         for(let i=0; i<matDrops; i++) {
             let m = ['parts', 'chems', 'tech'][Math.floor(Math.random() * 3)];
