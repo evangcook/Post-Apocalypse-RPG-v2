@@ -1,152 +1,220 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wasteland RPG - Engine V12.0 (Complex Damage)</title>
-    <style>
-        body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
-        #engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
-        
-        /* Map Screen Elements */
-        #screen-map { display: flex; flex-direction: column; gap: 15px; padding: 20px; }
-        .map-header { display: flex; justify-content: space-between; color: #B8860B; font-weight: bold; font-size: 18px; }
-        .map-tier { border: 1px solid #222; padding: 15px; text-align: center; background: #111; }
-        .map-tier-title { margin-bottom: 10px; color: #666; letter-spacing: 1px; }
-        .node-btn { background: #1a1a1a; color: #888; border: 1px solid #444; padding: 15px; margin: 5px; cursor: pointer; font-family: monospace; font-size: 14px; text-transform: uppercase; transition: 0.2s; }
-        .node-btn:hover { background: #8B0000; color: #fff; border-color: #ff0000; }
-        
-        /* Combat Screen */
-        #screen-combat { display: none; flex-direction: column; height: 100%; }
-        
-        /* The Environment */
-        .sky-layer { 
-            background-image: linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('bg_combat.png'); 
-            background-size: cover;
-            background-position: center bottom;
-            flex-grow: 1; 
-            display: flex; 
-            flex-direction: column; 
-            position: relative; 
-        }
-        
-        #queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; }
-        
-        /* The Floor - Fluid Spacing */
-        .battlefield { 
-            display: flex; 
-            justify-content: center; 
-            gap: 2vw; 
-            flex-grow: 1;
-            align-items: flex-end; 
-            padding: 0 5px;
-            box-sizing: border-box;
-            margin-bottom: 12vh; 
-        }
-        
-        .team { display: flex; align-items: flex-end; justify-content: center; }
-        #player-team { flex-direction: row-reverse; }
-        #enemy-team { flex-direction: row; }
-        
-        /* Overlapping Entity Containers */
-        .entity { 
-            width: clamp(60px, 20vw, 130px); 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-end;
-            position: relative; 
-            transition: transform 0.2s; 
-            gap: 2px; 
-            margin: 0 -1.5vw; 
-            z-index: 1;
-        }
-        
-        /* Depth Sorting */
-        .entity:nth-child(1) { z-index: 3; }
-        .entity:nth-child(2) { z-index: 2; }
-        .entity:nth-child(3) { z-index: 1; }
-        
-        /* Targeting Highlights - Idle animation removed */
-        .entity.active .portrait { 
-            filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.9)); 
-        }
-        .entity.dead { opacity: 0.3; filter: grayscale(100%); transform: scale(0.9); }
-        .entity.targetable-enemy .portrait { filter: drop-shadow(0 0 12px #ff0000); cursor: pointer; }
-        .entity.targetable-ally .portrait { filter: drop-shadow(0 0 12px #6B8E23); cursor: pointer; }
-        .entity.targetable-enemy:active .portrait { filter: drop-shadow(0 0 20px #ff0000) brightness(1.5); }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Wasteland RPG - Engine V13.0</title>
+<style>
+body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
+#engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
 
-        /* Compressed HP Elements */
-        .hp-text { font-size: clamp(9px, 2.5vw, 12px); font-weight: bold; margin-bottom: 2px; color: #fff; text-shadow: 1px 1px 3px #000; text-align: center; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 3px; }
-        .hp-container { background: #111; height: 6px; width: 85%; border: 1px solid #000; box-shadow: 0 0 4px #000; margin: 0 auto; }
-        .hp-fill { height: 100%; transition: width 0.3s ease; }
-        .player-hp { background-color: #8B0000; }
-        .enemy-hp { background-color: #8B0000; }
+/* --- TITLE SCREEN ELEMENTS --- */
+#screen-title {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    /* Gritty CSS-only fallback background */
+    background: 
+        linear-gradient(rgba(10, 10, 10, 0.8), rgba(0, 0, 0, 0.95)),
+        repeating-linear-gradient(45deg, #111 0, #111 2px, #000 2px, #000 6px),
+        url('bg_title.png');
+    background-size: cover, auto, cover;
+    background-position: center;
+    text-align: center;
+    padding: 20px;
+}
 
-        /* Status Badges */
-        .status-badge { font-size: 10px; width: 12px; height: 12px; display: flex; align-items: center; justify-content: center; border-radius: 2px; }
-        .status-bleed { background-color: rgba(139,0,0,0.7); color: #fff; text-shadow: 0 0 2px #000; }
-        .status-stun { background-color: rgba(184,134,11,0.7); color: #000; font-weight: bold; }
-        .status-shield { background-color: rgba(107,142,35,0.7); color: #fff; }
+.title-header {
+    font-size: clamp(30px, 8vw, 60px);
+    color: #B8860B; /* Dieselpunk Gold/Rust */
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    text-shadow: 3px 3px 0px #8B0000, 0 0 15px rgba(184, 134, 11, 0.5);
+    margin-bottom: 10px;
+}
 
-        /* Dynamic Image Tag */
-        .portrait { 
-            width: calc(100% * var(--sprite-scale, 1)); 
-            height: auto; 
-            max-height: 25vh; 
-            object-fit: contain; 
-            object-position: bottom; 
-            transition: all 0.2s;
-            filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.8));
-        }
-        
-        /* The Dashboard */
-        .dashboard { 
-            height: 35vh; 
-            max-height: 250px;
-            background: #050505; 
-            border: 2px solid #333; 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            box-sizing: border-box;
-            margin: 5px;
-        }
-        
-        #command-deck { 
-            border-right: 2px solid #333; 
-            padding: 10px; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-            gap: 8px;
-        }
-        
-        #log { 
-            padding: 10px; 
-            overflow-y: auto; 
-            font-size: clamp(10px, 3vw, 12px); 
-            color: #555; 
-            display: flex;
-            flex-direction: column;
-        }
+.title-sub {
+    color: #666;
+    font-size: clamp(12px, 3vw, 16px);
+    letter-spacing: 8px;
+    margin-bottom: 8vh;
+    text-shadow: 1px 1px 2px #000;
+}
 
-        .log-turn { color: #aaa; margin-top: 5px; }
-        .log-heal { color: #6B8E23; }
-        .log-dmg { color: #8B0000; }
-        .log-status { color: #B8860B; }
-        
-        button { background: #111; color: #ccc; border: 1px solid #444; padding: clamp(10px, 3vh, 15px); font-family: monospace; font-size: clamp(10px, 3vw, 13px); cursor: pointer; text-transform: uppercase; transition: 0.2s; }
-        button:hover:not(:disabled) { background: #222; border-color: #888; }
-        button:active { background: #000; }
-        button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
-        
-        .dash-msg { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 14px; color: #666; text-align: center; }
-    </style>
+.title-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.title-btn {
+    background: #111;
+    color: #ccc;
+    border: 2px solid #444;
+    padding: 20px;
+    font-family: monospace;
+    font-size: clamp(14px, 4vw, 18px);
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+}
+
+.title-btn:hover { background: #8B0000; color: #fff; border-color: #ff0000; box-shadow: 0 0 15px rgba(255,0,0,0.4); transform: translateY(-2px); }
+.title-btn:active { transform: translateY(2px); box-shadow: none; }
+.btn-continue { border-color: #B8860B; color: #B8860B; }
+
+/* Map Screen Elements */
+#screen-map { display: none; flex-direction: column; gap: 15px; padding: 20px; }
+.map-header { display: flex; justify-content: space-between; color: #B8860B; font-weight: bold; font-size: 18px; }
+.map-tier { border: 1px solid #222; padding: 15px; text-align: center; background: #111; }
+.map-tier-title { margin-bottom: 10px; color: #666; letter-spacing: 1px; }
+.node-btn { background: #1a1a1a; color: #888; border: 1px solid #444; padding: 15px; margin: 5px; cursor: pointer; font-family: monospace; font-size: 14px; text-transform: uppercase; transition: 0.2s; }
+.node-btn:hover { background: #8B0000; color: #fff; border-color: #ff0000; }
+
+/* Combat Screen */
+#screen-combat { display: none; flex-direction: column; height: 100%; }
+
+/* The Environment */
+.sky-layer {
+    background-image: linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('bg_combat.png');
+    background-size: cover;
+    background-position: center bottom;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+#queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; }
+
+/* The Floor - Fluid Spacing */
+.battlefield {
+    display: flex;
+    justify-content: center;
+    gap: 2vw;
+    flex-grow: 1;
+    align-items: flex-end;
+    padding: 0 5px;
+    box-sizing: border-box;
+    margin-bottom: 12vh;
+}
+
+.team { display: flex; align-items: flex-end; justify-content: center; }
+#player-team { flex-direction: row-reverse; }
+#enemy-team { flex-direction: row; }
+
+/* Overlapping Entity Containers */
+.entity {
+    width: clamp(60px, 20vw, 130px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    position: relative;
+    transition: transform 0.2s;
+    gap: 2px;
+    margin: 0 -1.5vw;
+    z-index: 1;
+}
+
+/* Depth Sorting */
+.entity:nth-child(1) { z-index: 3; }
+.entity:nth-child(2) { z-index: 2; }
+.entity:nth-child(3) { z-index: 1; }
+
+/* Targeting Highlights */
+.entity.active .portrait { filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.9)); }
+.entity.dead { opacity: 0.3; filter: grayscale(100%); transform: scale(0.9); }
+.entity.targetable-enemy .portrait { filter: drop-shadow(0 0 12px #ff0000); cursor: pointer; }
+.entity.targetable-ally .portrait { filter: drop-shadow(0 0 12px #6B8E23); cursor: pointer; }
+.entity.targetable-enemy:active .portrait { filter: drop-shadow(0 0 20px #ff0000) brightness(1.5); }
+
+/* Compressed HP Elements */
+.hp-text { font-size: clamp(9px, 2.5vw, 12px); font-weight: bold; margin-bottom: 2px; color: #fff; text-shadow: 1px 1px 3px #000; text-align: center; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 3px; }
+.hp-container { background: #111; height: 6px; width: 85%; border: 1px solid #000; box-shadow: 0 0 4px #000; margin: 0 auto; }
+.hp-fill { height: 100%; transition: width 0.3s ease; }
+.player-hp { background-color: #8B0000; }
+.enemy-hp { background-color: #8B0000; }
+
+/* Status Badges */
+.status-badge { font-size: 10px; width: 12px; height: 12px; display: flex; align-items: center; justify-content: center; border-radius: 2px; }
+.status-bleed { background-color: rgba(139,0,0,0.7); color: #fff; text-shadow: 0 0 2px #000; }
+.status-stun { background-color: rgba(184,134,11,0.7); color: #000; font-weight: bold; }
+.status-shield { background-color: rgba(107,142,35,0.7); color: #fff; }
+
+/* Dynamic Image Tag */
+.portrait {
+    width: calc(100% * var(--sprite-scale, 1));
+    height: auto;
+    max-height: 25vh;
+    object-fit: contain;
+    object-position: bottom;
+    transition: all 0.2s;
+    filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.8));
+}
+
+/* The Dashboard */
+.dashboard {
+    height: 35vh;
+    max-height: 250px;
+    background: #050505;
+    border: 2px solid #333;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    box-sizing: border-box;
+    margin: 5px;
+}
+
+#command-deck {
+    border-right: 2px solid #333;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+}
+
+#log {
+    padding: 10px;
+    overflow-y: auto;
+    font-size: clamp(10px, 3vw, 12px);
+    color: #555;
+    display: flex;
+    flex-direction: column;
+}
+.log-turn { color: #aaa; margin-top: 5px; }
+.log-heal { color: #6B8E23; }
+.log-dmg { color: #8B0000; }
+.log-status { color: #B8860B; }
+
+button { background: #111; color: #ccc; border: 1px solid #444; padding: clamp(10px, 3vh, 15px); font-family: monospace; font-size: clamp(10px, 3vw, 13px); cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+button:hover:not(:disabled) { background: #222; border-color: #888; }
+button:active { background: #000; }
+button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
+.dash-msg { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 14px; color: #666; text-align: center; }
+</style>
 </head>
 <body>
 
 <div id="engine">
-    
+
+    <!-- TITLE SCREEN (Phase 13) -->
+    <div id="screen-title">
+        <div class="title-header">Wasteland<br>Protocol</div>
+        <div class="title-sub">ENGINE V13.0</div>
+        <div class="title-menu" id="title-menu-container">
+            <!-- Buttons injected via JS based on save state -->
+        </div>
+    </div>
+
     <!-- MAP SCREEN -->
     <div id="screen-map">
         <h2>Wasteland Sector</h2>
@@ -166,7 +234,7 @@
                 <div class="team" id="enemy-team"></div>
             </div>
         </div>
-        
+
         <div class="dashboard">
             <div id="command-deck"></div>
             <div id="log"></div>
@@ -176,456 +244,450 @@
 </div>
 
 <script>
-    // --- GLOBAL STATE ---
+// --- GLOBAL STATE ---
+
+const SAVE_KEY = 'wasteland_rpg_engine_v12';
+
+let scrap = 0;
+let currentTier = 1;
+
+// Base Roster (Deep copy template used for fresh starts)
+const ROSTER_TEMPLATE = [
+    { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 } },
+    { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 } },
+    { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 } }
+];
+
+let playerRoster = [];
+let activeEntities = [];
+let turnQueue = [];
+let activeIndex = -1;
+let combatActive = false;
+let pendingAction = null;
+
+// --- MENU / BOOT LOGIC (PHASE 13) ---
+function switchScreen(screenId) {
+    document.getElementById('screen-title').style.display = 'none';
+    document.getElementById('screen-map').style.display = 'none';
+    document.getElementById('screen-combat').style.display = 'none';
+    document.getElementById(screenId).style.display = 'flex'; 
+}
+
+function renderTitleScreen() {
+    switchScreen('screen-title');
+    const menuContainer = document.getElementById('title-menu-container');
+    menuContainer.innerHTML = '';
     
-    // Save State Setup
-    const SAVE_KEY = 'wasteland_rpg_engine_v12';
+    // Check for save data
+    const savedData = localStorage.getItem(SAVE_KEY);
     
-    let scrap = 0;
-    let currentTier = 1;
+    if (savedData) {
+        menuContainer.innerHTML += `<button class="title-btn btn-continue" onclick="continueGame()">Continue Expedition</button>`;
+    }
     
-    // Engine V12.0: Complex Damage Mechanics (Resistances) integrated
-    // resistances: { phys, bio, energy }. Values are FLAT reduction. Negative is WEAKNESS (amplification).
-    const playerRoster = [
-        { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 } },
-        { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 } },
-        { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 } }
-    ];
-    
-    let activeEntities = []; 
-    let turnQueue = [];
-    let activeIndex = -1;
-    let combatActive = false;
-    let pendingAction = null; 
+    menuContainer.innerHTML += `<button class="title-btn" onclick="startNewGame()">New Expedition</button>`;
+}
 
-    // --- SAVE/LOAD LOGIC ---
-    function saveGameState() {
-        const stateToSave = { scrap: scrap, tier: currentTier };
-        localStorage.setItem(SAVE_KEY, JSON.stringify(stateToSave));
-        log("Progress saved locally.", "log-heal");
-    }
+function startNewGame() {
+    localStorage.removeItem(SAVE_KEY); // Wipe old data
+    scrap = 0;
+    currentTier = 1;
+    // Deep clone template for fresh roster
+    playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
+    renderMap(); // Will skip load process since we wiped the key
+}
 
-    function loadGameState() {
-        const savedData = localStorage.getItem(SAVE_KEY);
-        if (savedData) {
-            const loadedState = JSON.parse(savedData);
-            scrap = loadedState.scrap;
-            currentTier = loadedState.tier;
-            log(`> Progress restored (Tier ${currentTier}).`, "log-heal");
-        } else {
-            log("> No save data found. Starting fresh.");
-        }
-    }
-
-    // --- UTIL LOGIC ---
-    function switchScreen(screenId) {
-        document.getElementById('screen-map').style.display = 'none';
-        document.getElementById('screen-combat').style.display = 'none';
-        document.getElementById(screenId).style.display = 'flex';
-    }
-
-    function renderMap() {
-        // TRIGGER LOAD ON INIT
-        if (!combatActive && activeIndex === -1) { loadGameState(); }
-        
-        switchScreen('screen-map');
-        document.getElementById('scrap-display').innerText = scrap;
-        document.getElementById('tier-display').innerText = currentTier;
-        
-        const mapContainer = document.getElementById('map-nodes');
-        
-        if (currentTier > 4) {
-            mapContainer.innerHTML = `<div class="map-tier"><h3 style="color:#8B0000">WARLORD DEFEATED.</h3><button onclick="resetData()">Return to Citadel</button></div>`;
-            return;
-        }
-        
-        let nodesHTML = currentTier === 4 
-            ? `<button class="node-btn" onclick="initiateCombat('BOSS')" style="border-color:#8B0000; color:#8B0000;">💀 Warlord Stronghold</button>`
-            : `<button class="node-btn" onclick="initiateCombat('SKIRMISH')">Mutant Skirmish</button>
-               <button class="node-btn" onclick="initiateCombat('AMBUSH')">Raider Ambush</button>`;
-        
-        mapContainer.innerHTML = `<div class="map-tier"><div class="map-tier-title">EXPEDITION ROUTE</div>${nodesHTML}</div>`;
-    }
-
-    function initiateCombat(nodeType) {
-        switchScreen('screen-combat');
-        combatActive = true;
-        document.getElementById('log').innerHTML = ''; 
-        
-        // Reset temporary effects/armor on players
-        playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; });
-        
-        let enemies = [];
-        const mult = 1 + ((currentTier - 1) * 0.4); 
-        
-        if (nodeType === 'BOSS') {
-            enemies = [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: 40, img: "enemy_boss.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 } }];
-        } else if (nodeType === 'AMBUSH') {
-            enemies = [
-                { id: 'e1', name: "Raider A", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 10, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }, // bio resist, phys weak
-                { id: 'e2', name: "Raider B", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 12, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }
-            ];
-        } else {
-            enemies = [
-                { id: 'e1', name: "Mutant", classType: "MUTANT", maxHp: Math.floor(70*mult), hp: Math.floor(70*mult), speed: 7, armor: 0, isPlayer: false, dmgBase: Math.floor(25*mult), img: "enemy_mutant.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } }, // bio immune (dot still applies), energy weak
-                { id: 'e2', name: "Drone", classType: "DRONE", maxHp: Math.floor(25*mult), hp: Math.floor(25*mult), speed: 18, armor: 5, isPlayer: false, dmgBase: Math.floor(10*mult), img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } } // phys plating, bio immune, energy very weak
-            ];
-        }
-        
-        activeEntities = [...playerRoster, ...enemies];
-        turnQueue = [...activeEntities].sort((a, b) => b.speed - a.speed);
-        activeIndex = 0; 
-        
-        log("> COMBAT INITIATED.", "log-turn");
-        processTurn();
-    }
-
-    const logEl = document.getElementById('log');
-    function log(msg, styleClass = "log-dmg") {
-        const entry = document.createElement('div');
-        entry.className = styleClass;
-        entry.innerText = msg;
-        logEl.appendChild(entry);
-        logEl.scrollTop = logEl.scrollHeight;
-    }
-
-    function renderQueue() {
-        const queueStr = turnQueue.map(e => {
-            let pref = e.stunnedTurns > 0 ? '!' : '';
-            return pref + e.name.substring(0,3).toUpperCase();
-        }).join(' > ');
-        document.getElementById('queue-display').innerText = `Q: ${queueStr}`;
-    }
-
-    function renderField() {
-        renderQueue();
-        const pTeam = document.getElementById('player-team');
-        const eTeam = document.getElementById('enemy-team');
-        pTeam.innerHTML = ''; eTeam.innerHTML = '';
-
-        activeEntities.forEach(ent => {
-            const isDead = ent.hp <= 0;
-            const isActive = (!isDead && turnQueue.length > 0 && turnQueue[activeIndex]?.id === ent.id) ? 'active' : '';
-            const deadClass = isDead ? 'dead' : '';
-            
-            let targetClass = '';
-            let clickHandler = '';
-            
-            if (pendingAction !== null && !isDead) {
-                if (pendingAction === 'CAUTERIZE' && ent.isPlayer) {
-                    targetClass = 'targetable-ally';
-                    clickHandler = `onclick="resolveAction('${ent.id}')"`;
-                } else if (pendingAction !== 'CAUTERIZE' && !ent.isPlayer) {
-                    targetClass = 'targetable-enemy';
-                    clickHandler = `onclick="resolveAction('${ent.id}')"`;
-                }
-            }
-            
-            // Effect Icons
-            let effectsHtml = '';
-            if (ent.bleedingTurns > 0) effectsHtml += `<span class="status-badge status-bleed">💧</span>`;
-            if (ent.stunnedTurns > 0) effectsHtml += `<span class="status-badge status-stun">💫</span>`;
-            if (ent.armorTurns > 0) effectsHtml += `<span class="status-badge status-shield">🛡️</span>`;
-
-            const html = `
-                <div class="entity ${isActive} ${deadClass} ${targetClass}" id="${ent.id}" ${clickHandler} style="--sprite-scale: ${ent.scale || 1};">
-                    <div style="width: 100%; position: relative; z-index: 10; transform: translateY(${ent.hpDrop || 0}px);">
-                        <div class="hp-text">${effectsHtml} ${ent.hp}/${ent.maxHp}</div>
-                        <div class="hp-container">
-                            <div class="hp-fill ${ent.isPlayer ? 'player-hp' : 'enemy-hp'}" style="width: ${(ent.hp / ent.maxHp) * 100}%"></div>
-                        </div>
-                    </div>
-                    <img class="portrait" src="${ent.img}" alt="${ent.name}">
-                </div>
-            `;
-            if (ent.isPlayer) pTeam.innerHTML += html;
-            else eTeam.innerHTML += html;
-        });
-
-        renderCommandDeck();
-    }
-
-    function renderCommandDeck() {
-        const deck = document.getElementById('command-deck');
-        deck.innerHTML = '';
-
-        if (!combatActive) return; 
-
-        if (pendingAction) {
-            deck.innerHTML = `<button style="color:#8B0000; border-color:#8B0000" onclick="cancelAction()">CANCEL ORDERS</button>`;
-            return;
-        }
-
-        let activeEntity = turnQueue[activeIndex];
-        if (!activeEntity.isPlayer) {
-            deck.innerHTML = `<div class="dash-msg">ENEMY TURN...</div>`;
-            return;
-        }
-
-        // Stunned Input Override
-        if (activeEntity.stunnedTurns > 0) {
-            deck.innerHTML = `<div class="dash-msg">STUNNED</div>`;
-            deck.innerHTML += `<button onclick="skipStunnedTurn()">Skip Turn</button>`;
-            return;
-        }
-
-        if (activeEntity.classType === 'BRUISER') {
-            deck.innerHTML += `<button onclick="queueAction('HEAVY_WRENCH')">Heavy Wrench</button>`;
-            deck.innerHTML += `<button onclick="executeSelfAction('IRON_GUARD')">Iron Guard</button>`;
-        } else if (activeEntity.classType === 'MEDIC') {
-            deck.innerHTML += `<button onclick="queueAction('RAD_SHOT')">Rad Shot</button>`;
-            deck.innerHTML += `<button onclick="queueAction('CAUTERIZE')">Cauterize</button>`;
-        } else if (activeEntity.classType === 'SCAVENGER') {
-            deck.innerHTML += `<button onclick="queueAction('PIPE_RIFLE')">Pipe Rifle</button>`;
-            deck.innerHTML += `<button onclick="queueAction('FLASHBANG')">Flashbang</button>`;
-        }
-    }
-
-    function processTurn() {
-        if (!combatActive) return;
-        pendingAction = null;
-        let activeEntity = turnQueue[activeIndex];
-
-        if (activeEntity.hp <= 0) {
-            nextTurn();
-            return;
-        }
-
-        renderField();
-
-        // 1. Buff/Effect Tick Phase (START of Turn)
-        applyTurnStartEffects(activeEntity);
-
-        if (!combatActive) return; 
-        if (!activeEntity.hp > 0) return checkWinState(); // Bleed killed them
-
-        // 2. Stun Check denial logic
-        if (activeEntity.stunnedTurns > 0) {
-            if (!activeEntity.isPlayer) {
-                // AI skips
-                log(`${activeEntity.name} is stunned and skips turn.`, "log-status");
-                activeEntity.stunnedTurns--;
-                setTimeout(nextTurn, 1000);
-                return;
-            } else {
-                // Player skip
-                return;
-            }
-        }
-
-        // Standard turn processing
-        if (!activeEntity.isPlayer) {
-            setTimeout(() => executeEnemyAi(activeEntity), 1000);
-        }
-    }
-
-    // Handles bleed dots and temporary buff decay
-    function applyTurnStartEffects(ent) {
-        let changed = false;
-
-        // Apply Bleed (DoT) damage
-        if (ent.bleedingTurns > 0) {
-            const bleedDmg = Math.floor(ent.maxHp * 0.08); // 8% dot
-            ent.hp = Math.max(0, ent.hp - bleedDmg);
-            log(`> ${ent.name} bleeds for ${bleedDmg} DMG (DoT).`, "log-dmg");
-            ent.bleedingTurns--;
-            changed = true;
-        }
-
-        // Tick down armor duration (Iron Guard persistence)
-        if (ent.armorTurns > 0) {
-            ent.armorTurns--;
-            if (ent.armorTurns === 0) {
-                log(`> ${ent.name}'s Iron Guard faded.`);
-                ent.armor = 0;
-            }
-            changed = true;
-        }
-
-        if (changed) renderField();
-    }
-
-    function skipStunnedTurn() {
-        let activeEntity = turnQueue[activeIndex];
-        log(`${activeEntity.name} recovers from stun.`, "log-status");
-        activeEntity.stunnedTurns--;
-        renderField();
-        setTimeout(nextTurn, 500);
-    }
-
-    function queueAction(actionType) {
-        pendingAction = actionType;
-        renderField();
-    }
-
-    function cancelAction() {
-        pendingAction = null;
-        renderField();
-    }
-
-    // --- PHASE 12: COMPLEX DAMAGE RESOLUTION ---
-    function resolveAction(targetId) {
-        let activeEntity = turnQueue[activeIndex];
-        let target = activeEntities.find(e => e.id === targetId);
-        
-        if (pendingAction === 'CAUTERIZE') {
-            let heal = 20 + Math.floor(Math.random() * 10);
-            target.hp = Math.min(target.maxHp, target.hp + heal);
-            log(`> ${activeEntity.name} heals ${target.name} for ${heal}.`, "log-heal");
-        } else {
-            // DMG logic V12.0
-            
-            // 1. Determine Damage Type
-            let atkType = 'phys'; // Default
-            if(pendingAction === 'RAD_SHOT') atkType = 'bio';
-            if(pendingAction === 'FLASHBANG') atkType = 'energy';
-
-            // 2. Base Damage Calculation
-            let dmg = activeEntity.dmgBase + Math.floor(Math.random() * 6);
-            if (pendingAction === 'FLASHBANG') dmg = Math.floor(dmg * 0.4); // Flashbang utility dmg reduction
-
-            // 3. Foundation Check: Resistances (Type vs Type)
-            let resistValue = target.resistances[atkType] || 0;
-            
-            // 4. Final Calculation (Base - Type Resist - Temp Armor)
-            let netDmg = Math.max(1, dmg - resistValue - target.armor);
-            
-            // Handle Immune/Absorb edge case
-            if (resistValue >= 100) netDmg = 0;
-
-            target.hp = Math.max(0, target.hp - netDmg);
-            
-            // Enhanced Logging
-            let logStyle = "log-dmg";
-            let typeAbbr = atkType.substring(0,3).toUpperCase();
-            let logMsg = `> ${activeEntity.name} hits ${target.name} for ${netDmg} ${typeAbbr} DMG`;
-            
-            if (netDmg === 0 && resistValue >= 100) logMsg += " (Immune).";
-            else if (resistValue > 5) logMsg += " (Resisted).";
-            else if (resistValue < 0) {
-                logMsg += " (Weakness!).";
-                logStyle = "log-dmg"; // intensifies visual if we had a style for it
-            }
-            log(logMsg, logStyle);
-
-            // Foundational Phase 11 check: Effects on HIT
-            applyAttackEffects(activeEntity, target, pendingAction, netDmg > 0);
-        }
-        
-        pendingAction = null;
-        checkWinState();
-    }
-
-    // Handles application chance based on ability type (integrated into V12 for complex checks)
-    function applyAttackEffects(attacker, target, ability, didHit) {
-        if (!didHit || target.hp <= 0) return; // Don't stun dead things or if damage was fully absorbed
-
-        if (ability === 'RAD_SHOT') {
-            // Apply Bleed (3 turn duration)
-            if (Math.random() < 0.6) { // 60% chance
-                target.bleedingTurns = 3;
-                log(`> ${target.name} begins bleeding!`, "log-dmg");
-                renderField();
-            }
-        } else if (ability === 'HEAVY_WRENCH' || ability === 'FLASHBANG') {
-            // Apply Stun (Turn Denial)
-            let stunChance = (ability === 'FLASHBANG') ? 0.35 : 0.2; 
-            
-            // Flashbang logic: Double stun chance against energy weakness
-            if (ability === 'FLASHBANG' && target.resistances.energy < 0) stunChance *= 2;
-
-            if (Math.random() < stunChance) {
-                target.stunnedTurns = 1;
-                log(`> ${target.name} is stunned!`, "log-status");
-                renderField();
-            }
-        }
-    }
-
-    function executeSelfAction(actionType) {
-        let activeEntity = turnQueue[activeIndex];
-        if (actionType === 'IRON_GUARD') {
-            activeEntity.armor += 20; // intensified armor value
-            activeEntity.armorTurns = 2; // Lasts 2 turn ticks
-            log(`> ${activeEntity.name} deployed IRON GUARD (lasts 2 turns).`, "log-heal");
-        }
-        checkWinState();
-    }
-
-    function executeEnemyAi(enemy) {
-        if (!combatActive) return;
-        
-        let validTargets = activeEntities.filter(e => e.isPlayer && e.hp > 0);
-        let target = validTargets.sort(() => 0.5 - Math.random())[0]; 
-        
-        if (target) {
-            // Enemy DMG V12.0
-            let atkType = enemy.dmgType || 'phys'; // standard roamer atk type
-
-            let dmg = enemy.dmgBase + Math.floor(Math.random() * 5);
-            let resistValue = target.resistances[atkType] || 0;
-            let netDmg = Math.max(1, dmg - resistValue - target.armor);
-            
-            target.hp = Math.max(0, target.hp - netDmg);
-            
-            let typeAbbr = atkType.substring(0,3).toUpperCase();
-            log(`> ${enemy.name} attacks ${target.name} for ${netDmg} ${typeAbbr} DMG!`, "log-dmg");
-            
-            // Phase 11: Enemy effect logic
-            if (enemy.classType === 'MUTANT' && Math.random() < 0.3) {
-                target.bleedingTurns = 2; // Mutant bite causes bleed
-                log(`> Mutant bite caused ${target.name} to bleed.`, "log-dmg");
-            } else if (enemy.classType === 'BOSS' && Math.random() < 0.25) {
-                target.stunnedTurns = 1; // Heavy Warlord hits stun
-                log(`> Warlord smash stunned ${target.name}.`, "log-status");
-            }
-        }
-        checkWinState();
-    }
-
-    function checkWinState() {
-        renderField();
-        
-        const playersAlive = activeEntities.some(e => e.isPlayer && e.hp > 0);
-        const enemiesAlive = activeEntities.some(e => !e.isPlayer && e.hp > 0);
-
-        if (!playersAlive) {
-            log("> SQUAD WIPED.", "log-dmg");
-            combatActive = false;
-            document.getElementById('command-deck').innerHTML = `<button onclick="resetData()">RESTART</button>`;
-        } else if (!enemiesAlive) {
-            log("> HOSTILES ELIMINATED.", "log-heal");
-            combatActive = false;
-            
-            let scrapGained = Math.floor(Math.random() * 30) + (currentTier * 20);
-            document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${scrapGained})">LOOT ${scrapGained}</button>`;
-        } else {
-            setTimeout(nextTurn, 800);
-        }
-    }
-
-    function collectLoot(amount) {
-        scrap += amount;
-        currentTier++;
-        playerRoster.forEach(p => p.armor = 0);
-        
-        saveGameState(); 
-        renderMap();
-    }
-
-    function resetData() {
-        localStorage.removeItem(SAVE_KEY);
-        location.reload();
-    }
-
-    function nextTurn() {
-        activeIndex++;
-        if (activeIndex >= turnQueue.length) activeIndex = 0; 
-        processTurn();
-    }
-
+function continueGame() {
+    // Map renderer inherently calls loadGameState if activeIndex === -1
     renderMap();
+}
+
+// --- SAVE/LOAD LOGIC ---
+function saveGameState() {
+    const stateToSave = { scrap: scrap, tier: currentTier };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(stateToSave));
+}
+
+function loadGameState() {
+    const savedData = localStorage.getItem(SAVE_KEY);
+    if (savedData) {
+        const loadedState = JSON.parse(savedData);
+        scrap = loadedState.scrap;
+        currentTier = loadedState.tier;
+        playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
+    }
+}
+
+// --- CORE LOGIC ---
+
+function renderMap() {
+    if (!combatActive && activeIndex === -1) { 
+        loadGameState(); 
+    }
+
+    switchScreen('screen-map');
+    document.getElementById('scrap-display').innerText = scrap;
+    document.getElementById('tier-display').innerText = currentTier;
+
+    const mapContainer = document.getElementById('map-nodes');
+
+    if (currentTier > 4) {
+        mapContainer.innerHTML = `<div class="map-tier"><h3 style="color:#8B0000">WARLORD DEFEATED.</h3><button class="node-btn" onclick="renderTitleScreen()">Return to Menu</button></div>`;
+        return;
+    }
+
+    let nodesHTML = currentTier === 4
+        ? `<button class="node-btn" onclick="initiateCombat('BOSS')" style="border-color:#8B0000; color:#8B0000;">💀 Warlord Stronghold</button>`
+        : `<button class="node-btn" onclick="initiateCombat('SKIRMISH')">Mutant Skirmish</button> <button class="node-btn" onclick="initiateCombat('AMBUSH')">Raider Ambush</button>`;
+
+    mapContainer.innerHTML = `<div class="map-tier"><div class="map-tier-title">EXPEDITION ROUTE</div>${nodesHTML}</div>`;
+}
+
+function initiateCombat(nodeType) {
+    switchScreen('screen-combat');
+    combatActive = true;
+    document.getElementById('log').innerHTML = '';
+
+    // Reset temporary effects/armor on players
+    playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; });
+
+    let enemies = [];
+    const mult = 1 + ((currentTier - 1) * 0.4);
+
+    if (nodeType === 'BOSS') {
+        enemies = [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: 40, img: "enemy_boss.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 } }];
+    } else if (nodeType === 'AMBUSH') {
+        enemies = [
+            { id: 'e1', name: "Raider A", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 10, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }, 
+            { id: 'e2', name: "Raider B", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 12, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }
+        ];
+    } else {
+        enemies = [
+            { id: 'e1', name: "Mutant", classType: "MUTANT", maxHp: Math.floor(70*mult), hp: Math.floor(70*mult), speed: 7, armor: 0, isPlayer: false, dmgBase: Math.floor(25*mult), img: "enemy_mutant.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } }, 
+            { id: 'e2', name: "Drone", classType: "DRONE", maxHp: Math.floor(25*mult), hp: Math.floor(25*mult), speed: 18, armor: 5, isPlayer: false, dmgBase: Math.floor(10*mult), img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } } 
+        ];
+    }
+
+    activeEntities = [...playerRoster, ...enemies];
+    turnQueue = [...activeEntities].sort((a, b) => b.speed - a.speed);
+    activeIndex = 0;
+
+    log("> COMBAT INITIATED.", "log-turn");
+    processTurn();
+}
+
+const logEl = document.getElementById('log');
+function log(msg, styleClass = "log-dmg") {
+    const entry = document.createElement('div');
+    entry.className = styleClass;
+    entry.innerText = msg;
+    logEl.appendChild(entry);
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function renderQueue() {
+    const queueStr = turnQueue.map(e => {
+        let pref = e.stunnedTurns > 0 ? '!' : '';
+        return pref + e.name.substring(0,3).toUpperCase();
+    }).join(' > ');
+    document.getElementById('queue-display').innerText = `Q: ${queueStr}`;
+}
+
+function renderField() {
+    renderQueue();
+    const pTeam = document.getElementById('player-team');
+    const eTeam = document.getElementById('enemy-team');
+    pTeam.innerHTML = ''; eTeam.innerHTML = '';
+
+    activeEntities.forEach(ent => {
+        const isDead = ent.hp <= 0;
+        const isActive = (!isDead && turnQueue.length > 0 && turnQueue[activeIndex]?.id === ent.id) ? 'active' : '';
+        const deadClass = isDead ? 'dead' : '';
+
+        let targetClass = '';
+        let clickHandler = '';
+
+        if (pendingAction !== null && !isDead) {
+            if (pendingAction === 'CAUTERIZE' && ent.isPlayer) {
+                targetClass = 'targetable-ally';
+                clickHandler = `onclick="resolveAction('${ent.id}')"`;
+            } else if (pendingAction !== 'CAUTERIZE' && !ent.isPlayer) {
+                targetClass = 'targetable-enemy';
+                clickHandler = `onclick="resolveAction('${ent.id}')"`;
+            }
+        }
+
+        let effectsHtml = '';
+        if (ent.bleedingTurns > 0) effectsHtml += `<span class="status-badge status-bleed">💧</span>`;
+        if (ent.stunnedTurns > 0) effectsHtml += `<span class="status-badge status-stun">💫</span>`;
+        if (ent.armorTurns > 0) effectsHtml += `<span class="status-badge status-shield">🛡️</span>`;
+
+        const html = `
+            <div class="entity ${isActive} ${deadClass} ${targetClass}" id="${ent.id}" ${clickHandler} style="--sprite-scale: ${ent.scale || 1};">
+                <div style="width: 100%; position: relative; z-index: 10; transform: translateY(${ent.hpDrop || 0}px);">
+                    <div class="hp-text">${effectsHtml} ${ent.hp}/${ent.maxHp}</div>
+                    <div class="hp-container">
+                        <div class="hp-fill ${ent.isPlayer ? 'player-hp' : 'enemy-hp'}" style="width: ${(ent.hp / ent.maxHp) * 100}%"></div>
+                    </div>
+                </div>
+                <img class="portrait" src="${ent.img}" alt="${ent.name}">
+            </div>
+        `;
+        if (ent.isPlayer) pTeam.innerHTML += html;
+        else eTeam.innerHTML += html;
+    });
+
+    renderCommandDeck();
+}
+
+function renderCommandDeck() {
+    const deck = document.getElementById('command-deck');
+    deck.innerHTML = '';
+
+    if (!combatActive) return;
+
+    if (pendingAction) {
+        deck.innerHTML = `<button style="color:#8B0000; border-color:#8B0000" onclick="cancelAction()">CANCEL ORDERS</button>`;
+        return;
+    }
+
+    let activeEntity = turnQueue[activeIndex];
+    if (!activeEntity.isPlayer) {
+        deck.innerHTML = `<div class="dash-msg">ENEMY TURN...</div>`;
+        return;
+    }
+
+    if (activeEntity.stunnedTurns > 0) {
+        deck.innerHTML = `<div class="dash-msg">STUNNED</div>`;
+        deck.innerHTML += `<button onclick="skipStunnedTurn()">Skip Turn</button>`;
+        return;
+    }
+
+    if (activeEntity.classType === 'BRUISER') {
+        deck.innerHTML += `<button onclick="queueAction('HEAVY_WRENCH')">Heavy Wrench</button>`;
+        deck.innerHTML += `<button onclick="executeSelfAction('IRON_GUARD')">Iron Guard</button>`;
+    } else if (activeEntity.classType === 'MEDIC') {
+        deck.innerHTML += `<button onclick="queueAction('RAD_SHOT')">Rad Shot</button>`;
+        deck.innerHTML += `<button onclick="queueAction('CAUTERIZE')">Cauterize</button>`;
+    } else if (activeEntity.classType === 'SCAVENGER') {
+        deck.innerHTML += `<button onclick="queueAction('PIPE_RIFLE')">Pipe Rifle</button>`;
+        deck.innerHTML += `<button onclick="queueAction('FLASHBANG')">Flashbang</button>`;
+    }
+}
+
+function processTurn() {
+    if (!combatActive) return;
+    pendingAction = null;
+    let activeEntity = turnQueue[activeIndex];
+
+    if (activeEntity.hp <= 0) {
+        nextTurn();
+        return;
+    }
+
+    renderField();
+    applyTurnStartEffects(activeEntity);
+
+    if (!combatActive) return;
+    if (!activeEntity.hp > 0) return checkWinState(); 
+
+    if (activeEntity.stunnedTurns > 0) {
+        if (!activeEntity.isPlayer) {
+            log(`${activeEntity.name} is stunned and skips turn.`, "log-status");
+            activeEntity.stunnedTurns--;
+            setTimeout(nextTurn, 1000);
+            return;
+        } else {
+            return; 
+        }
+    }
+
+    if (!activeEntity.isPlayer) {
+        setTimeout(() => executeEnemyAi(activeEntity), 1000);
+    }
+}
+
+function applyTurnStartEffects(ent) {
+    let changed = false;
+
+    if (ent.bleedingTurns > 0) {
+        const bleedDmg = Math.floor(ent.maxHp * 0.08); 
+        ent.hp = Math.max(0, ent.hp - bleedDmg);
+        log(`> ${ent.name} bleeds for ${bleedDmg} DMG (DoT).`, "log-dmg");
+        ent.bleedingTurns--;
+        changed = true;
+    }
+
+    if (ent.armorTurns > 0) {
+        ent.armorTurns--;
+        if (ent.armorTurns === 0) {
+            log(`> ${ent.name}'s Iron Guard faded.`);
+            ent.armor = 0;
+        }
+        changed = true;
+    }
+
+    if (changed) renderField();
+}
+
+function skipStunnedTurn() {
+    let activeEntity = turnQueue[activeIndex];
+    log(`${activeEntity.name} recovers from stun.`, "log-status");
+    activeEntity.stunnedTurns--;
+    renderField();
+    setTimeout(nextTurn, 500);
+}
+
+function queueAction(actionType) {
+    pendingAction = actionType;
+    renderField();
+}
+
+function cancelAction() {
+    pendingAction = null;
+    renderField();
+}
+
+function resolveAction(targetId) {
+    let activeEntity = turnQueue[activeIndex];
+    let target = activeEntities.find(e => e.id === targetId);
+
+    if (pendingAction === 'CAUTERIZE') {
+        let heal = 20 + Math.floor(Math.random() * 10);
+        target.hp = Math.min(target.maxHp, target.hp + heal);
+        log(`> ${activeEntity.name} heals ${target.name} for ${heal}.`, "log-heal");
+    } else {
+        
+        let atkType = 'phys'; 
+        if(pendingAction === 'RAD_SHOT') atkType = 'bio';
+        if(pendingAction === 'FLASHBANG') atkType = 'energy';
+
+        let dmg = activeEntity.dmgBase + Math.floor(Math.random() * 6);
+        if (pendingAction === 'FLASHBANG') dmg = Math.floor(dmg * 0.4); 
+
+        let resistValue = target.resistances[atkType] || 0;
+        let netDmg = Math.max(1, dmg - resistValue - target.armor);
+
+        if (resistValue >= 100) netDmg = 0;
+
+        target.hp = Math.max(0, target.hp - netDmg);
+
+        let logStyle = "log-dmg";
+        let typeAbbr = atkType.substring(0,3).toUpperCase();
+        let logMsg = `> ${activeEntity.name} hits ${target.name} for ${netDmg} ${typeAbbr} DMG`;
+
+        if (netDmg === 0 && resistValue >= 100) logMsg += " (Immune).";
+        else if (resistValue > 5) logMsg += " (Resisted).";
+        else if (resistValue < 0) {
+            logMsg += " (Weakness!).";
+            logStyle = "log-dmg"; 
+        }
+        log(logMsg, logStyle);
+
+        applyAttackEffects(activeEntity, target, pendingAction, netDmg > 0);
+    }
+
+    pendingAction = null;
+    checkWinState();
+}
+
+function applyAttackEffects(attacker, target, ability, didHit) {
+    if (!didHit || target.hp <= 0) return; 
+
+    if (ability === 'RAD_SHOT') {
+        if (Math.random() < 0.6) { 
+            target.bleedingTurns = 3;
+            log(`> ${target.name} begins bleeding!`, "log-dmg");
+            renderField();
+        }
+    } else if (ability === 'HEAVY_WRENCH' || ability === 'FLASHBANG') {
+        let stunChance = (ability === 'FLASHBANG') ? 0.35 : 0.2;
+        if (ability === 'FLASHBANG' && target.resistances.energy < 0) stunChance *= 2;
+        if (Math.random() < stunChance) {
+            target.stunnedTurns = 1;
+            log(`> ${target.name} is stunned!`, "log-status");
+            renderField();
+        }
+    }
+}
+
+function executeSelfAction(actionType) {
+    let activeEntity = turnQueue[activeIndex];
+    if (actionType === 'IRON_GUARD') {
+        activeEntity.armor += 20; 
+        activeEntity.armorTurns = 2; 
+        log(`> ${activeEntity.name} deployed IRON GUARD (lasts 2 turns).`, "log-heal");
+    }
+    checkWinState();
+}
+
+function executeEnemyAi(enemy) {
+    if (!combatActive) return;
+
+    let validTargets = activeEntities.filter(e => e.isPlayer && e.hp > 0);
+    let target = validTargets.sort(() => 0.5 - Math.random())[0];
+
+    if (target) {
+        let atkType = enemy.dmgType || 'phys'; 
+        let dmg = enemy.dmgBase + Math.floor(Math.random() * 5);
+        let resistValue = target.resistances[atkType] || 0;
+        let netDmg = Math.max(1, dmg - resistValue - target.armor);
+
+        target.hp = Math.max(0, target.hp - netDmg);
+
+        let typeAbbr = atkType.substring(0,3).toUpperCase();
+        log(`> ${enemy.name} attacks ${target.name} for ${netDmg} ${typeAbbr} DMG!`, "log-dmg");
+
+        if (enemy.classType === 'MUTANT' && Math.random() < 0.3) {
+            target.bleedingTurns = 2; 
+            log(`> Mutant bite caused ${target.name} to bleed.`, "log-dmg");
+        } else if (enemy.classType === 'BOSS' && Math.random() < 0.25) {
+            target.stunnedTurns = 1; 
+            log(`> Warlord smash stunned ${target.name}.`, "log-status");
+        }
+    }
+    checkWinState();
+}
+
+function checkWinState() {
+    renderField();
+
+    const playersAlive = activeEntities.some(e => e.isPlayer && e.hp > 0);
+    const enemiesAlive = activeEntities.some(e => !e.isPlayer && e.hp > 0);
+
+    if (!playersAlive) {
+        log("> SQUAD WIPED.", "log-dmg");
+        combatActive = false;
+        document.getElementById('command-deck').innerHTML = `<button onclick="renderTitleScreen()">MAIN MENU</button>`;
+    } else if (!enemiesAlive) {
+        log("> HOSTILES ELIMINATED.", "log-heal");
+        combatActive = false;
+
+        let scrapGained = Math.floor(Math.random() * 30) + (currentTier * 20);
+        document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${scrapGained})">LOOT ${scrapGained}</button>`;
+    } else {
+        setTimeout(nextTurn, 800);
+    }
+}
+
+function collectLoot(amount) {
+    scrap += amount;
+    currentTier++;
+    playerRoster.forEach(p => p.armor = 0);
+    saveGameState();
+    renderMap();
+}
+
+function nextTurn() {
+    activeIndex++;
+    if (activeIndex >= turnQueue.length) activeIndex = 0;
+    processTurn();
+}
+
+// --- INITIALIZATION ---
+renderTitleScreen();
 
 </script>
 </body>
 </html>
+```
