@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wasteland RPG - Engine V8</title>
+    <title>Wasteland RPG - Engine V9</title>
     <style>
-        body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; }
+        body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
         #engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
         
-        /* Map Screen Elements (Unchanged) */
+        /* Map Screen Elements */
         #screen-map { display: flex; flex-direction: column; gap: 15px; padding: 20px; }
         .map-header { display: flex; justify-content: space-between; color: #B8860B; font-weight: bold; font-size: 18px; }
         .map-tier { border: 1px solid #222; padding: 15px; text-align: center; background: #111; }
@@ -16,31 +16,42 @@
         .node-btn { background: #1a1a1a; color: #888; border: 1px solid #444; padding: 15px; margin: 5px; cursor: pointer; font-family: monospace; font-size: 14px; text-transform: uppercase; transition: 0.2s; }
         .node-btn:hover { background: #8B0000; color: #fff; border-color: #ff0000; }
         
-        /* Combat Screen - The Darkest Aesthetic */
+        /* Combat Screen */
         #screen-combat { display: none; flex-direction: column; height: 100%; }
         
-        /* The Sky & Queue */
-        .sky-layer { background: linear-gradient(to bottom, #2b0a0a 0%, #000000 80%); flex-grow: 1; display: flex; flex-direction: column; position: relative; }
-        #queue-display { text-align: center; color: #666; padding: 15px; font-size: 12px; letter-spacing: 2px; }
+        /* The Environment - Now accepts an image with a dark gradient overlay */
+        .sky-layer { 
+            /* Replace bg_combat.png with your actual background file name */
+            background-image: linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.9) 100%), url('bg_combat.png'); 
+            background-size: cover;
+            background-position: center bottom;
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative; 
+        }
         
-        /* The Floor */
+        #queue-display { text-align: center; color: #888; padding: 10px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.5); }
+        
+        /* The Floor - Fluid Spacing */
         .battlefield { 
             display: flex; 
             justify-content: center; 
-            gap: 20px; /* Space between teams */
+            gap: 2vw; /* Dynamic gap between teams */
             flex-grow: 1;
             align-items: flex-end; 
-            padding-bottom: 20px;
+            padding: 0 5px 15px 5px;
+            box-sizing: border-box;
             border-bottom: 2px dashed #222; 
         }
         
-        .team { display: flex; gap: 5px; align-items: flex-end; }
+        .team { display: flex; gap: 1vw; align-items: flex-end; }
         #player-team { flex-direction: row-reverse; }
         #enemy-team { flex-direction: row; }
         
-        /* The Sprites (No Boxes) */
+        /* Fluid Sprites - Scales to screen width/height */
         .entity { 
-            width: 90px; 
+            width: clamp(45px, 18vw, 100px); 
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -49,22 +60,22 @@
             transition: transform 0.2s; 
         }
         
-        /* Targeting Highlights via CSS Filters instead of borders */
-        .entity.active .portrait { filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4)); transform: translateY(-10px); }
-        .entity.dead { opacity: 0.2; filter: grayscale(100%); }
+        /* Targeting Highlights */
+        .entity.active .portrait { filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.6)); transform: translateY(-8px); }
+        .entity.dead { opacity: 0.2; filter: grayscale(100%); transform: scale(0.9); }
         .entity.targetable-enemy .portrait { filter: drop-shadow(0 0 10px #ff0000); cursor: pointer; }
         .entity.targetable-ally .portrait { filter: drop-shadow(0 0 10px #6B8E23); cursor: pointer; }
         .entity.targetable-enemy:active .portrait { filter: drop-shadow(0 0 20px #ff0000) brightness(1.5); }
 
         /* Floating HP Elements */
-        .hp-text { font-size: 10px; font-weight: bold; margin-bottom: 4px; color: #aaa; text-align: center; }
-        .hp-container { background: #222; height: 6px; width: 80%; border: 1px solid #000; margin-bottom: 10px; }
+        .hp-text { font-size: clamp(8px, 2.5vw, 10px); font-weight: bold; margin-bottom: 4px; color: #aaa; text-align: center; white-space: nowrap; }
+        .hp-container { background: #222; height: 5px; width: 85%; border: 1px solid #000; margin-bottom: 8px; }
         .hp-fill { height: 100%; transition: width 0.3s ease; }
         .player-hp { background-color: #8B0000; }
         .enemy-hp { background-color: #8B0000; }
 
         .portrait { 
-            height: 140px; 
+            height: clamp(70px, 15vh, 140px); 
             width: 100%; 
             background-color: transparent; 
             background-size: contain; 
@@ -73,30 +84,31 @@
             transition: all 0.2s;
         }
         
-        /* The Dashboard (Split Pane) */
+        /* The Dashboard */
         .dashboard { 
-            height: 220px; 
+            height: 35vh; 
+            max-height: 250px;
             background: #050505; 
             border: 2px solid #333; 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
             box-sizing: border-box;
-            margin: 10px;
+            margin: 5px;
         }
         
         #command-deck { 
             border-right: 2px solid #333; 
-            padding: 15px; 
+            padding: 10px; 
             display: flex; 
             flex-direction: column; 
             justify-content: center; 
-            gap: 10px;
+            gap: 8px;
         }
         
         #log { 
-            padding: 15px; 
+            padding: 10px; 
             overflow-y: auto; 
-            font-size: 12px; 
+            font-size: clamp(10px, 3vw, 12px); 
             color: #555; 
             display: flex;
             flex-direction: column;
@@ -105,14 +117,12 @@
         .log-turn { color: #aaa; margin-top: 5px; }
         .log-heal { color: #6B8E23; }
         .log-dmg { color: #8B0000; }
-        .log-warn { color: #B8860B; }
         
-        button { background: #111; color: #ccc; border: 1px solid #444; padding: 15px; font-family: monospace; font-size: 13px; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+        button { background: #111; color: #ccc; border: 1px solid #444; padding: clamp(10px, 3vh, 15px); font-family: monospace; font-size: clamp(10px, 3vw, 13px); cursor: pointer; text-transform: uppercase; transition: 0.2s; }
         button:hover:not(:disabled) { background: #222; border-color: #888; }
         button:active { background: #000; }
         button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
         
-        /* Specialized Dashboard states */
         .dash-msg { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 14px; color: #666; text-align: center; }
     </style>
 </head>
@@ -168,9 +178,7 @@
     function switchScreen(screenId) {
         document.getElementById('screen-map').style.display = 'none';
         document.getElementById('screen-combat').style.display = 'none';
-        
-        const target = document.getElementById(screenId);
-        target.style.display = 'flex';
+        document.getElementById(screenId).style.display = 'flex';
     }
 
     function renderMap() {
@@ -261,7 +269,6 @@
                 }
             }
             
-            // Reconstructed HTML: Float HP above portrait, remove box elements
             const html = `
                 <div class="entity ${isActive} ${deadClass} ${targetClass}" id="${ent.id}" ${clickHandler}>
                     <div class="hp-text">${ent.hp}/${ent.maxHp}</div>
