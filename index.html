@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V19.0 (Roguelite Loop)</title>
+<title>Wasteland RPG - Engine V19.1 (Loop Patch)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -107,7 +107,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V19.0</div>
+        <div class="title-sub">ENGINE V19.1</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -146,12 +146,11 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
 <script>
 // --- GLOBAL STATE ---
-const SAVE_KEY = 'wasteland_rpg_engine_v19'; // Increment to force clean array maps
+const SAVE_KEY = 'wasteland_rpg_engine_v19'; 
 
 let scrap = 0;
 let currentTier = 1;
 
-// V18 Map Structure
 const SECTOR_LAYOUT = [
     ['BOSS'], // T10
     ['MECH', 'RAIDERS'], // T9
@@ -232,7 +231,6 @@ function renderMap() {
 
     let mapHTML = `<div class="map-track">`;
 
-    // Loop through SECTOR_LAYOUT top-to-bottom
     for (let i = 0; i < TOTAL_TIERS; i++) {
         let t = TOTAL_TIERS - i; 
         let rowData = SECTOR_LAYOUT[i];
@@ -366,9 +364,8 @@ function initiateCombat(nodeType) {
 
     playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; });
 
-    // Failsafe (Should technically be impossible to hit now due to Wipe Reset logic)
+    // Failsafe 
     if (!playerRoster.some(p => p.hp > 0)) {
-        alert("CRITICAL ERROR: No living units. Forcing reset.");
         handleSquadWipe(); return;
     }
 
@@ -479,6 +476,7 @@ function processTurn() {
     if (!activeEntity.isPlayer) setTimeout(() => executeEnemyAi(activeEntity), 1000);
 }
 
+// V19.1 PATCH: Removed redundant checkWinState() that caused loop hijacking
 function applyTurnStartEffects(ent) {
     let changed = false;
     if (ent.isPlayer && ent.cooldowns) { for (let skill in ent.cooldowns) { if (ent.cooldowns[skill] > 0) { ent.cooldowns[skill]--; changed = true; } } }
@@ -490,7 +488,7 @@ function applyTurnStartEffects(ent) {
     }
 
     if (ent.armorTurns > 0) { ent.armorTurns--; if (ent.armorTurns === 0) { log(`> ${ent.name}'s Iron Guard faded.`); ent.armor = 0; } changed = true; }
-    if (changed) { renderField(); checkWinState(); }
+    if (changed) { renderField(); }
 }
 
 function skipStunnedTurn() {
@@ -558,10 +556,9 @@ function executeEnemyAi(enemy) {
     checkWinState();
 }
 
-// --- V19 WIPING LOGIC ---
+// --- V19 LOGIC ---
 function handleSquadWipe() {
     currentTier = 1;
-    // Wipe clears combat effects, resets CDs, and grants a free full-heal for the next attempt.
     playerRoster.forEach(char => {
         char.hp = char.maxHp;
         char.stunnedTurns = 0;
