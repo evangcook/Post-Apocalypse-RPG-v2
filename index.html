@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wasteland RPG - Engine V9.1</title>
+    <title>Wasteland RPG - Engine V9.2</title>
     <style>
         body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
         #engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -36,7 +36,7 @@
         .battlefield { 
             display: flex; 
             justify-content: center; 
-            gap: 2vw; /* Tightened No-Mans-Land */
+            gap: 2vw; 
             flex-grow: 1;
             align-items: flex-end; 
             padding: 0 5px;
@@ -48,7 +48,7 @@
         #player-team { flex-direction: row-reverse; }
         #enemy-team { flex-direction: row; }
         
-        /* Restored Large Size + Shoulder-to-Shoulder Overlap */
+        /* Overlapping Entity Containers */
         .entity { 
             width: clamp(60px, 20vw, 130px); 
             display: flex;
@@ -58,19 +58,19 @@
             position: relative; 
             transition: transform 0.2s; 
             gap: 2px; 
-            margin: 0 -1.5vw; /* Forces characters to overlap slightly so they fit on narrow screens */
+            margin: 0 -1.5vw; 
             z-index: 1;
         }
         
-        /* Frontline characters sit in front of backline characters */
+        /* Depth Sorting for Frontlines */
         .entity:nth-child(1) { z-index: 3; }
         .entity:nth-child(2) { z-index: 2; }
         .entity:nth-child(3) { z-index: 1; }
         
-        /* Targeting Highlights - Corrected Syntax */
+        /* Targeting Highlights & Scale Retention */
         .entity.active .portrait { 
             filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6)); 
-            transform: translateY(-8px); 
+            transform: scale(var(--sprite-scale, 1)) translateY(-8px); 
         }
         .entity.dead { opacity: 0.3; filter: grayscale(100%); transform: scale(0.9); }
         .entity.targetable-enemy .portrait { filter: drop-shadow(0 0 12px #ff0000); cursor: pointer; }
@@ -84,7 +84,7 @@
         .player-hp { background-color: #8B0000; }
         .enemy-hp { background-color: #8B0000; }
 
-        /* Dynamic Image Tag (Shrink-wraps to the sprite) */
+        /* Dynamic Image Tag with Variable Scaling */
         .portrait { 
             width: 100%; 
             height: auto; 
@@ -92,7 +92,9 @@
             object-fit: contain; 
             object-position: bottom; 
             transition: all 0.2s;
-            filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.8)); /* Adds a shadow directly to the sprite */
+            filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.8));
+            transform: scale(var(--sprite-scale, 1));
+            transform-origin: bottom center;
         }
         
         /* The Dashboard */
@@ -175,9 +177,9 @@
     let currentTier = 1;
     
     const playerRoster = [
-        { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png" },
-        { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png" },
-        { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png" }
+        { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.5 },
+        { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 0.85 },
+        { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.0 }
     ];
     
     let activeEntities = []; 
@@ -221,16 +223,16 @@
         const mult = 1 + ((currentTier - 1) * 0.4); 
         
         if (nodeType === 'BOSS') {
-            enemies = [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: 40, img: "enemy_boss.png" }];
+            enemies = [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: 40, img: "enemy_boss.png", scale: 1.8 }];
         } else if (nodeType === 'AMBUSH') {
             enemies = [
-                { id: 'e1', name: "Raider", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 10, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png" },
-                { id: 'e2', name: "Raider", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 12, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png" }
+                { id: 'e1', name: "Raider", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 10, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0 },
+                { id: 'e2', name: "Raider", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 12, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0 }
             ];
         } else {
             enemies = [
-                { id: 'e1', name: "Mutant", classType: "MUTANT", maxHp: Math.floor(70*mult), hp: Math.floor(70*mult), speed: 7, armor: 0, isPlayer: false, dmgBase: Math.floor(25*mult), img: "enemy_mutant.png" },
-                { id: 'e2', name: "Drone", classType: "DRONE", maxHp: Math.floor(25*mult), hp: Math.floor(25*mult), speed: 18, armor: 5, isPlayer: false, dmgBase: Math.floor(10*mult), img: "enemy_drone.png" }
+                { id: 'e1', name: "Mutant", classType: "MUTANT", maxHp: Math.floor(70*mult), hp: Math.floor(70*mult), speed: 7, armor: 0, isPlayer: false, dmgBase: Math.floor(25*mult), img: "enemy_mutant.png", scale: 1.1 },
+                { id: 'e2', name: "Drone", classType: "DRONE", maxHp: Math.floor(25*mult), hp: Math.floor(25*mult), speed: 18, armor: 5, isPlayer: false, dmgBase: Math.floor(10*mult), img: "enemy_drone.png", scale: 0.7 }
             ];
         }
         
@@ -281,7 +283,7 @@
             }
             
             const html = `
-                <div class="entity ${isActive} ${deadClass} ${targetClass}" id="${ent.id}" ${clickHandler}>
+                <div class="entity ${isActive} ${deadClass} ${targetClass}" id="${ent.id}" ${clickHandler} style="--sprite-scale: ${ent.scale || 1};">
                     <div class="hp-text">${ent.hp}/${ent.maxHp}</div>
                     <div class="hp-container">
                         <div class="hp-fill ${ent.isPlayer ? 'player-hp' : 'enemy-hp'}" style="width: ${(ent.hp / ent.maxHp) * 100}%"></div>
