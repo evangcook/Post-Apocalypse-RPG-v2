@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V17.0 (Tactical Map)</title>
+<title>Wasteland RPG - Engine V18.0 (Expanded Sector & Hostiles)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -18,7 +18,7 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .title-btn:active { transform: translateY(2px); box-shadow: none; }
 .btn-continue { border-color: #B8860B; color: #B8860B; }
 
-/* --- MAP SCREEN (V17 OVERHAUL) --- */
+/* --- MAP SCREEN --- */
 #screen-map { display: none; flex-direction: column; padding: 20px; height: 100%; box-sizing: border-box;}
 .map-header { display: flex; justify-content: space-between; color: #B8860B; font-weight: bold; font-size: 18px; margin-bottom: 15px; flex-shrink: 0;}
 .outpost-btn { background: #0a110a; border: 1px solid #6B8E23; color: #6B8E23; font-weight: bold; padding: 15px; margin-bottom: 15px; font-family: monospace; font-size: 14px; cursor: pointer; text-align: center; border-radius: 4px; transition: 0.2s; flex-shrink: 0;}
@@ -26,15 +26,14 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 
 .map-viewport { flex-grow: 1; border: 1px solid #222; background: linear-gradient(rgba(15,15,15,0.9), rgba(5,5,5,0.9)), repeating-linear-gradient(0deg, transparent, transparent 19px, #1a1a1a 19px, #1a1a1a 20px), repeating-linear-gradient(90deg, transparent, transparent 19px, #1a1a1a 19px, #1a1a1a 20px); overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 30px 0; position: relative; }
 .map-track { display: flex; flex-direction: column; align-items: center; width: 100%; }
-.map-row { display: flex; gap: 40px; justify-content: center; width: 100%; position: relative; z-index: 2; }
-.map-connector { width: 4px; height: 40px; background: #333; z-index: 1; transition: background 0.3s; }
+.map-row { display: flex; gap: 20px; justify-content: center; width: 100%; position: relative; z-index: 2; flex-wrap: wrap;}
+.map-connector { width: 4px; height: 30px; background: #333; z-index: 1; transition: background 0.3s; }
 .connector-cleared { background: #6B8E23; box-shadow: 0 0 5px #6B8E23; }
 
 .map-node { width: 75px; height: 75px; border-radius: 50%; background: #111; border: 2px solid #444; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s; font-family: monospace; color: #888; padding: 0; position: relative; }
-.node-lbl { font-size: 10px; margin-top: 4px; letter-spacing: 1px; font-weight: bold; }
-.node-icon { font-size: 24px; }
+.node-lbl { font-size: 9px; margin-top: 4px; letter-spacing: 1px; font-weight: bold; }
+.node-icon { font-size: 22px; }
 
-/* Map Node States */
 .node-locked { opacity: 0.3; cursor: not-allowed; }
 .node-cleared { border-color: #6B8E23; color: #555; background: #0a110a; }
 .node-cleared .node-icon { filter: grayscale(100%); opacity: 0.5; }
@@ -43,7 +42,7 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 @keyframes pulseActive { 0% { box-shadow: 0 0 5px #8B0000; border-color: #8B0000; } 50% { box-shadow: 0 0 20px #ff4444; border-color: #ff4444; } 100% { box-shadow: 0 0 5px #8B0000; border-color: #8B0000; } }
 .node-active { color: #fff; background: #1a0a0a; animation: pulseActive 2s infinite; }
 .node-active:hover { transform: scale(1.1); }
-.boss-node.node-active { animation: pulseActive 1s infinite; background: #2a0505; } /* Faster pulse for boss */
+.boss-node.node-active { animation: pulseActive 1s infinite; background: #2a0505; }
 
 /* --- OUTPOST SCREEN --- */
 #screen-outpost { display: none; flex-direction: column; gap: 15px; padding: 20px; height: 100%; box-sizing: border-box; overflow-y: auto;}
@@ -71,7 +70,7 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .team { display: flex; align-items: flex-end; justify-content: center; }
 #player-team { flex-direction: row-reverse; }
 #enemy-team { flex-direction: row; }
-.entity { width: clamp(60px, 20vw, 130px); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; position: relative; transition: transform 0.2s; gap: 2px; margin: 0 -1.5vw; z-index: 1; }
+.entity { width: clamp(60px, 18vw, 120px); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; position: relative; transition: transform 0.2s; gap: 2px; margin: 0 -1.5vw; z-index: 1; }
 .entity:nth-child(1) { z-index: 3; } .entity:nth-child(2) { z-index: 2; } .entity:nth-child(3) { z-index: 1; }
 .entity.active .portrait { filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.9)); }
 .entity.dead { opacity: 0.3; filter: grayscale(100%); transform: scale(0.9); }
@@ -108,7 +107,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V17.0</div>
+        <div class="title-sub">ENGINE V18.0</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -118,9 +117,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
             <span>SCRAP: <span id="scrap-display">0</span></span>
         </div>
         <button class="outpost-btn" onclick="renderOutpost()">⛺ ACCESS OUTPOST</button>
-        <div class="map-viewport" id="map-nodes">
-            <!-- Map injected via JS -->
-        </div>
+        <div class="map-viewport" id="map-nodes"></div>
     </div>
 
     <div id="screen-outpost">
@@ -149,11 +146,25 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
 <script>
 // --- GLOBAL STATE ---
-const SAVE_KEY = 'wasteland_rpg_engine_v17'; 
+const SAVE_KEY = 'wasteland_rpg_engine_v18'; // Advanced to V18 to initialize new map structure
 
 let scrap = 0;
 let currentTier = 1;
-const TOTAL_TIERS = 4; // Hardcoded length of Sector 1
+
+// V18 Map Structure
+const SECTOR_LAYOUT = [
+    ['BOSS'], // T10
+    ['MECH', 'RAIDERS'], // T9
+    ['BEASTS', 'MECH', 'RAIDERS'], // T8
+    ['RAIDERS', 'BEASTS'], // T7
+    ['MECH', 'RAIDERS', 'BEASTS'], // T6
+    ['BEASTS', 'MECH'], // T5
+    ['RAIDERS', 'BEASTS', 'RAIDERS'], // T4
+    ['MECH', 'RAIDERS'], // T3
+    ['BEASTS', 'RAIDERS', 'MECH'], // T2
+    ['RAIDERS'] // T1
+];
+const TOTAL_TIERS = SECTOR_LAYOUT.length;
 
 const ROSTER_TEMPLATE = [
     { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
@@ -168,7 +179,7 @@ let activeIndex = -1;
 let combatActive = false;
 let pendingAction = null;
 
-// --- MENU / BOOT LOGIC ---
+// --- BOOT LOGIC ---
 function switchScreen(screenId) {
     document.getElementById('screen-title').style.display = 'none';
     document.getElementById('screen-map').style.display = 'none';
@@ -187,13 +198,10 @@ function renderTitleScreen() {
 
 function startNewGame() {
     localStorage.removeItem(SAVE_KEY); 
-    scrap = 0;
-    currentTier = 1;
+    scrap = 0; currentTier = 1;
     playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
-    saveGameState();
-    renderMap(); 
+    saveGameState(); renderMap(); 
 }
-
 function continueGame() { loadGameState(); renderMap(); }
 
 function saveGameState() {
@@ -211,7 +219,7 @@ function loadGameState() {
     }
 }
 
-// --- MAP LOGIC (V17 OVERHAUL) ---
+// --- V18 MAP LOGIC ---
 function renderMap() {
     switchScreen('screen-map');
     document.getElementById('scrap-display').innerText = scrap;
@@ -224,31 +232,28 @@ function renderMap() {
 
     let mapHTML = `<div class="map-track">`;
 
-    // Loop from Top (Boss) to Bottom (Start)
-    for (let t = TOTAL_TIERS; t >= 1; t--) {
+    // Loop through SECTOR_LAYOUT top-to-bottom
+    for (let i = 0; i < TOTAL_TIERS; i++) {
+        let t = TOTAL_TIERS - i; // Calculate tier number (10 down to 1)
+        let rowData = SECTOR_LAYOUT[i];
         let rowStatus = (t === currentTier) ? 'active' : (t < currentTier) ? 'cleared' : 'locked';
         let disabledAttr = (t !== currentTier) ? 'disabled' : '';
 
         mapHTML += `<div class="map-row">`;
         
-        if (t === TOTAL_TIERS) { // Boss Node
-            let extraClass = (t === currentTier) ? 'boss-node' : '';
-            mapHTML += `<button class="map-node node-${rowStatus} ${extraClass}" ${disabledAttr} onclick="initiateCombat('BOSS')">
-                            <span class="node-icon">💀</span><span class="node-lbl">WARLORD</span>
-                        </button>`;
-        } else { // Standard Split Path Nodes
-            mapHTML += `
-                <button class="map-node node-${rowStatus}" ${disabledAttr} onclick="initiateCombat('SKIRMISH')">
-                    <span class="node-icon">☣️</span><span class="node-lbl">MUTANTS</span>
-                </button>
-                <button class="map-node node-${rowStatus}" ${disabledAttr} onclick="initiateCombat('AMBUSH')">
-                    <span class="node-icon">🎯</span><span class="node-lbl">RAIDERS</span>
-                </button>
-            `;
-        }
-        mapHTML += `</div>`;
+        rowData.forEach(nodeType => {
+            let icon = '🎯'; let lbl = 'RAIDERS';
+            if (nodeType === 'BOSS') { icon = '💀'; lbl = 'WARLORD'; }
+            if (nodeType === 'BEASTS') { icon = '☣️'; lbl = 'BEASTS'; }
+            if (nodeType === 'MECH') { icon = '⚙️'; lbl = 'MECH'; }
 
-        // Inject connector line downwards to the next tier (unless we are at the bottom tier)
+            let extraClass = (nodeType === 'BOSS' && t === currentTier) ? 'boss-node' : '';
+            mapHTML += `<button class="map-node node-${rowStatus} ${extraClass}" ${disabledAttr} onclick="initiateCombat('${nodeType}')">
+                            <span class="node-icon">${icon}</span><span class="node-lbl">${lbl}</span>
+                        </button>`;
+        });
+        
+        mapHTML += `</div>`;
         if (t > 1) {
             let lineStatus = (t <= currentTier) ? 'connector-cleared' : '';
             mapHTML += `<div class="map-connector ${lineStatus}"></div>`;
@@ -257,8 +262,6 @@ function renderMap() {
 
     mapHTML += `</div>`;
     mapContainer.innerHTML = mapHTML;
-    
-    // Auto-scroll to the bottom of the map viewport so the active tier is immediately visible
     setTimeout(() => { mapContainer.scrollTop = mapContainer.scrollHeight; }, 10);
 }
 
@@ -278,11 +281,8 @@ function renderOutpost() {
         let canAffordRevive = scrap >= 50;
         
         let medBayHtml = '';
-        if (isDead) {
-            medBayHtml = `<button class="upg-btn revive-btn" ${!canAffordRevive ? 'disabled' : ''} onclick="medBay('${char.id}', 'REVIVE')">DEFIB (50)</button>`;
-        } else {
-            medBayHtml = `<button class="upg-btn med-btn" ${!isInjured || !canAffordHeal ? 'disabled' : ''} onclick="medBay('${char.id}', 'HEAL')">TRIAGE (10)</button>`;
-        }
+        if (isDead) { medBayHtml = `<button class="upg-btn revive-btn" ${!canAffordRevive ? 'disabled' : ''} onclick="medBay('${char.id}', 'REVIVE')">DEFIB (50)</button>`;
+        } else { medBayHtml = `<button class="upg-btn med-btn" ${!isInjured || !canAffordHeal ? 'disabled' : ''} onclick="medBay('${char.id}', 'HEAL')">TRIAGE (10)</button>`; }
 
         container.innerHTML += `
             <div class="upgrade-card" style="${isDead ? 'border-color: #8B0000; opacity: 0.8;' : ''}">
@@ -300,8 +300,7 @@ function renderOutpost() {
 
 function buyUpgrade(charId, type, cost) {
     if (scrap < cost) return;
-    scrap -= cost;
-    let char = playerRoster.find(c => c.id === charId);
+    scrap -= cost; let char = playerRoster.find(c => c.id === charId);
     if (char.hp <= 0) return; 
     if (type === 'HP') { char.maxHp += 10; char.hp += 10; } else if (type === 'DMG') { char.dmgBase += 3; }
     char.upgradeCount++; saveGameState(); renderOutpost(); 
@@ -309,21 +308,59 @@ function buyUpgrade(charId, type, cost) {
 
 function medBay(charId, action) {
     let char = playerRoster.find(c => c.id === charId);
-    if (action === 'HEAL' && scrap >= 10 && char.hp > 0 && char.hp < char.maxHp) {
-        scrap -= 10; char.hp = Math.min(char.maxHp, char.hp + Math.floor(char.maxHp * 0.4));
-    } else if (action === 'REVIVE' && scrap >= 50 && char.hp <= 0) {
-        scrap -= 50; char.hp = Math.floor(char.maxHp * 0.25);
-    }
+    if (action === 'HEAL' && scrap >= 10 && char.hp > 0 && char.hp < char.maxHp) { scrap -= 10; char.hp = Math.min(char.maxHp, char.hp + Math.floor(char.maxHp * 0.4)); } 
+    else if (action === 'REVIVE' && scrap >= 50 && char.hp <= 0) { scrap -= 50; char.hp = Math.floor(char.maxHp * 0.25); }
     saveGameState(); renderOutpost();
 }
 
-// --- COMBAT LOGIC ---
+// --- V18 ENEMY GENERATOR ---
+function generateEnemies(nodeType, mult) {
+    // Base Templates
+    const e_dog = { name: "Attack Dog", classType: "BEAST", maxHp: 30, speed: 18, armor: 0, dmgBase: 12, img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } };
+    const e_mutant = { name: "Mutant", classType: "MUTANT", maxHp: 70, speed: 7, armor: 0, dmgBase: 25, img: "enemy_mutant.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } };
+    const e_chem = { name: "Chem Fiend", classType: "MUTANT", maxHp: 60, speed: 11, armor: 0, dmgBase: 15, img: "enemy_chem.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 50, energy: -5 } };
+    
+    const e_raider = { name: "Raider", classType: "RAIDER", maxHp: 40, speed: 10, armor: 0, dmgBase: 15, img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } };
+    const e_psycho = { name: "Psycho", classType: "RAIDER", maxHp: 45, speed: 14, armor: 0, dmgBase: 22, img: "enemy_psycho.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } };
+    const e_sniper = { name: "Sniper", classType: "RAIDER", maxHp: 35, speed: 16, armor: 0, dmgBase: 30, img: "enemy_sniper.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } };
+    const e_jug = { name: "Juggernaut", classType: "RAIDER", maxHp: 90, speed: 6, armor: 5, dmgBase: 18, img: "enemy_juggernaut.png", scale: 1.3, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 0, energy: -5 } };
+
+    const e_drone = { name: "Drone", classType: "DRONE", maxHp: 25, speed: 18, armor: 5, dmgBase: 10, img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } };
+    const e_turret = { name: "Turret", classType: "MECH", maxHp: 50, speed: 2, armor: 8, dmgBase: 20, img: "enemy_turret.png", scale: 0.9, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 100, energy: -10 } };
+    const e_warrig = { name: "War Rig", classType: "MECH", maxHp: 150, speed: 5, armor: 10, dmgBase: 25, img: "enemy_warrig.png", scale: 1.8, hpDrop: -20, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 15, bio: 100, energy: -15 } };
+
+    let pool = [];
+    if (nodeType === 'BEASTS') pool = [e_dog, e_mutant, e_chem, e_dog];
+    else if (nodeType === 'RAIDERS') pool = [e_raider, e_psycho, e_sniper, e_jug, e_raider];
+    else if (nodeType === 'MECH') pool = [e_drone, e_turret, e_warrig, e_drone];
+    else if (nodeType === 'BOSS') {
+        return [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: Math.floor(40*mult), img: "enemy_boss.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 } }];
+    }
+
+    // Determine how many enemies spawn (2 or 3)
+    let squadSize = Math.random() > 0.5 ? 3 : 2;
+    let squad = [];
+
+    for (let i = 0; i < squadSize; i++) {
+        let template = pool[Math.floor(Math.random() * pool.length)];
+        let scaledHp = Math.floor(template.maxHp * mult);
+        squad.push({
+            ...JSON.parse(JSON.stringify(template)), // Deep clone
+            id: `e${i}_${Date.now()}`, // Unique ID required for DOM interaction
+            isPlayer: false,
+            maxHp: scaledHp,
+            hp: scaledHp,
+            dmgBase: Math.floor(template.dmgBase * mult)
+        });
+    }
+    return squad;
+}
+
 function spawnFCT(entityId, msg, styleClass) {
     const entityElement = document.getElementById(entityId);
     if (!entityElement) return;
     const fctElement = document.createElement('div');
-    fctElement.className = `fct ${styleClass}`;
-    fctElement.innerText = msg;
+    fctElement.className = `fct ${styleClass}`; fctElement.innerText = msg;
     entityElement.appendChild(fctElement);
     setTimeout(() => { if (fctElement.parentNode) fctElement.parentNode.removeChild(fctElement); }, 1000);
 }
@@ -337,26 +374,11 @@ function initiateCombat(nodeType) {
 
     if (!playerRoster.some(p => p.hp > 0)) {
         alert("Your entire roster is dead. You must revive someone at the Outpost.");
-        renderMap();
-        return;
+        renderMap(); return;
     }
 
-    let enemies = [];
     const mult = 1 + ((currentTier - 1) * 0.4);
-
-    if (nodeType === 'BOSS') {
-        enemies = [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: 40, img: "enemy_boss.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 } }];
-    } else if (nodeType === 'AMBUSH') {
-        enemies = [
-            { id: 'e1', name: "Raider A", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 10, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }, 
-            { id: 'e2', name: "Raider B", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 12, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }
-        ];
-    } else {
-        enemies = [
-            { id: 'e1', name: "Mutant", classType: "MUTANT", maxHp: Math.floor(70*mult), hp: Math.floor(70*mult), speed: 7, armor: 0, isPlayer: false, dmgBase: Math.floor(25*mult), img: "enemy_mutant.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } }, 
-            { id: 'e2', name: "Drone", classType: "DRONE", maxHp: Math.floor(25*mult), hp: Math.floor(25*mult), speed: 18, armor: 5, isPlayer: false, dmgBase: Math.floor(10*mult), img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } } 
-        ];
-    }
+    let enemies = generateEnemies(nodeType, mult);
 
     activeEntities = [...playerRoster, ...enemies];
     turnQueue = [...activeEntities].sort((a, b) => b.speed - a.speed);
@@ -522,12 +544,6 @@ function applyAttackEffects(attacker, target, ability, didHit) {
     }
 }
 
-function executeSelfAction(actionType) {
-    let actEnt = turnQueue[activeIndex];
-    if (actionType === 'IRON_GUARD') { actEnt.armor += 20; actEnt.armorTurns = 2; actEnt.cooldowns.iron_guard = 4; log(`> ${actEnt.name} deployed IRON GUARD.`, "log-heal"); spawnFCT(actEnt.id, "+ARMOR", "fct-heal"); }
-    checkWinState();
-}
-
 function executeEnemyAi(enemy) {
     if (!combatActive) return;
     let validTargets = activeEntities.filter(e => e.isPlayer && e.hp > 0); let target = validTargets.sort(() => 0.5 - Math.random())[0];
@@ -538,10 +554,11 @@ function executeEnemyAi(enemy) {
         target.hp = Math.max(0, target.hp - netDmg);
         log(`> ${enemy.name} attacks ${target.name} for ${netDmg} ${atkType.toUpperCase()} DMG!`, "log-dmg"); spawnFCT(target.id, `-${netDmg}`, "fct-dmg");
 
-        if (enemy.classType === 'MUTANT' && Math.random() < 0.3) {
-            target.bleedingTurns = 2; log(`> Mutant bite caused ${target.name} to bleed.`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300);
-        } else if (enemy.classType === 'BOSS' && Math.random() < 0.25) {
-            target.stunnedTurns = 1; log(`> Warlord smash stunned ${target.name}.`, "log-status"); setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300);
+        // V18 Extended Enemy AI Effects
+        if ((enemy.name === "Mutant" || enemy.name === "Attack Dog" || enemy.name === "Chem Fiend") && Math.random() < 0.4) {
+            target.bleedingTurns = 2; log(`> ${enemy.name} caused ${target.name} to bleed.`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300);
+        } else if ((enemy.name === "Sniper" || enemy.classType === "BOSS") && Math.random() < 0.25) {
+            target.stunnedTurns = 1; log(`> ${enemy.name} hit stunned ${target.name}.`, "log-status"); setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300);
         }
     }
     checkWinState();
