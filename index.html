@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V34.0 (Cybernetics & Augmentations)</title>
+<title>Wasteland RPG - Engine V35.0 (The Citadel)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -16,6 +16,12 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .title-btn:hover { background: #8B0000; color: #fff; border-color: #ff0000; box-shadow: 0 0 15px rgba(255,0,0,0.4); transform: translateY(-2px); }
 .title-btn:active { transform: translateY(2px); box-shadow: none; }
 .btn-continue { border-color: #B8860B; color: #B8860B; }
+.btn-meta { border-color: #4488ff; color: #4488ff; }
+
+/* V35 Citadel Screen */
+#screen-citadel { display: none; flex-direction: column; padding: 20px; height: 100%; box-sizing: border-box; background: linear-gradient(rgba(10, 10, 20, 0.9), rgba(0, 0, 0, 0.95)); overflow-y: auto; }
+.citadel-header { display: flex; justify-content: space-between; color: #4488ff; font-weight: bold; font-size: 18px; margin-bottom: 15px; flex-shrink: 0;}
+.skull-icon { color: #fff; text-shadow: 0 0 5px #ff4444; }
 
 #screen-map { display: none; flex-direction: column; padding: 20px; height: 100%; box-sizing: border-box;}
 .map-header { display: flex; justify-content: space-between; color: #B8860B; font-weight: bold; font-size: 18px; margin-bottom: 15px; flex-shrink: 0;}
@@ -132,8 +138,36 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V34.0</div>
+        <div class="title-sub">ENGINE V35.0</div>
         <div class="title-menu" id="title-menu-container"></div>
+    </div>
+
+    <!-- V35: The Citadel Screen -->
+    <div id="screen-citadel">
+        <div class="citadel-header">
+            <span>THE CITADEL (META-UPGRADES)</span>
+            <span>SKULLS: <span id="citadel-skulls" class="skull-icon">0 💀</span></span>
+        </div>
+        
+        <div class="outpost-roster">
+            <div class="upgrade-card" style="border-color: #4488ff;">
+                <div class="upgrade-header"><span>SCRAP SCAVENGER</span><span id="meta-lbl-scrap">LVL 0</span></div>
+                <div class="upgrade-stats">Start new expeditions with +50 initial Scrap per level.</div>
+                <button class="upg-btn btn-meta" onclick="buyMetaUpgrade('SCRAP')">UPGRADE [COST: 1 💀]</button>
+            </div>
+            <div class="upgrade-card" style="border-color: #4488ff;">
+                <div class="upgrade-header"><span>VETERAN ROSTER</span><span id="meta-lbl-level">LVL 0</span></div>
+                <div class="upgrade-stats">All operators permanently start +1 Level higher (grants early Perk point).</div>
+                <button class="upg-btn btn-meta" onclick="buyMetaUpgrade('LEVEL')">UPGRADE [COST: 2 💀]</button>
+            </div>
+            <div class="upgrade-card" style="border-color: #4488ff;">
+                <div class="upgrade-header"><span>TACTICAL RIGGING</span><span id="meta-lbl-inv">LVL 0</span></div>
+                <div class="upgrade-stats">Increase maximum tactical inventory slots by +1.</div>
+                <button class="upg-btn btn-meta" onclick="buyMetaUpgrade('INV')">UPGRADE [COST: 3 💀]</button>
+            </div>
+        </div>
+        
+        <button class="return-btn" style="margin-top:20px;" onclick="renderTitleScreen()">RETURN TO TITLE</button>
     </div>
 
     <div id="screen-map">
@@ -179,7 +213,6 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
             </div>
         </div>
 
-        <!-- V34 Cybernetics View -->
         <div id="outpost-cyber-view" style="display:none; flex-direction:column; gap:15px; flex-grow:1; overflow-y:auto;">
             <div class="upgrade-card" style="border-color: #4488ff;">
                 <div class="upgrade-header" style="color: #4488ff;">CLINIC STORAGE</div>
@@ -217,7 +250,13 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 </div>
 
 <script>
-const SAVE_KEY = 'wasteland_rpg_engine_v34'; 
+const SAVE_KEY = 'wasteland_rpg_engine_v35'; 
+
+// V35 Meta Progression State
+let bossSkulls = 0;
+let metaUpgrades = { startScrap: 0, startLevel: 1, invMax: 4 };
+
+// Run State
 let scrap = 0; let currentTier = 1;
 let inventory = []; 
 let materials = { parts: 0, chems: 0, tech: 0 }; 
@@ -225,13 +264,13 @@ let outpostTab = 'ROSTER';
 let activePosSelector = null;
 let activePerkSelector = null;
 let currentWeather = 'CLEAR';
+let currentNodeType = '';
 
 const SECTOR_LAYOUT = [
     ['BOSS'], ['MECH', 'RAIDERS'], ['BEASTS', 'MECH', 'RAIDERS'], ['RAIDERS', 'BEASTS'], ['MECH', 'RAIDERS', 'BEASTS'], ['BEASTS', 'MECH'], ['RAIDERS', 'BEASTS', 'RAIDERS'], ['MECH', 'RAIDERS'], ['BEASTS', 'RAIDERS', 'MECH'], ['RAIDERS']
 ];
 const TOTAL_TIERS = SECTOR_LAYOUT.length;
 
-// V34 Roster adds `augments: []`
 const ROSTER_TEMPLATE = [
     { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 1, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
     { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 2, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], cooldowns: { cauterize: 0 } },
@@ -248,22 +287,65 @@ function switchScreen(screenId) { document.querySelectorAll('#engine > div').for
 
 function renderTitleScreen() {
     switchScreen('screen-title'); document.getElementById('title-menu-container').innerHTML = '';
-    if (localStorage.getItem(SAVE_KEY)) document.getElementById('title-menu-container').innerHTML += `<button class="title-btn btn-continue" onclick="continueGame()">Continue Expedition</button>`;
+    
+    // Check if we have save data for a mid-run load
+    let d = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (d && d.tier) document.getElementById('title-menu-container').innerHTML += `<button class="title-btn btn-continue" onclick="continueGame()">Continue Expedition</button>`;
+    
     document.getElementById('title-menu-container').innerHTML += `<button class="title-btn" onclick="startNewGame()">New Expedition</button>`;
+    
+    // The Citadel Button
+    document.getElementById('title-menu-container').innerHTML += `<button class="title-btn btn-meta" onclick="renderCitadel()">ENTER CITADEL</button>`;
 }
 
-function startNewGame() { localStorage.removeItem(SAVE_KEY); scrap = 0; currentTier = 1; inventory = ['MED_STIM']; materials = { parts: 0, chems: 0, tech: 0 }; playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); saveGameState(); renderMap(); }
+// V35 Meta Functions
+function renderCitadel() {
+    switchScreen('screen-citadel');
+    document.getElementById('citadel-skulls').innerText = `${bossSkulls} 💀`;
+    document.getElementById('meta-lbl-scrap').innerText = `LVL ${metaUpgrades.startScrap / 50}`;
+    document.getElementById('meta-lbl-level').innerText = `LVL ${metaUpgrades.startLevel - 1}`;
+    document.getElementById('meta-lbl-inv').innerText = `LVL ${metaUpgrades.invMax - 4}`;
+}
+
+function buyMetaUpgrade(type) {
+    if (type === 'SCRAP' && bossSkulls >= 1) { bossSkulls -= 1; metaUpgrades.startScrap += 50; }
+    else if (type === 'LEVEL' && bossSkulls >= 2) { bossSkulls -= 2; metaUpgrades.startLevel += 1; }
+    else if (type === 'INV' && bossSkulls >= 3) { bossSkulls -= 3; metaUpgrades.invMax += 1; }
+    saveGameState(); renderCitadel();
+}
+
+function startNewGame() { 
+    scrap = metaUpgrades.startScrap; 
+    currentTier = 1; 
+    inventory = ['MED_STIM']; 
+    materials = { parts: 0, chems: 0, tech: 0 }; 
+    playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
+    
+    // Apply meta levels
+    playerRoster.forEach(p => {
+        p.level = metaUpgrades.startLevel;
+        p.perkPoints = metaUpgrades.startLevel - 1;
+        p.xpToNext = Math.floor(100 * Math.pow(1.5, metaUpgrades.startLevel - 1));
+    });
+    
+    saveGameState(); renderMap(); 
+}
+
 function continueGame() { loadGameState(); renderMap(); }
 
-function saveGameState() { localStorage.setItem(SAVE_KEY, JSON.stringify({ scrap, tier: currentTier, roster: playerRoster, inventory, materials })); }
+function saveGameState() { localStorage.setItem(SAVE_KEY, JSON.stringify({ scrap, tier: currentTier, roster: playerRoster, inventory, materials, bossSkulls, metaUpgrades })); }
 function loadGameState() {
     let d = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (d) { scrap = d.scrap || 0; currentTier = d.tier || 1; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); inventory = d.inventory || ['MED_STIM']; materials = d.materials || { parts: 0, chems: 0, tech: 0 }; }
+    if (d) { 
+        scrap = d.scrap || 0; currentTier = d.tier || 1; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
+        inventory = d.inventory || ['MED_STIM']; materials = d.materials || { parts: 0, chems: 0, tech: 0 }; 
+        bossSkulls = d.bossSkulls || 0; metaUpgrades = d.metaUpgrades || { startScrap: 0, startLevel: 1, invMax: 4 };
+    }
 }
 
 function renderMap() {
     switchScreen('screen-map'); document.getElementById('scrap-display').innerText = scrap; const mapC = document.getElementById('map-nodes');
-    if (currentTier > TOTAL_TIERS) { mapC.innerHTML = `<h3 style="color:#8B0000; text-align:center;">SECTOR CLEARED</h3><button class="return-btn" onclick="renderTitleScreen()">Return to Citadel</button>`; return; }
+    if (currentTier > TOTAL_TIERS) { mapC.innerHTML = `<h3 style="color:#8B0000; text-align:center;">SECTOR CLEARED</h3><button class="return-btn" onclick="handleSquadWipe()">Return to Citadel</button>`; return; }
     let m = `<div class="map-track">`;
     for (let i = 0; i < TOTAL_TIERS; i++) {
         let t = TOTAL_TIERS - i; let rowStatus = (t === currentTier) ? 'active' : (t < currentTier) ? 'cleared' : 'locked'; let dis = (t !== currentTier) ? 'disabled' : '';
@@ -320,7 +402,7 @@ function renderOutpost() {
     document.getElementById('mat-tech-wb').innerText = `💻 TECH: ${materials.tech}`;
     document.getElementById('btn-breakdown').disabled = scrap < 25;
 
-    let wbHtml = ''; let invFull = inventory.length >= 4;
+    let wbHtml = ''; let invFull = inventory.length >= metaUpgrades.invMax;
     wbHtml += `<button class="upg-btn" ${materials.chems < 2 || invFull ? 'disabled' : ''} onclick="craftItem('MED_STIM')">CRAFT MED-STIM (2 🧪)</button>`;
     wbHtml += `<button class="upg-btn" ${materials.parts < 2 || invFull ? 'disabled' : ''} onclick="craftItem('SCRAP_BOMB')">CRAFT SCRAP BOMB (2 ⚙️)</button>`;
     wbHtml += `<button class="upg-btn" ${materials.chems < 1 || materials.tech < 1 || invFull ? 'disabled' : ''} onclick="craftItem('ADRENALINE')">CRAFT ADRENALINE (1 🧪, 1 💻)</button>`;
@@ -351,10 +433,10 @@ function renderOutpost() {
             </div>`;
     });
 
-    // Inventory Rendering
-    document.getElementById('inv-count').innerText = `${inventory.length}/4`;
+    // Inventory Rendering (V35 applies Meta Max Inv)
+    document.getElementById('inv-count').innerText = `${inventory.length}/${metaUpgrades.invMax}`;
     const invC = document.getElementById('outpost-inventory'); invC.innerHTML = '';
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < metaUpgrades.invMax; i++) {
         let item = inventory[i];
         if (item) {
             let label = item === 'MED_STIM' ? '💉 Med-Stim' : item === 'SCRAP_BOMB' ? '💣 Scrap Bomb' : item === 'ADRENALINE' ? '⚡ Adrenaline' : '🔋 EMP Charge';
@@ -367,7 +449,7 @@ function renderOutpost() {
 
 function breakdownScrap() { if (scrap < 25) return; scrap -= 25; let m = ['parts', 'chems', 'tech'][Math.floor(Math.random() * 3)]; materials[m]++; saveGameState(); renderOutpost(); }
 function craftItem(item) {
-    if (inventory.length >= 4) return;
+    if (inventory.length >= metaUpgrades.invMax) return;
     if (item === 'MED_STIM' && materials.chems >= 2) { materials.chems -= 2; inventory.push(item); }
     else if (item === 'SCRAP_BOMB' && materials.parts >= 2) { materials.parts -= 2; inventory.push(item); }
     else if (item === 'ADRENALINE' && materials.chems >= 1 && materials.tech >= 1) { materials.chems -= 1; materials.tech -= 1; inventory.push(item); }
@@ -375,18 +457,12 @@ function craftItem(item) {
     saveGameState(); renderOutpost();
 }
 
-// V34 Cybernetics Logic
 function installAugment(charId, type) {
     let char = playerRoster.find(c => c.id === charId);
     if (!char.augments) char.augments = [];
-    
-    if (type === 'PLATING' && materials.parts >= 3) {
-        materials.parts -= 3; char.maxHp += 20; char.hp += 20; char.augments.push('Plating');
-    } else if (type === 'OPTICS' && materials.tech >= 2) {
-        materials.tech -= 2; char.dmgBase += 4; char.augments.push('Optics');
-    } else if (type === 'PUMP' && materials.chems >= 2) {
-        materials.chems -= 2; char.speed += 3; char.augments.push('Pump');
-    }
+    if (type === 'PLATING' && materials.parts >= 3) { materials.parts -= 3; char.maxHp += 20; char.hp += 20; char.augments.push('Plating'); } 
+    else if (type === 'OPTICS' && materials.tech >= 2) { materials.tech -= 2; char.dmgBase += 4; char.augments.push('Optics'); } 
+    else if (type === 'PUMP' && materials.chems >= 2) { materials.chems -= 2; char.speed += 3; char.augments.push('Pump'); }
     saveGameState(); renderOutpost();
 }
 
@@ -446,7 +522,7 @@ function spawnFCT(entityId, msg, styleClass) {
 function initiateCombat(nodeType) {
     switchScreen('screen-combat'); combatActive = true; document.getElementById('log').innerHTML = '';
     
-    let bgFile = 'bg_combat.png'; currentWeather = 'CLEAR';
+    let bgFile = 'bg_combat.png'; currentWeather = 'CLEAR'; currentNodeType = nodeType; // Save current node
     if (currentTier === 1) { bgFile = 'bg_combat.png'; } else {
         if (nodeType === 'BOSS') { bgFile = 'bg_thunderdome.png'; currentWeather = 'BLOODLUST'; }
         else if (nodeType === 'MECH') { bgFile = 'bg_refinery.png'; if (Math.random() < 0.4) currentWeather = 'TOXIC_SMOG'; }
@@ -693,21 +769,37 @@ function executeEnemyAi(enemy) {
     checkWinState();
 }
 
-function handleSquadWipe() { currentTier = 1; playerRoster.forEach(char => { char.hp = char.maxHp; char.stunnedTurns = 0; char.bleedingTurns = 0; char.armor = 0; char.armorTurns = 0; if(char.cooldowns) { for (let s in char.cooldowns) char.cooldowns[s] = 0; } }); saveGameState(); renderMap(); }
+function handleSquadWipe() { 
+    currentTier = 1; 
+    playerRoster.forEach(char => { char.hp = char.maxHp; char.stunnedTurns = 0; char.bleedingTurns = 0; char.armor = 0; char.armorTurns = 0; if(char.cooldowns) { for (let s in char.cooldowns) char.cooldowns[s] = 0; } }); 
+    saveGameState(); renderMap(); 
+}
 
 function checkWinState() {
     renderField();
     const pA = activeEntities.some(e => e.isPlayer && e.hp > 0); const eA = activeEntities.some(e => !e.isPlayer && e.hp > 0);
     if (!pA) { document.getElementById('command-deck').innerHTML = `<button onclick="handleSquadWipe()">EXPEDITION FAILED - RESTART</button>`; combatActive = false; } 
     else if (!eA) { 
+        // V35 Boss Skull Hook
+        if (currentNodeType === 'BOSS') {
+            bossSkulls++;
+            log(`> VICTORY! Warlord Skull acquired!`, "log-heal");
+        }
+
         let s = Math.floor(Math.random() * 30) + (currentTier * 20); 
-        playerRoster.forEach(char => { if (char.gridPos > 0 && char.hp > 0) { char.xp += 35; if (char.xp >= char.xpToNext) { char.level++; char.xp -= char.xpToNext; char.xpToNext = Math.floor(char.xpToNext * 1.5); char.perkPoints++; log(`> ${char.name} reached Level ${char.level}! Perk point available.`, "log-heal"); } } });
+        playerRoster.forEach(char => {
+            if (char.gridPos > 0 && char.hp > 0) {
+                char.xp += 35;
+                if (char.xp >= char.xpToNext) { char.level++; char.xp -= char.xpToNext; char.xpToNext = Math.floor(char.xpToNext * 1.5); char.perkPoints++; log(`> ${char.name} reached Level ${char.level}! Perk point available.`, "log-heal"); }
+            }
+        });
 
         let matDrops = 1 + Math.floor(Math.random() * 2);
         for(let i=0; i<matDrops; i++) { let m = ['parts', 'chems', 'tech'][Math.floor(Math.random() * 3)]; materials[m]++; log(`> Salvaged: 1 ${m.toUpperCase()}`, "log-heal"); }
 
         document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${s})">LOOT ${s}</button>`; combatActive = false; 
-    } else { if (pendingAction === null) setTimeout(nextTurn, 800); }
+    } 
+    else { if (pendingAction === null) setTimeout(nextTurn, 800); }
 }
 
 function collectLoot(a) { scrap += a; currentTier++; playerRoster.forEach(p => p.armor = 0); saveGameState(); renderMap(); }
