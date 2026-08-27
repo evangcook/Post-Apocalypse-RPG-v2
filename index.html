@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wasteland RPG - Engine V9.9</title>
+    <title>Wasteland RPG - Engine V10.0</title>
     <style>
         body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
         #engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -67,11 +67,9 @@
         .entity:nth-child(2) { z-index: 2; }
         .entity:nth-child(3) { z-index: 1; }
         
-        /* Targeting Highlights - Fixed to remove turn-based bounce animation */
+        /* Targeting Highlights - Turn-based idle animation removed */
         .entity.active .portrait { 
-            /* intensified shadow slightly to compensate for lost motion */
             filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.9)); 
-            /* transform: translateY(-8px); REMOVED Turn-based movement */
         }
         .entity.dead { opacity: 0.3; filter: grayscale(100%); transform: scale(0.9); }
         .entity.targetable-enemy .portrait { filter: drop-shadow(0 0 12px #ff0000); cursor: pointer; }
@@ -172,10 +170,14 @@
 
 <script>
     // --- GLOBAL STATE ---
+    
+    // Foundation Item: Save State Setup
+    const SAVE_KEY = 'wasteland_rpg_engine_v1';
+    
     let scrap = 0;
     let currentTier = 1;
     
-    // Engine V9.8: Negative hpDrop for upward translation
+    // Engine V9.7: Decoupled hpDrop translation
     const playerRoster = [
         { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0 },
         { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0 },
@@ -188,6 +190,26 @@
     let combatActive = false;
     let pendingAction = null; 
 
+    // --- SAVE/LOAD LOGIC ---
+    function saveGameState() {
+        const stateToSave = { scrap: scrap, tier: currentTier };
+        localStorage.setItem(SAVE_KEY, JSON.stringify(stateToSave));
+        log("Progress saved locally.", "log-heal");
+    }
+
+    function loadGameState() {
+        const savedData = localStorage.getItem(SAVE_KEY);
+        if (savedData) {
+            const loadedState = JSON.parse(savedData);
+            scrap = loadedState.scrap;
+            currentTier = loadedState.tier;
+            log(`> Progress restored (Tier ${currentTier}).`, "log-heal");
+        } else {
+            log("> No save data found. Starting fresh.");
+        }
+    }
+
+    // --- UTIL LOGIC ---
     function switchScreen(screenId) {
         document.getElementById('screen-map').style.display = 'none';
         document.getElementById('screen-combat').style.display = 'none';
@@ -195,6 +217,9 @@
     }
 
     function renderMap() {
+        // TRIGGER LOAD ON INIT
+        if (!combatActive && activeIndex === -1) { loadGameState(); }
+        
         switchScreen('screen-map');
         document.getElementById('scrap-display').innerText = scrap;
         document.getElementById('tier-display').innerText = currentTier;
@@ -202,7 +227,7 @@
         const mapContainer = document.getElementById('map-nodes');
         
         if (currentTier > 4) {
-            mapContainer.innerHTML = `<div class="map-tier"><h3 style="color:#8B0000">WARLORD DEFEATED.</h3><button onclick="location.reload()">Return to Citadel</button></div>`;
+            mapContainer.innerHTML = `<div class="map-tier"><h3 style="color:#8B0000">WARLORD DEFEATED.</h3><button onclick="resetData()">Return to Citadel</button></div>`;
             return;
         }
         
@@ -417,14 +442,29 @@
             combatActive = false;
             
             let scrapGained = Math.floor(Math.random() * 30) + (currentTier * 20);
-            scrap += scrapGained;
-            currentTier++;
             
-            playerRoster.forEach(p => p.armor = 0);
-            document.getElementById('command-deck').innerHTML = `<button onclick="renderMap()">LOOT ${scrapGained}</button>`;
+            // Reconstructed onclick calls the looting function directly
+            document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${scrapGained})">LOOT ${scrapGained}</button>`;
         } else {
             setTimeout(nextTurn, 800);
         }
+    }
+
+    // New combined Loot & Save function
+    function collectLoot(amount) {
+        scrap += amount;
+        currentTier++;
+        playerRoster.forEach(p => p.armor = 0);
+        
+        saveGameState(); // Commit progress before returning to map
+        
+        renderMap();
+    }
+
+    // Utility function to reset game
+    function resetData() {
+        localStorage.removeItem(SAVE_KEY);
+        location.reload();
     }
 
     function nextTurn() {
