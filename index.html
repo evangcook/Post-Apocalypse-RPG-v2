@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V39.0 (Procedural Audio)</title>
+<title>Wasteland RPG - Engine V40.0 (Difficulty Balancing)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -148,7 +148,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V39.0</div>
+        <div class="title-sub">ENGINE V40.0</div>
         <div class="title-menu" id="title-menu-container"></div>
         <div class="title-menu" id="difficulty-menu-container" style="display:none;">
             <button class="title-btn" style="border-color:#6B8E23; color:#6B8E23;" onclick="confirmNewGame(0.75)">[EASY] 0.75x STATS</button>
@@ -277,7 +277,6 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 const BASE_SAVE_KEY = 'wasteland_rpg_core_slot_'; 
 const SETTINGS_KEY = 'wasteland_rpg_core_settings';
 
-// V39 Audio System Context
 let audioCtx = null;
 let currentSlot = 1;
 let globalSettings = { combatSpeed: 1.0, sfx: true };
@@ -289,14 +288,12 @@ let inventory = []; let materials = { parts: 0, chems: 0, tech: 0 };
 let outpostTab = 'ROSTER'; let activePosSelector = null; let activePerkSelector = null; let currentWeather = 'CLEAR'; let currentNodeType = '';
 let isCurrentNodeElite = false;
 
-// Global Button Click SFX Hook
 document.addEventListener('click', (e) => {
     if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.classList.contains('map-node')) {
         playSFX('click');
     }
 });
 
-// V39: Init AudioContext cleanly on first user interaction
 function initAudio() {
     if (!audioCtx && globalSettings.sfx) {
         try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } 
@@ -308,54 +305,40 @@ window.addEventListener('click', initAudio, { once: true });
 function playSFX(type) {
     if (!globalSettings.sfx || !audioCtx) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    
-    let osc = audioCtx.createOscillator();
-    let gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    let now = audioCtx.currentTime;
+    let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination); let now = audioCtx.currentTime;
 
     if (type === 'click') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, now);
-        gain.gain.setValueAtTime(0.05, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.type = 'sine'; osc.frequency.setValueAtTime(800, now);
+        gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
         osc.start(now); osc.stop(now + 0.05);
     } else if (type === 'shoot') {
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
-        gain.gain.setValueAtTime(0.1, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.type = 'square'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
         osc.start(now); osc.stop(now + 0.15);
     } else if (type === 'hit') {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(100, now);
-        osc.frequency.exponentialRampToValueAtTime(10, now + 0.1);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(10, now + 0.1);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
         osc.start(now); osc.stop(now + 0.1);
     } else if (type === 'heal') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.linearRampToValueAtTime(600, now + 0.3);
-        gain.gain.setValueAtTime(0.1, now);
-        gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+        osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(600, now + 0.3);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
         osc.start(now); osc.stop(now + 0.3);
     }
 }
 
+// V40: Adjusted Map Layout to ramp slowly. Mechs start T4, Elites start T5.
 const SECTOR_LAYOUT = [
     [{type:'BOSS', elite:false}], 
-    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:false}], 
+    [{type:'MECH', elite:true}, {type:'RAIDERS', elite:true}], 
     [{type:'BEASTS', elite:false}, {type:'MECH', elite:false}, {type:'RAIDERS', elite:true}], 
-    [{type:'RAIDERS', elite:false}, {type:'BEASTS', elite:true}], 
+    [{type:'RAIDERS', elite:false}, {type:'BEASTS', elite:true}, {type:'MECH', elite:true}], 
     [{type:'MECH', elite:false}, {type:'RAIDERS', elite:true}, {type:'BEASTS', elite:false}], 
-    [{type:'BEASTS', elite:false}, {type:'MECH', elite:true}], 
-    [{type:'RAIDERS', elite:true}, {type:'BEASTS', elite:false}, {type:'RAIDERS', elite:false}], 
-    [{type:'MECH', elite:true}, {type:'RAIDERS', elite:false}], 
-    [{type:'BEASTS', elite:false}, {type:'RAIDERS', elite:true}, {type:'MECH', elite:false}], 
-    [{type:'RAIDERS', elite:false}]
+    [{type:'BEASTS', elite:true}, {type:'RAIDERS', elite:false}], 
+    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:false}, {type:'BEASTS', elite:false}], 
+    [{type:'RAIDERS', elite:false}, {type:'BEASTS', elite:false}], 
+    [{type:'BEASTS', elite:false}, {type:'RAIDERS', elite:false}], 
+    [{type:'RAIDERS', elite:false}] 
 ];
 const TOTAL_TIERS = SECTOR_LAYOUT.length;
 
@@ -519,22 +502,23 @@ function medBay(charId, action) {
     saveGameState(); renderOutpost(); 
 }
 
+// V40: Adjusted Spawn Gates (minTier) & Base Damages
 function generateEnemies(nodeType, mult, isEliteNode) {
     const pool = {
         'BEASTS': [
-            { name: "Attack Dog", minTier: 1, classType: "BEAST", range: 'melee', maxHp: 30, speed: 18, armor: 0, dmgBase: 12, img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } }, 
-            { name: "Mutant", minTier: 4, classType: "MUTANT", range: 'melee', maxHp: 70, speed: 7, armor: 0, dmgBase: 25, img: "enemy_mutant.png", scale: 1.5, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } }, 
+            { name: "Attack Dog", minTier: 1, classType: "BEAST", range: 'melee', maxHp: 30, speed: 18, armor: 0, dmgBase: 10, img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } }, 
+            { name: "Mutant", minTier: 5, classType: "MUTANT", range: 'melee', maxHp: 70, speed: 7, armor: 0, dmgBase: 25, img: "enemy_mutant.png", scale: 1.5, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 20, energy: -5 } }, 
             { name: "Chem Fiend", minTier: 6, classType: "MUTANT", range: 'ranged', maxHp: 60, speed: 11, armor: 0, dmgBase: 15, img: "enemy_chem.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 50, energy: -5 } }
         ],
         'RAIDERS': [
-            { name: "Raider", minTier: 1, classType: "RAIDER", range: 'melee', maxHp: 40, speed: 10, armor: 0, dmgBase: 15, img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }, 
-            { name: "Psycho", minTier: 3, classType: "RAIDER", range: 'melee', maxHp: 45, speed: 14, armor: 0, dmgBase: 22, img: "enemy_psycho.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
-            { name: "Sniper", minTier: 5, classType: "RAIDER", range: 'ranged', maxHp: 35, speed: 16, armor: 0, dmgBase: 30, img: "enemy_sniper.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
+            { name: "Raider", minTier: 1, classType: "RAIDER", range: 'melee', maxHp: 40, speed: 10, armor: 0, dmgBase: 12, img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 2, energy: 0 } }, 
+            { name: "Psycho", minTier: 4, classType: "RAIDER", range: 'melee', maxHp: 45, speed: 14, armor: 0, dmgBase: 18, img: "enemy_psycho.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
+            { name: "Sniper", minTier: 5, classType: "RAIDER", range: 'ranged', maxHp: 35, speed: 16, armor: 0, dmgBase: 25, img: "enemy_sniper.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 } }, 
             { name: "Juggernaut", minTier: 7, classType: "RAIDER", range: 'melee', maxHp: 90, speed: 6, armor: 5, dmgBase: 18, img: "enemy_juggernaut.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 0, energy: -5 } }
         ],
         'MECH': [
-            { name: "Drone", minTier: 1, classType: "DRONE", range: 'ranged', isHovering: true, maxHp: 25, speed: 18, armor: 5, dmgBase: 10, img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } }, 
-            { name: "Turret", minTier: 4, classType: "MECH", range: 'ranged', maxHp: 50, speed: 2, armor: 8, dmgBase: 20, img: "enemy_turret.png", scale: 0.9, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 100, energy: -10 } }, 
+            { name: "Drone", minTier: 4, classType: "DRONE", range: 'ranged', isHovering: true, maxHp: 25, speed: 18, armor: 5, dmgBase: 8, img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 8, bio: 100, energy: -10 } }, 
+            { name: "Turret", minTier: 5, classType: "MECH", range: 'ranged', maxHp: 50, speed: 2, armor: 8, dmgBase: 18, img: "enemy_turret.png", scale: 0.9, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 100, energy: -10 } }, 
             { name: "War Rig", minTier: 8, classType: "MECH", range: 'ranged', maxHp: 150, speed: 5, armor: 10, dmgBase: 25, img: "enemy_warrig.png", scale: 1.8, hpDrop: -20, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 15, bio: 100, energy: -15 } }
         ]
     };
@@ -591,6 +575,7 @@ function initiateCombat(nodeType, isEliteNode) {
     deployedRoster.sort((a, b) => a.gridPos - b.gridPos);
 
     playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; ent.oiledTurns = 0; });
+    
     const mult = difficultyMult * (1 + ((currentTier - 1) * 0.2)) * Math.pow(1.5, currentSector - 1);
     
     activeEntities = [...deployedRoster, ...generateEnemies(nodeType, mult, isEliteNode)];
