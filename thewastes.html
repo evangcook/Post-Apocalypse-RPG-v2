@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wasteland RPG - Engine V4</title>
+    <style>
+        body { background-color: #0a0a0a; color: #c0c0c0; font-family: monospace; margin: 0; padding: 10px; display: flex; justify-content: center; }
+        #engine { width: 100%; max-width: 800px; background: #111; border: 2px solid #555; padding: 15px; box-sizing: border-box; }
+        h2 { color: #00CED1; text-align: center; margin-top: 0; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        
+        .battlefield { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 20px; }
+        .team { width: 48%; display: flex; flex-direction: column; gap: 10px; }
+        
+        .entity { background: #1a1a1a; border: 1px solid #444; padding: 10px; position: relative; transition: all 0.2s; text-align: center; }
+        .entity.active { border-color: #00CED1; box-shadow: 0 0 8px #00CED1; }
+        .entity.dead { opacity: 0.3; border-color: #8B0000; filter: grayscale(100%); }
+        
+        .entity.targetable { border-color: #B8860B; box-shadow: 0 0 12px #B8860B; cursor: pointer; }
+        .entity.targetable:active { background: #333; }
+
+        .name { font-size: 14px; font-weight: bold; margin-bottom: 5px; }
+        
+        /* The Portrait Frame */
+        .portrait { 
+            height: 120px; 
+            width: 100%; 
+            background-color: #000; 
+            border: 1px solid #333; 
+            margin-bottom: 8px; 
+            background-size: contain; 
+            background-repeat: no-repeat; 
+            background-position: center; 
+        }
+        
+        .hp-container { background: #333; height: 15px; width: 100%; border: 1px solid #000; margin-bottom: 5px; }
+        .hp-fill { height: 100%; transition: width 0.3s ease; }
+        .player-hp { background-color: #6B8E23; }
+        .enemy-hp { background-color: #8B0000; }
+        .stats { font-size: 11px; color: #888; }
+
+        #log { height: 150px; overflow-y: auto; background: #000; border: 1px solid #333; padding: 10px; margin-bottom: 15px; font-size: 12px; color: #888; }
+        .log-turn { color: #00CED1; margin-top: 5px; }
+        .log-dmg { color: #fff; }
+        .log-enemy { color: #8B0000; }
+        .log-warn { color: #B8860B; }
+        
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { background: #222; color: #fff; border: 1px solid #555; padding: 12px; font-family: monospace; cursor: pointer; text-transform: uppercase; }
+        button:active { background: #444; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn-cancel { border-color: #8B0000; color: #8B0000; }
+    </style>
+</head>
+<body>
+
+<div id="engine">
+    <h2 id="turn-indicator">Initializing...</h2>
+    
+    <div class="battlefield">
+        <div class="team" id="player-team"></div>
+        <div class="team" id="enemy-team"></div>
+    </div>
+    
+    <div id="log"></div>
+    
+    <div class="controls" id="command-deck">
+        <button onclick="queueAction('ATTACK')" id="btn-attack">Attack</button>
+        <button onclick="executeSelfAction('DEFEND')" id="btn-defend">Defend</button>
+    </div>
+</div>
+
+<script>
+    const entities = [
+        // Notice the new 'img' property linking to your local files
+        { id: 'p1', name: "Scrap Bruiser", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png" },
+        { id: 'p2', name: "Wastes Medic", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "" },
+        { id: 'p3', name: "Scavenger", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "" },
+        { id: 'e1', name: "Mutant", maxHp: 70, hp: 70, speed: 7, armor: 0, isPlayer: false, dmgBase: 25, img: "" },
+        { id: 'e2', name: "Raider", maxHp: 40, hp: 40, speed: 10, armor: 0, isPlayer: false, dmgBase: 15, img: "" }
+    ];
+
+    let turnQueue = [];
+    let activeIndex = -1;
+    let combatActive = true;
+    let pendingAction = null; 
+
+    const logEl = document.getElementById('log');
+
+    function log(msg, styleClass = "log-dmg") {
+        const entry = document.createElement('div');
+        entry.className = styleClass;
+        entry.innerText = "> " + msg;
+        logEl.appendChild(entry);
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function renderField() {
+        const pTeam = document.getElementById('player-team');
+        const eTeam = document.getElementById('enemy-team');
+        pTeam.innerHTML = ''; eTeam.innerHTML = '';
+
+        entities.forEach(ent => {
+            const isDead = ent.hp <= 0;
+            const isActive = (!isDead && turnQueue.length > 0 && turnQueue[activeIndex].id === ent.id) ? 'active' : '';
+            const deadClass = isDead ? 'dead' : '';
+            
+            const isTargetable = (pendingAction !== null && !ent.isPlayer && !isDead);
+            const targetClass = isTargetable ? 'targetable' : '';
+            const clickHandler = isTargetable ? `onclick="resolveAction('${ent.id}')"` : '';
+            
+            const html = `
+                <div class="entity ${isActive} ${deadClass} ${targetClass}" id="${ent.id}" ${clickHandler}>
+                    <div class="name">${ent.name}</div>
+                    <div class="portrait" style="background-image: url('${ent.img}');"></div>
+                    <div class="hp-container">
+                        <div class="hp-fill ${ent.isPlayer ? 'player-hp' : 'enemy-hp'}" style="width: ${(ent.hp / ent.maxHp) * 100}%"></div>
+                    </div>
+                    <div class="stats">HP: ${ent.hp}/${ent.maxHp} | ARM: ${ent.armor} | SPD: ${ent.speed}</div>
+                </div>
+            `;
+            if (ent.isPlayer) pTeam.innerHTML += html;
+            else eTeam.innerHTML += html;
+        });
+
+        const btnAttack = document.getElementById('btn-attack');
+        const btnDefend = document.getElementById('btn-defend');
+        
+        if (pendingAction) {
+            btnAttack.innerText = "CANCEL ORDERS";
+            btnAttack.className = "btn-cancel";
+            btnAttack.onclick = cancelAction;
+            btnDefend.disabled = true;
+        } else {
+            btnAttack.innerText = "ATTACK";
+            btnAttack.className = "";
+            btnAttack.onclick = () => queueAction('ATTACK');
+            btnDefend.disabled = !turnQueue[activeIndex]?.isPlayer || !combatActive;
+            btnAttack.disabled = !turnQueue[activeIndex]?.isPlayer || !combatActive;
+        }
+    }
+
+    function startCombat() {
+        turnQueue = [...entities].sort((a, b) => b.speed - a.speed);
+        activeIndex = 0;
+        log("COMBAT INITIATED.", "log-turn");
+        processTurn();
+    }
+
+    function processTurn() {
+        if (!combatActive) return;
+        pendingAction = null;
+        let activeEntity = turnQueue[activeIndex];
+
+        if (activeEntity.hp <= 0) {
+            nextTurn();
+            return;
+        }
+
+        renderField();
+        document.getElementById('turn-indicator').innerText = `Active: ${activeEntity.name}`;
+
+        if (activeEntity.isPlayer) {
+            log(`${activeEntity.name} awaits orders.`, "log-turn");
+        } else {
+            log(`${activeEntity.name} is preparing to strike...`, "log-enemy");
+            setTimeout(() => executeEnemyAi(activeEntity), 1200);
+        }
+    }
+
+    function queueAction(actionType) {
+        pendingAction = actionType;
+        log("Select target...", "log-warn");
+        renderField();
+    }
+
+    function cancelAction() {
+        pendingAction = null;
+        log("Orders cancelled.", "log-warn");
+        renderField();
+    }
+
+    function resolveAction(targetId) {
+        let activeEntity = turnQueue[activeIndex];
+        let target = entities.find(e => e.id === targetId);
+        
+        if (pendingAction === 'ATTACK') {
+            let dmg = activeEntity.dmgBase + Math.floor(Math.random() * 6);
+            let netDmg = Math.max(1, dmg - target.armor);
+            target.hp = Math.max(0, target.hp - netDmg);
+            log(`${activeEntity.name} strikes ${target.name} for ${netDmg} DMG!`);
+        }
+        
+        pendingAction = null;
+        checkWinState();
+    }
+
+    function executeSelfAction(actionType) {
+        let activeEntity = turnQueue[activeIndex];
+        if (actionType === 'DEFEND') {
+            activeEntity.armor = 10;
+            log(`${activeEntity.name} deploys IRON GUARD (+10 ARMOR).`);
+        }
+        checkWinState();
+    }
+
+    function executeEnemyAi(enemy) {
+        if (!combatActive) return;
+        
+        let target = entities.filter(e => e.isPlayer && e.hp > 0).sort(() => 0.5 - Math.random())[0]; 
+        if (target) {
+            let dmg = enemy.dmgBase + Math.floor(Math.random() * 5);
+            let netDmg = Math.max(1, dmg - target.armor);
+            target.hp = Math.max(0, target.hp - netDmg);
+            log(`${enemy.name} attacks ${target.name} for ${netDmg} DMG!`, "log-enemy");
+            target.armor = 0; 
+        }
+        
+        checkWinState();
+    }
+
+    function checkWinState() {
+        renderField();
+        
+        const playersAlive = entities.some(e => e.isPlayer && e.hp > 0);
+        const enemiesAlive = entities.some(e => !e.isPlayer && e.hp > 0);
+
+        if (!playersAlive) {
+            log("SQUAD WIPED. MISSION FAILED.", "log-enemy");
+            combatActive = false;
+        } else if (!enemiesAlive) {
+            log("ALL HOSTILES ELIMINATED. COMBAT CLEAR.", "log-turn");
+            combatActive = false;
+        } else {
+            document.getElementById('btn-attack').disabled = true;
+            document.getElementById('btn-defend').disabled = true;
+            setTimeout(nextTurn, 800);
+        }
+    }
+
+    function nextTurn() {
+        activeIndex++;
+        if (activeIndex >= turnQueue.length) activeIndex = 0; 
+        processTurn();
+    }
+
+    startCombat();
+</script>
+</body>
+</html>
