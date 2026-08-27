@@ -33,33 +33,32 @@
         #queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; }
         
         /* The Floor - Lifted to match the road */
+                /* The Floor - Fluid Spacing */
         .battlefield { 
             display: flex; 
             justify-content: center; 
-            gap: 4vw; /* Space between the two teams */
+            gap: 4vw; 
             flex-grow: 1;
             align-items: flex-end; 
             padding: 0 5px;
             box-sizing: border-box;
-            
-            /* THIS IS THE ELEVATION PROTOCOL. Change 15vh to move them higher/lower on the background */
             margin-bottom: 15vh; 
         }
         
-        .team { display: flex; gap: 2vw; align-items: flex-end; }
+        .team { display: flex; gap: 1.5vw; align-items: flex-end; }
         #player-team { flex-direction: row-reverse; }
         #enemy-team { flex-direction: row; }
         
-        /* Fluid Sprites - Massively Increased Size */
+        /* Fluid Sprites - Calibrated to fit 6 entities */
         .entity { 
-            width: clamp(70px, 22vw, 150px); 
+            width: clamp(40px, 14vw, 100px); 
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-end;
             position: relative; 
             transition: transform 0.2s; 
-            gap: 4px; /* Locks HP bar to the head */
+            gap: 4px; 
         }
         
         /* Targeting Highlights */
@@ -69,15 +68,16 @@
         .entity.targetable-ally .portrait { filter: drop-shadow(0 0 12px #6B8E23); cursor: pointer; }
         .entity.targetable-enemy:active .portrait { filter: drop-shadow(0 0 20px #ff0000) brightness(1.5); }
 
-        /* Floating HP Elements */
-        .hp-text { font-size: clamp(10px, 3vw, 13px); font-weight: bold; margin-bottom: 0; color: #fff; text-shadow: 1px 1px 3px #000; text-align: center; white-space: nowrap; }
-        .hp-container { background: #111; height: 7px; width: 85%; border: 1px solid #000; box-shadow: 0 0 4px #000; }
+        /* Compressed HP Elements */
+        .hp-text { font-size: clamp(9px, 2.5vw, 12px); font-weight: bold; margin-bottom: 0; color: #fff; text-shadow: 1px 1px 3px #000; text-align: center; white-space: nowrap; }
+        .hp-container { background: #111; height: 6px; width: 90%; border: 1px solid #000; box-shadow: 0 0 4px #000; }
         .hp-fill { height: 100%; transition: width 0.3s ease; }
         .player-hp { background-color: #8B0000; }
         .enemy-hp { background-color: #8B0000; }
 
+        /* Tighter Container to pull HP down to the head */
         .portrait { 
-            height: clamp(110px, 22vh, 220px); /* Taller maximum height limits */
+            height: clamp(55px, 14vw, 110px); /* Height locked to width ratio */
             width: 100%; 
             background-color: transparent; 
             background-size: contain; 
