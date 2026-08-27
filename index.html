@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wasteland RPG - Engine V10.0</title>
+    <title>Wasteland RPG - Engine V11.0 (Status Effects)</title>
     <style>
         body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
         #engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -62,12 +62,12 @@
             z-index: 1;
         }
         
-        /* Depth Sorting for Frontlines */
+        /* Depth Sorting */
         .entity:nth-child(1) { z-index: 3; }
         .entity:nth-child(2) { z-index: 2; }
         .entity:nth-child(3) { z-index: 1; }
         
-        /* Targeting Highlights - Turn-based idle animation removed */
+        /* Highlights - Turn-based idle animation removed */
         .entity.active .portrait { 
             filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.9)); 
         }
@@ -77,11 +77,17 @@
         .entity.targetable-enemy:active .portrait { filter: drop-shadow(0 0 20px #ff0000) brightness(1.5); }
 
         /* Compressed HP Elements */
-        .hp-text { font-size: clamp(9px, 2.5vw, 12px); font-weight: bold; margin-bottom: 2px; color: #fff; text-shadow: 1px 1px 3px #000; text-align: center; white-space: nowrap; }
+        .hp-text { font-size: clamp(9px, 2.5vw, 12px); font-weight: bold; margin-bottom: 2px; color: #fff; text-shadow: 1px 1px 3px #000; text-align: center; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 3px; }
         .hp-container { background: #111; height: 6px; width: 85%; border: 1px solid #000; box-shadow: 0 0 4px #000; margin: 0 auto; }
         .hp-fill { height: 100%; transition: width 0.3s ease; }
         .player-hp { background-color: #8B0000; }
         .enemy-hp { background-color: #8B0000; }
+
+        /* Status Badges */
+        .status-badge { font-size: 10px; width: 12px; height: 12px; display: flex; align-items: center; justify-content: center; border-radius: 2px; }
+        .status-bleed { background-color: rgba(139,0,0,0.7); color: #fff; text-shadow: 0 0 2px #000; }
+        .status-stun { background-color: rgba(184,134,11,0.7); color: #000; font-weight: bold; }
+        .status-shield { background-color: rgba(107,142,35,0.7); color: #fff; }
 
         /* Dynamic Image Tag */
         .portrait { 
@@ -127,6 +133,7 @@
         .log-turn { color: #aaa; margin-top: 5px; }
         .log-heal { color: #6B8E23; }
         .log-dmg { color: #8B0000; }
+        .log-status { color: #B8860B; } /* Gold color for dot logs */
         
         button { background: #111; color: #ccc; border: 1px solid #444; padding: clamp(10px, 3vh, 15px); font-family: monospace; font-size: clamp(10px, 3vw, 13px); cursor: pointer; text-transform: uppercase; transition: 0.2s; }
         button:hover:not(:disabled) { background: #222; border-color: #888; }
@@ -171,17 +178,17 @@
 <script>
     // --- GLOBAL STATE ---
     
-    // Foundation Item: Save State Setup
-    const SAVE_KEY = 'wasteland_rpg_engine_v1';
+    // Save State Setup
+    const SAVE_KEY = 'wasteland_rpg_engine_v11';
     
     let scrap = 0;
     let currentTier = 1;
     
-    // Engine V9.7: Decoupled hpDrop translation
+    // Engine V11.0: Effects logic integrated intoGlobal State
     const playerRoster = [
-        { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0 },
-        { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0 },
-        { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25 }
+        { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 },
+        { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 },
+        { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 }
     ];
     
     let activeEntities = []; 
@@ -244,20 +251,23 @@
         combatActive = true;
         document.getElementById('log').innerHTML = ''; 
         
+        // Reset effects on players for new combat
+        playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; });
+        
         let enemies = [];
         const mult = 1 + ((currentTier - 1) * 0.4); 
         
         if (nodeType === 'BOSS') {
-            enemies = [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: 40, img: "enemy_boss.png", scale: 1.8, hpDrop: 0 }];
+            enemies = [{ id: 'b1', name: "Warlord", classType: "BOSS", maxHp: Math.floor(400*mult), hp: Math.floor(400*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: 40, img: "enemy_boss.png", scale: 1.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 }];
         } else if (nodeType === 'AMBUSH') {
             enemies = [
-                { id: 'e1', name: "Raider", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 10, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0 },
-                { id: 'e2', name: "Raider", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 12, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0 }
+                { id: 'e1', name: "Raider A", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 10, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 },
+                { id: 'e2', name: "Raider B", classType: "RAIDER", maxHp: Math.floor(40*mult), hp: Math.floor(40*mult), speed: 12, armor: 0, isPlayer: false, dmgBase: Math.floor(15*mult), img: "enemy_raider.png", scale: 1.0, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 }
             ];
         } else {
             enemies = [
-                { id: 'e1', name: "Mutant", classType: "MUTANT", maxHp: Math.floor(70*mult), hp: Math.floor(70*mult), speed: 7, armor: 0, isPlayer: false, dmgBase: Math.floor(25*mult), img: "enemy_mutant.png", scale: 1.1, hpDrop: 0 },
-                { id: 'e2', name: "Drone", classType: "DRONE", maxHp: Math.floor(25*mult), hp: Math.floor(25*mult), speed: 18, armor: 5, isPlayer: false, dmgBase: Math.floor(10*mult), img: "enemy_drone.png", scale: 0.7, hpDrop: 0 }
+                { id: 'e1', name: "Mutant", classType: "MUTANT", maxHp: Math.floor(70*mult), hp: Math.floor(70*mult), speed: 7, armor: 0, isPlayer: false, dmgBase: Math.floor(25*mult), img: "enemy_mutant.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 },
+                { id: 'e2', name: "Drone", classType: "DRONE", maxHp: Math.floor(25*mult), hp: Math.floor(25*mult), speed: 18, armor: 5, isPlayer: false, dmgBase: Math.floor(10*mult), img: "enemy_drone.png", scale: 0.7, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0 }
             ];
         }
         
@@ -279,7 +289,10 @@
     }
 
     function renderQueue() {
-        const queueStr = turnQueue.map(e => e.name.substring(0,3).toUpperCase()).join(' > ');
+        const queueStr = turnQueue.map(e => {
+            let pref = e.isStunned ? '!' : '';
+            return pref + e.name.substring(0,3).toUpperCase();
+        }).join(' > ');
         document.getElementById('queue-display').innerText = `Q: ${queueStr}`;
     }
 
@@ -307,10 +320,16 @@
                 }
             }
             
+            // Effect Icons
+            let effectsHtml = '';
+            if (ent.bleedingTurns > 0) effectsHtml += `<span class="status-badge status-bleed">💧</span>`;
+            if (ent.stunnedTurns > 0) effectsHtml += `<span class="status-badge status-stun">💫</span>`;
+            if (ent.armorTurns > 0) effectsHtml += `<span class="status-badge status-shield">🛡️</span>`;
+
             const html = `
                 <div class="entity ${isActive} ${deadClass} ${targetClass}" id="${ent.id}" ${clickHandler} style="--sprite-scale: ${ent.scale || 1};">
                     <div style="width: 100%; position: relative; z-index: 10; transform: translateY(${ent.hpDrop || 0}px);">
-                        <div class="hp-text">${ent.hp}/${ent.maxHp}</div>
+                        <div class="hp-text">${effectsHtml} ${ent.hp}/${ent.maxHp}</div>
                         <div class="hp-container">
                             <div class="hp-fill ${ent.isPlayer ? 'player-hp' : 'enemy-hp'}" style="width: ${(ent.hp / ent.maxHp) * 100}%"></div>
                         </div>
@@ -342,6 +361,13 @@
             return;
         }
 
+        // Stunned Input Override
+        if (activeEntity.stunnedTurns > 0) {
+            deck.innerHTML = `<div class="dash-msg">STUNNED</div>`;
+            deck.innerHTML += `<button onclick="skipStunnedTurn()">Skip Turn</button>`;
+            return;
+        }
+
         if (activeEntity.classType === 'BRUISER') {
             deck.innerHTML += `<button onclick="queueAction('HEAVY_WRENCH')">Heavy Wrench</button>`;
             deck.innerHTML += `<button onclick="executeSelfAction('IRON_GUARD')">Iron Guard</button>`;
@@ -354,6 +380,7 @@
         }
     }
 
+    // --- PHASE 11: CORE LOOP OVERHAUL ---
     function processTurn() {
         if (!combatActive) return;
         pendingAction = null;
@@ -366,9 +393,65 @@
 
         renderField();
 
+        // 1. Foundation: Buff/Effect Tick Phase (START of Turn)
+        applyTurnStartEffects(activeEntity);
+
+        if (!combatActive) return; // Winstate check inside effects logic
+        if (!activeEntity.hp > 0) return checkWinState(); // Check if bleed killed them
+
+        // 2. Foundation: Stun Check denial logic
+        if (activeEntity.stunnedTurns > 0) {
+            if (!activeEntity.isPlayer) {
+                // AI automatically skips stunned turn
+                log(`${activeEntity.name} is stunned and skips turn.`, "log-status");
+                activeEntity.stunnedTurns--;
+                setTimeout(nextTurn, 1000);
+                return;
+            } else {
+                // Player must interact to skip (rendered in command deck)
+                return;
+            }
+        }
+
+        // Standard turn processing
         if (!activeEntity.isPlayer) {
             setTimeout(() => executeEnemyAi(activeEntity), 1000);
         }
+    }
+
+    // New phase function to handle bleed dots and stunned logic
+    function applyTurnStartEffects(ent) {
+        let changed = false;
+
+        // Apply Bleed (DoT) damage before turn actions
+        if (ent.bleedingTurns > 0) {
+            const bleedDmg = Math.floor(ent.maxHp * 0.08); // Simple 8% dot
+            ent.hp = Math.max(0, ent.hp - bleedDmg);
+            log(`> ${ent.name} bleeds for ${bleedDmg} DMG (1/${ent.bleedingTurns}).`, "log-dmg");
+            ent.bleedingTurns--;
+            changed = true;
+        }
+
+        // Tick down armor duration (Iron Guard persistence)
+        if (ent.armorTurns > 0) {
+            ent.armorTurns--;
+            if (ent.armorTurns === 0) {
+                log(`> ${ent.name}'s Iron Guard faded.`);
+                ent.armor = 0;
+            }
+            changed = true;
+        }
+
+        if (changed) renderField();
+    }
+
+    // Required player interaction to skip stunned turn
+    function skipStunnedTurn() {
+        let activeEntity = turnQueue[activeIndex];
+        log(`${activeEntity.name} recovers from stun.`, "log-status");
+        activeEntity.stunnedTurns--;
+        renderField();
+        setTimeout(nextTurn, 500);
     }
 
     function queueAction(actionType) {
@@ -390,23 +473,51 @@
             target.hp = Math.min(target.maxHp, target.hp + heal);
             log(`> ${activeEntity.name} heals ${target.name} for ${heal}.`, "log-heal");
         } else {
+            // DMG calculation
             let dmg = activeEntity.dmgBase + Math.floor(Math.random() * 6);
-            if (pendingAction === 'FLASHBANG') dmg = Math.floor(dmg * 0.5); 
+            if (pendingAction === 'FLASHBANG') dmg = Math.floor(dmg * 0.4); // massive reduction
             
             let netDmg = Math.max(1, dmg - target.armor);
             target.hp = Math.max(0, target.hp - netDmg);
             log(`> ${activeEntity.name} attacks ${target.name} for ${netDmg} DMG.`);
+
+            // FOUNDATION Phase 11: Effect Application logic (on HIT)
+            applyAttackEffects(activeEntity, target, pendingAction);
         }
         
         pendingAction = null;
         checkWinState();
     }
 
+    // Handles application chance based on ability type
+    function applyAttackEffects(attacker, target, ability) {
+        if (target.hp <= 0) return; // Don't stun dead things
+
+        if (ability === 'RAD_SHOT') {
+            // Apply Bleed (3 turn duration)
+            if (Math.random() < 0.6) { // 60% chance
+                target.bleedingTurns = 3;
+                log(`> ${target.name} begins bleeding!`, "log-dmg");
+                renderField();
+            }
+        } else if (ability === 'HEAVY_WRENCH' || ability === 'FLASHBANG') {
+            // Apply Stun (Turn Denial)
+            const stunChance = (ability === 'FLASHBANG') ? 0.35 : 0.2; // Wrench lower, FB higher
+            if (Math.random() < stunChance) {
+                target.stunnedTurns = 1;
+                log(`> ${target.name} is stunned!`, "log-status");
+                renderField();
+            }
+        }
+    }
+
     function executeSelfAction(actionType) {
         let activeEntity = turnQueue[activeIndex];
         if (actionType === 'IRON_GUARD') {
-            activeEntity.armor += 15;
-            log(`> ${activeEntity.name} deployed IRON GUARD.`);
+            activeEntity.armor += 20; // intensified armor value
+            // FOUNDATION V11: Persistent Buff duration
+            activeEntity.armorTurns = 2; // Lasts 2 turn ticks
+            log(`> ${activeEntity.name} deployed IRON GUARD (lasts 2 turns).`, "log-heal");
         }
         checkWinState();
     }
@@ -422,7 +533,15 @@
             let netDmg = Math.max(1, dmg - target.armor);
             target.hp = Math.max(0, target.hp - netDmg);
             log(`> ${enemy.name} attacks ${target.name} for ${netDmg} DMG!`, "log-dmg");
-            target.armor = 0; 
+            
+            // FOUNDATION Phase 11: Enemy effect logic (simplistic)
+            if (enemy.classType === 'MUTANT' && Math.random() < 0.3) {
+                target.bleedingTurns = 2; // Mutant bite causes bleed
+                log(`> Mutant bite caused ${target.name} to bleed.`, "log-dmg");
+            } else if (enemy.classType === 'BOSS' && Math.random() < 0.25) {
+                target.stunnedTurns = 1; // Heavy Warlord hits stun
+                log(`> Warlord smash stunned ${target.name}.`, "log-status");
+            }
         }
         checkWinState();
     }
