@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V23.1 (Tier 1 Combat Biome Lock)</title>
+<title>Wasteland RPG - Engine V24.0 (Consumables & Inventory)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -61,6 +61,14 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .return-btn { background: #111; color: #ccc; border: 1px solid #444; padding: 15px; font-family: monospace; font-size: 14px; cursor: pointer; text-transform: uppercase; margin-top: auto; transition: 0.2s; flex-shrink:0;}
 .return-btn:hover { background: #222; border-color: #888; }
 
+/* V24: Inventory styles */
+.inventory-sect { background: #111; border: 1px solid #444; padding: 10px; margin-top: 10px; }
+.inventory-title { color: #B8860B; font-weight: bold; font-size: 13px; margin-bottom: 5px; }
+.inventory-grid { display: flex; gap: 5px; flex-wrap: wrap; }
+.inv-slot { background: #1a1a1a; border: 1px solid #333; padding: 6px; font-size: 11px; color: #aaa; cursor: pointer; flex: 1; min-width: 45%; text-align: center; }
+.inv-slot:hover:not(:disabled) { background: #333; color: #fff; border-color: #888; }
+.inv-slot:disabled { opacity: 0.3; cursor: not-allowed; }
+
 #screen-combat { display: none; flex-direction: column; height: 100%; }
 .sky-layer { background-size: cover; background-position: center bottom; flex-grow: 1; display: flex; flex-direction: column; position: relative; }
 #queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; }
@@ -105,7 +113,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 <div id="engine">
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V23.1</div>
+        <div class="title-sub">ENGINE V24.0</div>
         <div class="title-menu" id="title-menu-container"></div>
     </div>
 
@@ -124,6 +132,10 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
             <span>SCRAP: <span id="outpost-scrap">0</span></span>
         </div>
         <div id="outpost-roster" class="outpost-roster"></div>
+        <div class="inventory-sect">
+            <div class="inventory-title">TACTICAL INVENTORY (MAX 4)</div>
+            <div id="outpost-inventory" class="inventory-grid"></div>
+        </div>
         <button class="return-btn" onclick="renderMap()">CONFIRM DEPLOYMENT & RETURN</button>
     </div>
 
@@ -143,8 +155,9 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 </div>
 
 <script>
-const SAVE_KEY = 'wasteland_rpg_engine_v23.1'; 
+const SAVE_KEY = 'wasteland_rpg_engine_v24'; 
 let scrap = 0; let currentTier = 1;
+let inventory = []; // V24 Consumables Inventory Array (Max 4 slots)
 
 const SECTOR_LAYOUT = [
     ['BOSS'], ['MECH', 'RAIDERS'], ['BEASTS', 'MECH', 'RAIDERS'], ['RAIDERS', 'BEASTS'], ['MECH', 'RAIDERS', 'BEASTS'], ['BEASTS', 'MECH'], ['RAIDERS', 'BEASTS', 'RAIDERS'], ['MECH', 'RAIDERS'], ['BEASTS', 'RAIDERS', 'MECH'], ['RAIDERS']
@@ -171,13 +184,13 @@ function renderTitleScreen() {
     document.getElementById('title-menu-container').innerHTML += `<button class="title-btn" onclick="startNewGame()">New Expedition</button>`;
 }
 
-function startNewGame() { localStorage.removeItem(SAVE_KEY); scrap = 0; currentTier = 1; playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); saveGameState(); renderMap(); }
+function startNewGame() { localStorage.removeItem(SAVE_KEY); scrap = 0; currentTier = 1; inventory = ['MED_STIM']; playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); saveGameState(); renderMap(); }
 function continueGame() { loadGameState(); renderMap(); }
 
-function saveGameState() { localStorage.setItem(SAVE_KEY, JSON.stringify({ scrap, tier: currentTier, roster: playerRoster })); }
+function saveGameState() { localStorage.setItem(SAVE_KEY, JSON.stringify({ scrap, tier: currentTier, roster: playerRoster, inventory })); }
 function loadGameState() {
     let d = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (d) { scrap = d.scrap || 0; currentTier = d.tier || 1; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); }
+    if (d) { scrap = d.scrap || 0; currentTier = d.tier || 1; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); inventory = d.inventory || ['MED_STIM']; }
 }
 
 function renderMap() {
@@ -198,7 +211,9 @@ function renderMap() {
 }
 
 function renderOutpost() {
-    switchScreen('screen-outpost'); document.getElementById('outpost-scrap').innerText = scrap; const c = document.getElementById('outpost-roster'); c.innerHTML = '';
+    switchScreen('screen-outpost'); document.getElementById('outpost-scrap').innerText = scrap; 
+    const c = document.getElementById('outpost-roster'); c.innerHTML = '';
+    
     playerRoster.forEach(char => {
         let cost = 30 + (char.upgradeCount * 25); let canUpg = scrap >= cost; let isDead = char.hp <= 0; let isInj = char.hp < char.maxHp && char.hp > 0;
         let medHtml = isDead ? `<button class="upg-btn revive-btn" ${scrap < 50 ? 'disabled' : ''} onclick="medBay('${char.id}', 'REVIVE')">DEFIB (50)</button>` : `<button class="upg-btn med-btn" ${!isInj || scrap < 10 ? 'disabled' : ''} onclick="medBay('${char.id}', 'HEAL')">TRIAGE (10)</button>`;
@@ -217,6 +232,32 @@ function renderOutpost() {
                 </div>
             </div>`;
     });
+
+    // Render Inventory / Buy Consumables
+    const invC = document.getElementById('outpost-inventory'); invC.innerHTML = '';
+    for (let i = 0; i < 4; i++) {
+        let item = inventory[i];
+        if (item) {
+            let label = item === 'MED_STIM' ? '💉 Med-Stim (+30HP)' : item === 'SCRAP_BOMB' ? '💣 Scrap Bomb (AoE)' : '⚡ Adrenaline (Cleanse)';
+            invC.innerHTML += `<button class="inv-slot" onclick="useOutpostItem(${i})">${label} [SELL]</button>`;
+        } else {
+            let canBuy = scrap >= 40 && inventory.length < 4;
+            invC.innerHTML += `<button class="inv-slot" ${!canBuy ? 'disabled' : ''} onclick="buyItem('MED_STIM')">Buy Med-Stim (40)</button>`;
+        }
+    }
+}
+
+function buyItem(itemType) {
+    if (scrap < 40 || inventory.length >= 4) return;
+    scrap -= 40; inventory.push(itemType);
+    saveGameState(); renderOutpost();
+}
+
+function useOutpostItem(index) {
+    // Sell item back for 20 scrap if clicked in outpost
+    inventory.splice(index, 1);
+    scrap += 20;
+    saveGameState(); renderOutpost();
 }
 
 function toggleDeploy(charId) {
@@ -268,19 +309,15 @@ function generateEnemies(nodeType, mult) {
     return squad;
 }
 
-// V23.1: Tier 1 Locked Biome + Dynamic Rotation
 function setCombatBackground(nodeType, tier) {
-    let bgFile = 'bg_combat.png'; // Default fallback
-    
-    if (tier === 1) {
-        bgFile = 'bg_combat.png'; // Tier 1 explicitly locked to classic combat background
-    } else {
+    let bgFile = 'bg_combat.png'; 
+    if (tier === 1) { bgFile = 'bg_combat.png'; } 
+    else {
         if (nodeType === 'BOSS') bgFile = 'bg_thunderdome.png';
         else if (nodeType === 'MECH') bgFile = 'bg_refinery.png';
         else if (nodeType === 'RAIDERS') bgFile = 'bg_highway.png';
         else if (nodeType === 'BEASTS') bgFile = 'bg_canyon.png';
     }
-
     document.getElementById('combat-sky-layer').style.backgroundImage = `linear-gradient(to bottom, rgba(43, 10, 10, 0.4) 0%, rgba(0, 0, 0, 0.5) 100%), url('${bgFile}')`;
 }
 
@@ -292,8 +329,6 @@ function spawnFCT(entityId, msg, styleClass) {
 
 function initiateCombat(nodeType) {
     switchScreen('screen-combat'); combatActive = true; document.getElementById('log').innerHTML = '';
-    
-    // Pass currentTier to set background (Tier 1 locks to bg_combat.png)
     setCombatBackground(nodeType, currentTier);
 
     let deployedRoster = playerRoster.filter(p => p.isActive);
@@ -321,6 +356,11 @@ function renderField() {
         let tCls = ''; let clk = '';
         if (pendingAction && !isDead) {
             if (pendingAction === 'CAUTERIZE' && ent.isPlayer) { tCls = 'targetable-ally'; clk = `onclick="resolveAction('${ent.id}')"`; } 
+            else if (['ITEM_MED', 'ITEM_BOMB', 'ITEM_ADRENALINE'].includes(pendingAction)) {
+                if (pendingAction === 'ITEM_MED' && ent.isPlayer) { tCls = 'targetable-ally'; clk = `onclick="resolveConsumableItem('${ent.id}')"`; }
+                else if (pendingAction === 'ITEM_ADRENALINE' && ent.isPlayer) { tCls = 'targetable-ally'; clk = `onclick="resolveConsumableItem('${ent.id}')"`; }
+                else if (pendingAction === 'ITEM_BOMB' && !ent.isPlayer) { tCls = 'targetable-enemy'; clk = `onclick="resolveConsumableItem('${ent.id}')"`; }
+            }
             else if (pendingAction !== 'CAUTERIZE' && !ent.isPlayer) { tCls = 'targetable-enemy'; clk = `onclick="resolveAction('${ent.id}')"`; }
         }
         let eff = ''; if (ent.bleedingTurns > 0 && !isDead) eff += `💧`; if (ent.stunnedTurns > 0 && !isDead) eff += `💫`; if (ent.armorTurns > 0 && !isDead) eff += `🛡️`;
@@ -344,30 +384,93 @@ function renderCommandDeck() {
     if (aE.stunnedTurns > 0) { d.innerHTML = `<div class="dash-msg">STUNNED</div><button onclick="skipStunnedTurn()">Skip Turn</button>`; return; }
 
     let cds = aE.cooldowns;
+    let deckHtml = '';
     if (aE.classType === 'BRUISER') {
-        d.innerHTML += `<button onclick="queueAction('SCRAP_BLADE')">Scrap Blade</button>`;
-        d.innerHTML += `<button ${cds.heavy_wrench > 0 ? 'disabled' : ''} onclick="queueAction('HEAVY_WRENCH')">Heavy Wrench ${cds.heavy_wrench > 0 ? `[${cds.heavy_wrench}]` : ''}</button>`;
-        d.innerHTML += `<button ${cds.iron_guard > 0 ? 'disabled' : ''} onclick="executeSelfAction('IRON_GUARD')">Iron Guard ${cds.iron_guard > 0 ? `[${cds.iron_guard}]` : ''}</button>`;
+        deckHtml += `<button onclick="queueAction('SCRAP_BLADE')">Scrap Blade</button>`;
+        deckHtml += `<button ${cds.heavy_wrench > 0 ? 'disabled' : ''} onclick="queueAction('HEAVY_WRENCH')">Heavy Wrench ${cds.heavy_wrench > 0 ? `[${cds.heavy_wrench}]` : ''}</button>`;
+        deckHtml += `<button ${cds.iron_guard > 0 ? 'disabled' : ''} onclick="executeSelfAction('IRON_GUARD')">Iron Guard ${cds.iron_guard > 0 ? `[${cds.iron_guard}]` : ''}</button>`;
     } else if (aE.classType === 'MEDIC') {
-        d.innerHTML += `<button onclick="queueAction('PISTOL')">Pistol</button>`;
-        d.innerHTML += `<button onclick="queueAction('RAD_SHOT')">Rad Shot</button>`;
-        d.innerHTML += `<button ${cds.cauterize > 0 ? 'disabled' : ''} onclick="queueAction('CAUTERIZE')">Cauterize ${cds.cauterize > 0 ? `[${cds.cauterize}]` : ''}</button>`;
+        deckHtml += `<button onclick="queueAction('PISTOL')">Pistol</button>`;
+        deckHtml += `<button onclick="queueAction('RAD_SHOT')">Rad Shot</button>`;
+        deckHtml += `<button ${cds.cauterize > 0 ? 'disabled' : ''} onclick="queueAction('CAUTERIZE')">Cauterize ${cds.cauterize > 0 ? `[${cds.cauterize}]` : ''}</button>`;
     } else if (aE.classType === 'SCAVENGER') {
-        d.innerHTML += `<button onclick="queueAction('PIPE_RIFLE')">Pipe Rifle</button>`;
-        d.innerHTML += `<button ${cds.flashbang > 0 ? 'disabled' : ''} onclick="queueAction('FLASHBANG')">Flashbang ${cds.flashbang > 0 ? `[${cds.flashbang}]` : ''}</button>`;
+        deckHtml += `<button onclick="queueAction('PIPE_RIFLE')">Pipe Rifle</button>`;
+        deckHtml += `<button ${cds.flashbang > 0 ? 'disabled' : ''} onclick="queueAction('FLASHBANG')">Flashbang ${cds.flashbang > 0 ? `[${cds.flashbang}]` : ''}</button>`;
     } else if (aE.classType === 'PYROMANIAC') {
-        d.innerHTML += `<button onclick="queueAction('FLARE_GUN')">Flare Gun</button>`;
-        d.innerHTML += `<button ${cds.molotov > 0 ? 'disabled' : ''} onclick="queueAction('MOLOTOV')">Molotov (AoE) ${cds.molotov > 0 ? `[${cds.molotov}]` : ''}</button>`;
+        deckHtml += `<button onclick="queueAction('FLARE_GUN')">Flare Gun</button>`;
+        deckHtml += `<button ${cds.molotov > 0 ? 'disabled' : ''} onclick="queueAction('MOLOTOV')">Molotov (AoE) ${cds.molotov > 0 ? `[${cds.molotov}]` : ''}</button>`;
     } else if (aE.classType === 'SHOTGUNNER') {
-        d.innerHTML += `<button onclick="queueAction('SLUG_SHOT')">Slug Shot</button>`;
-        d.innerHTML += `<button ${cds.buckshot > 0 ? 'disabled' : ''} onclick="queueAction('BUCKSHOT')">Buckshot (Front) ${cds.buckshot > 0 ? `[${cds.buckshot}]` : ''}</button>`;
+        deckHtml += `<button onclick="queueAction('SLUG_SHOT')">Slug Shot</button>`;
+        deckHtml += `<button ${cds.buckshot > 0 ? 'disabled' : ''} onclick="queueAction('BUCKSHOT')">Buckshot (Front) ${cds.buckshot > 0 ? `[${cds.buckshot}]` : ''}</button>`;
     } else if (aE.classType === 'SNIPER') {
-        d.innerHTML += `<button onclick="queueAction('QUICK_SHOT')">Quick Shot</button>`;
-        d.innerHTML += `<button ${cds.deadeye > 0 ? 'disabled' : ''} onclick="queueAction('DEADEYE')">Deadeye (Back) ${cds.deadeye > 0 ? `[${cds.deadeye}]` : ''}</button>`;
+        deckHtml += `<button onclick="queueAction('QUICK_SHOT')">Quick Shot</button>`;
+        deckHtml += `<button ${cds.deadeye > 0 ? 'disabled' : ''} onclick="queueAction('DEADEYE')">Deadeye (Back) ${cds.deadeye > 0 ? `[${cds.deadeye}]` : ''}</button>`;
     } else if (aE.classType === 'HOUND') {
-        d.innerHTML += `<button onclick="queueAction('SNAP')">Snap</button>`;
-        d.innerHTML += `<button ${cds.feral_bite > 0 ? 'disabled' : ''} onclick="queueAction('FERAL_BITE')">Feral Bite (Bleed) ${cds.feral_bite > 0 ? `[${cds.feral_bite}]` : ''}</button>`;
+        deckHtml += `<button onclick="queueAction('SNAP')">Snap</button>`;
+        deckHtml += `<button ${cds.feral_bite > 0 ? 'disabled' : ''} onclick="queueAction('FERAL_BITE')">Feral Bite (Bleed) ${cds.feral_bite > 0 ? `[${cds.feral_bite}]` : ''}</button>`;
     }
+
+    // V24: Inject Inventory Access Button into Command Deck
+    if (inventory.length > 0) {
+        deckHtml += `<button style="border-color:#B8860B; color:#B8860B;" onclick="openInventoryMenu()">BAG (${inventory.length})</button>`;
+    }
+    d.innerHTML = deckHtml;
+}
+
+function openInventoryMenu() {
+    const d = document.getElementById('command-deck');
+    let h = `<div class="dash-msg" style="color:#B8860B; font-weight:bold;">SELECT ITEM:</div>`;
+    inventory.forEach((item, idx) => {
+        let name = item === 'MED_STIM' ? 'Med-Stim' : item === 'SCRAP_BOMB' ? 'Scrap Bomb' : 'Adrenaline';
+        h += `<button onclick="triggerItem(${idx})">${name}</button>`;
+    });
+    h += `<button onclick="renderCommandDeck()">BACK</button>`;
+    d.innerHTML = h;
+}
+
+function triggerItem(invIndex) {
+    let item = inventory[invIndex];
+    if (item === 'MED_STIM') { pendingAction = 'ITEM_MED'; inventoryToConsume = invIndex; log("> Select ally for Med-Stim.", "log-status"); renderField(); }
+    else if (item === 'ADRENALINE') { pendingAction = 'ITEM_ADRENALINE'; inventoryToConsume = invIndex; log("> Select ally for Adrenaline.", "log-status"); renderField(); }
+    else if (item === 'SCRAP_BOMB') { pendingAction = 'ITEM_BOMB'; inventoryToConsume = invIndex; log("> Select enemy target for Scrap Bomb.", "log-status"); renderField(); }
+}
+
+let inventoryToConsume = -1;
+function resolveConsumableItem(targetId) {
+    let target = activeEntities.find(e => e.id === targetId);
+    let item = inventory[inventoryToConsume];
+
+    if (item === 'MED_STIM') {
+        let heal = 30;
+        target.hp = Math.min(target.maxHp, target.hp + heal);
+        log(`> Used Med-Stim on ${target.name} for ${heal} HP.`, "log-heal");
+        spawnFCT(target.id, `+${heal}`, "fct-heal");
+    } else if (item === 'ADRENALINE') {
+        target.stunnedTurns = 0;
+        target.bleedingTurns = 0;
+        log(`> Used Adrenaline on ${target.name}. Cleared effects!`, "log-heal");
+        spawnFCT(target.id, "CLEANSE", "fct-heal");
+    } else if (item === 'SCRAP_BOMB') {
+        // AoE damage to all enemies
+        inventory.splice(inventoryToConsume, 1);
+        activeEntities.forEach(e => {
+            if (!e.isPlayer && e.hp > 0) {
+                let dmg = 25;
+                e.hp = Math.max(0, e.hp - dmg);
+                spawnFCT(e.id, `-${dmg}`, "fct-dmg");
+            }
+        });
+        log(`> Threw Scrap Bomb for 25 AoE DMG!`, "log-dmg");
+        pendingAction = null;
+        checkWinState();
+        return;
+    }
+
+    // Consume item from array
+    inventory.splice(inventoryToConsume, 1);
+    inventoryToConsume = -1;
+    pendingAction = null;
+    checkWinState();
 }
 
 function processTurn() {
@@ -500,7 +603,18 @@ function checkWinState() {
     renderField();
     const pA = activeEntities.some(e => e.isPlayer && e.hp > 0); const eA = activeEntities.some(e => !e.isPlayer && e.hp > 0);
     if (!pA) { document.getElementById('command-deck').innerHTML = `<button onclick="handleSquadWipe()">EXPEDITION FAILED - RESTART</button>`; combatActive = false; } 
-    else if (!eA) { let s = Math.floor(Math.random() * 30) + (currentTier * 20); document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${s})">LOOT ${s}</button>`; combatActive = false; } 
+    else if (!eA) { 
+        let s = Math.floor(Math.random() * 30) + (currentTier * 20); 
+        // V24: 35% chance to drop a random consumable on combat win if inventory space permits
+        if (Math.random() < 0.35 && inventory.length < 4) {
+            let drops = ['MED_STIM', 'SCRAP_BOMB', 'ADRENALINE'];
+            let found = drops[Math.floor(Math.random() * drops.length)];
+            inventory.push(found);
+            log(`> Loot Drop: Acquired ${found} tactical item!`, "log-heal");
+        }
+        document.getElementById('command-deck').innerHTML = `<button onclick="collectLoot(${s})">LOOT ${s}</button>`; 
+        combatActive = false; 
+    } 
     else { if (pendingAction === null) setTimeout(nextTurn, 800); }
 }
 
