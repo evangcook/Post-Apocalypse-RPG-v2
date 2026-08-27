@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wasteland RPG - Engine V9.8</title>
+    <title>Wasteland RPG - Engine V9.9</title>
     <style>
         body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
         #engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -67,10 +67,11 @@
         .entity:nth-child(2) { z-index: 2; }
         .entity:nth-child(3) { z-index: 1; }
         
-        /* Targeting Highlights */
+        /* Targeting Highlights - Fixed to remove turn-based bounce animation */
         .entity.active .portrait { 
-            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6)); 
-            transform: translateY(-8px); 
+            /* intensified shadow slightly to compensate for lost motion */
+            filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.9)); 
+            /* transform: translateY(-8px); REMOVED Turn-based movement */
         }
         .entity.dead { opacity: 0.3; filter: grayscale(100%); transform: scale(0.9); }
         .entity.targetable-enemy .portrait { filter: drop-shadow(0 0 12px #ff0000); cursor: pointer; }
