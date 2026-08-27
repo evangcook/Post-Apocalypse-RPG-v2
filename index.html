@@ -4,10 +4,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V13.0</title>
+<title>Wasteland RPG - Engine V13.1</title>
 <style>
-body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
-#engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
+/* V13.1 CALIBRATION: Swapped to 100dvh for true mobile fullscreen, removed max-height */
+body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
+#engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
 
 /* --- TITLE SCREEN ELEMENTS --- */
 #screen-title {
@@ -16,7 +17,6 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
     justify-content: center;
     align-items: center;
     height: 100%;
-    /* Gritty CSS-only fallback background */
     background: 
         linear-gradient(rgba(10, 10, 10, 0.8), rgba(0, 0, 0, 0.95)),
         repeating-linear-gradient(45deg, #111 0, #111 2px, #000 2px, #000 6px),
@@ -29,7 +29,7 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 
 .title-header {
     font-size: clamp(30px, 8vw, 60px);
-    color: #B8860B; /* Dieselpunk Gold/Rust */
+    color: #B8860B; 
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 4px;
@@ -206,10 +206,10 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
 <div id="engine">
 
-    <!-- TITLE SCREEN (Phase 13) -->
+    <!-- TITLE SCREEN -->
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V13.0</div>
+        <div class="title-sub">ENGINE V13.1</div>
         <div class="title-menu" id="title-menu-container">
             <!-- Buttons injected via JS based on save state -->
         </div>
@@ -251,7 +251,7 @@ const SAVE_KEY = 'wasteland_rpg_engine_v12';
 let scrap = 0;
 let currentTier = 1;
 
-// Base Roster (Deep copy template used for fresh starts)
+// Base Roster 
 const ROSTER_TEMPLATE = [
     { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 } },
     { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 } },
@@ -265,7 +265,7 @@ let activeIndex = -1;
 let combatActive = false;
 let pendingAction = null;
 
-// --- MENU / BOOT LOGIC (PHASE 13) ---
+// --- MENU / BOOT LOGIC ---
 function switchScreen(screenId) {
     document.getElementById('screen-title').style.display = 'none';
     document.getElementById('screen-map').style.display = 'none';
@@ -278,7 +278,6 @@ function renderTitleScreen() {
     const menuContainer = document.getElementById('title-menu-container');
     menuContainer.innerHTML = '';
     
-    // Check for save data
     const savedData = localStorage.getItem(SAVE_KEY);
     
     if (savedData) {
@@ -289,16 +288,14 @@ function renderTitleScreen() {
 }
 
 function startNewGame() {
-    localStorage.removeItem(SAVE_KEY); // Wipe old data
+    localStorage.removeItem(SAVE_KEY); 
     scrap = 0;
     currentTier = 1;
-    // Deep clone template for fresh roster
     playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
-    renderMap(); // Will skip load process since we wiped the key
+    renderMap(); 
 }
 
 function continueGame() {
-    // Map renderer inherently calls loadGameState if activeIndex === -1
     renderMap();
 }
 
@@ -319,7 +316,6 @@ function loadGameState() {
 }
 
 // --- CORE LOGIC ---
-
 function renderMap() {
     if (!combatActive && activeIndex === -1) { 
         loadGameState(); 
@@ -348,7 +344,6 @@ function initiateCombat(nodeType) {
     combatActive = true;
     document.getElementById('log').innerHTML = '';
 
-    // Reset temporary effects/armor on players
     playerRoster.forEach(ent => { ent.stunnedTurns = 0; ent.bleedingTurns = 0; ent.armorTurns = 0; ent.armor = 0; });
 
     let enemies = [];
