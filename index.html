@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wasteland RPG - Engine V9</title>
-        <style>
+    <title>Wasteland RPG - Engine V9.1</title>
+    <style>
         body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; align-items: center; overflow: hidden; }
         #engine { width: 100%; max-width: 900px; height: 100vh; max-height: 850px; background: #000; position: relative; display: flex; flex-direction: column; }
         
@@ -32,37 +32,46 @@
         
         #queue-display { text-align: center; color: #ccc; padding: 8px; font-size: clamp(10px, 3vw, 12px); letter-spacing: 2px; font-weight: bold; background: rgba(0,0,0,0.7); text-shadow: 1px 1px 2px #000; }
         
-        /* The Floor - Lifted to match the road */
-                /* The Floor - Fluid Spacing */
+        /* The Floor - Fluid Spacing */
         .battlefield { 
             display: flex; 
             justify-content: center; 
-            gap: 4vw; 
+            gap: 2vw; /* Tightened No-Mans-Land */
             flex-grow: 1;
             align-items: flex-end; 
             padding: 0 5px;
             box-sizing: border-box;
-            margin-bottom: 15vh; 
+            margin-bottom: 12vh; 
         }
         
-        .team { display: flex; gap: 1.5vw; align-items: flex-end; }
+        .team { display: flex; align-items: flex-end; justify-content: center; }
         #player-team { flex-direction: row-reverse; }
         #enemy-team { flex-direction: row; }
         
-        /* Fluid Sprites - Calibrated to fit 6 entities */
+        /* Restored Large Size + Shoulder-to-Shoulder Overlap */
         .entity { 
-            width: clamp(40px, 14vw, 100px); 
+            width: clamp(60px, 20vw, 130px); 
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-end;
             position: relative; 
             transition: transform 0.2s; 
-            gap: 4px; 
+            gap: 2px; 
+            margin: 0 -1.5vw; /* Forces characters to overlap slightly so they fit on narrow screens */
+            z-index: 1;
         }
         
-        /* Targeting Highlights */
-        .entity.active .portrait { filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6)); transform: translateY(-8px); }
+        /* Frontline characters sit in front of backline characters */
+        .entity:nth-child(1) { z-index: 3; }
+        .entity:nth-child(2) { z-index: 2; }
+        .entity:nth-child(3) { z-index: 1; }
+        
+        /* Targeting Highlights - Corrected Syntax */
+        .entity.active .portrait { 
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6)); 
+            transform: translateY(-8px); 
+        }
         .entity.dead { opacity: 0.3; filter: grayscale(100%); transform: scale(0.9); }
         .entity.targetable-enemy .portrait { filter: drop-shadow(0 0 12px #ff0000); cursor: pointer; }
         .entity.targetable-ally .portrait { filter: drop-shadow(0 0 12px #6B8E23); cursor: pointer; }
@@ -70,20 +79,20 @@
 
         /* Compressed HP Elements */
         .hp-text { font-size: clamp(9px, 2.5vw, 12px); font-weight: bold; margin-bottom: 0; color: #fff; text-shadow: 1px 1px 3px #000; text-align: center; white-space: nowrap; }
-        .hp-container { background: #111; height: 6px; width: 90%; border: 1px solid #000; box-shadow: 0 0 4px #000; }
+        .hp-container { background: #111; height: 6px; width: 85%; border: 1px solid #000; box-shadow: 0 0 4px #000; z-index: 5; }
         .hp-fill { height: 100%; transition: width 0.3s ease; }
         .player-hp { background-color: #8B0000; }
         .enemy-hp { background-color: #8B0000; }
 
-        /* Tighter Container to pull HP down to the head */
+        /* Dynamic Image Tag (Shrink-wraps to the sprite) */
         .portrait { 
-            height: clamp(55px, 14vw, 110px); /* Height locked to width ratio */
             width: 100%; 
-            background-color: transparent; 
-            background-size: contain; 
-            background-repeat: no-repeat; 
-            background-position: bottom center; 
+            height: auto; 
+            max-height: 25vh; 
+            object-fit: contain; 
+            object-position: bottom; 
             transition: all 0.2s;
+            filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.8)); /* Adds a shadow directly to the sprite */
         }
         
         /* The Dashboard */
@@ -277,7 +286,7 @@
                     <div class="hp-container">
                         <div class="hp-fill ${ent.isPlayer ? 'player-hp' : 'enemy-hp'}" style="width: ${(ent.hp / ent.maxHp) * 100}%"></div>
                     </div>
-                    <div class="portrait" style="background-image: url('${ent.img}');"></div>
+                    <img class="portrait" src="${ent.img}" alt="${ent.name}">
                 </div>
             `;
             if (ent.isPlayer) pTeam.innerHTML += html;
