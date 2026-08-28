@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V57.0 (Kinetic VFX)</title>
+<title>Wasteland RPG - Engine V57.1 (VFX & Optimization)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -186,7 +186,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V57.0</div>
+        <div class="title-sub">ENGINE V57.1</div>
         <div class="title-menu" id="title-menu-container"></div>
         <div class="title-menu" id="difficulty-menu-container" style="display:none;">
             <button class="title-btn" style="border-color:#6B8E23; color:#6B8E23;" onclick="confirmNewGame(0.75)">[EASY] 0.75x STATS</button>
@@ -377,34 +377,51 @@ const QUIRK_POOL = [
     { id: 'LETHARGIC', name: 'LETHARGIC (+8 DMG, -3 SPD)', dmg: 8, hp: 0, spd: -3 }
 ];
 
+const RELIC_POOL = [
+    { id: 'THERMAL_CORE', name: "Thermal Core", desc: "Energy attacks deal +30% DMG." },
+    { id: 'KINETIC_MESH', name: "Kinetic Mesh", desc: "Frontline position takes -25% Physical DMG." },
+    { id: 'BLOOD_VIAL', name: "Blood Vial", desc: "Bio attacks heal attacker for 5 HP." },
+    { id: 'SCRAP_MAGNET', name: "Scrap Magnet", desc: "Gain +15 Scrap after every combat." }
+];
+
+const SECTOR_LAYOUT = [
+    [{type:'BOSS', elite:false}], 
+    [{type:'RAIDERS', elite:true}, {type:'BEASTS', elite:false}], 
+    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:false}],   
+    [{type:'EVENT', elite:false}, {type:'RAIDERS', elite:false}], 
+    [{type:'MECH', elite:false}, {type:'BEASTS', elite:false}], 
+    [{type:'CAMP', elite:false}, {type:'BEASTS', elite:false}, {type:'RAIDERS', elite:false}], 
+    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:false}],   
+    [{type:'EVENT', elite:false}, {type:'CAMP', elite:false}], 
+    [{type:'BEASTS', elite:false}, {type:'RAIDERS', elite:false}], 
+    [{type:'RAIDERS', elite:false}] 
+];
+const TOTAL_TIERS = SECTOR_LAYOUT.length;
+
+let activeEvent = null;
+const EVENT_POOL = [
+    { title: "WRECKED CARAVAN", desc: "You stumble upon a destroyed merchant rig. The engine block is sparking dangerously, but the cargo hold is partially intact.", choices: [ { label: "Salvage Cargo (+30 Scrap)", canAfford: () => true, execute: () => { scrap += 30; playSFX('heal'); return "Salvaged 30 Scrap from the wreckage."; } }, { label: "Gut the Engine (+1 Tech, +2 Parts, -15 HP to random unit)", canAfford: () => true, execute: () => { materials.tech += 1; materials.parts += 2; let active = playerRoster.filter(p => p.gridPos > 0 && p.hp > 0); let target = active[Math.floor(Math.random() * active.length)]; target.hp = Math.max(1, target.hp - 15); playSFX('hit'); triggerHitFlash(target.id); return `Extracted parts, but an electrical surge shocked ${target.name} for 15 DMG.`; } }, { label: "Leave it", canAfford: () => true, execute: () => { return "You move on safely without risking the sparks."; } } ] },
+    { title: "THE CHEM OASIS", desc: "A glowing pool of bio-luminescent fluid sits in a blast crater. It smells like synthetic ozone and iron.", choices: [ { label: "Extract Fluid (+2 Chems)", canAfford: () => true, execute: () => { materials.chems += 2; playSFX('heal'); return "Carefully extracted 2 Chems from the pool."; } }, { label: "Bathe Wounds (Heal All Deployed for 25 HP)", canAfford: () => true, execute: () => { playerRoster.forEach(p => { if(p.gridPos > 0 && p.hp > 0) p.hp = Math.min(p.maxHp, p.hp + 25); }); playSFX('heal'); return "The fluid burned, but the wounds sealed rapidly."; } } ] },
+    { title: "WANDERING TINKER", desc: "A hooded cyborg sits by a campfire. They gesture toward a pile of tactical gear and hold out a mechanical hand.", choices: [ { label: "Trade Scrap for Bomb (Cost: 40 Scrap)", canAfford: () => scrap >= 40 && inventory.length < metaUpgrades.invMax, execute: () => { scrap -= 40; inventory.push('SCRAP_BOMB'); checkBountyProgress('CRAFT'); playSFX('click'); return "Acquired 1 Scrap Bomb."; } }, { label: "Trade Parts for Tech (Cost: 2 Parts)", canAfford: () => materials.parts >= 2, execute: () => { materials.parts -= 2; materials.tech += 1; playSFX('click'); return "Traded 2 Parts for 1 Tech."; } }, { label: "Decline", canAfford: () => true, execute: () => { return "You nod respectfully and continue walking."; } } ] },
+    { title: "RADIATION STORM", desc: "The geiger counter screams. A violent wall of radioactive dust is rapidly approaching your position.", choices: [ { label: "Sprint Through (-10 HP to All Deployed)", canAfford: () => true, execute: () => { playerRoster.forEach(p => { if(p.gridPos > 0 && p.hp > 0) p.hp = Math.max(1, p.hp - 10); }); playSFX('hit'); triggerShake(); return "The squad powered through, but took heavy radiation burns."; } }, { label: "Deploy EMP Shield (-1 EMP Charge)", canAfford: () => inventory.includes('EMP_CHARGE'), execute: () => { inventory.splice(inventory.indexOf('EMP_CHARGE'), 1); playSFX('heal'); return "The EMP Charge detonated, creating a localized magnetic shield against the storm."; } } ] }
+];
+
+const ROSTER_TEMPLATE = [
+    { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 1, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
+    { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 2, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { cauterize: 0 } },
+    { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 }, upgradeCount: 0, gridPos: 3, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { flashbang: 0 } },
+    { id: 'p4', name: "Pyro", classType: "PYROMANIAC", maxHp: 55, hp: 55, speed: 11, armor: 0, isPlayer: true, dmgBase: 12, img: "hero_pyro.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 10 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { molotov: 0 } },
+    { id: 'p5', name: "Breacher", classType: "SHOTGUNNER", maxHp: 65, hp: 65, speed: 9, armor: 5, isPlayer: true, dmgBase: 22, img: "hero_shotgunner.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { buckshot: 0 } },
+    { id: 'p6', name: "Ghost", classType: "SNIPER", maxHp: 40, hp: 40, speed: 16, armor: 0, isPlayer: true, dmgBase: 28, img: "hero_sniper.png", scale: 0.9, hpDrop: -10, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { deadeye: 0 } },
+    { id: 'p7', name: "War Hound", classType: "HOUND", maxHp: 35, hp: 35, speed: 19, armor: 0, isPlayer: true, dmgBase: 16, img: "hero_hound.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { feral_bite: 0 } }
+];
+
+let playerRoster = []; let activeEntities = []; let turnQueue = []; let activeIndex = -1; let combatActive = false; let pendingAction = null;
+
 document.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.classList.contains('map-node')) { playSFX('click'); } });
-function initAudio() { if (!audioCtx && globalSettings.sfx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { console.log('Web Audio API not supported.'); } } }
 window.addEventListener('click', initAudio, { once: true });
 
-function playSFX(type) {
-    if (!globalSettings.sfx || !audioCtx) return;
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination); let now = audioCtx.currentTime;
-
-    if (type === 'click') {
-        osc.type = 'sine'; osc.frequency.setValueAtTime(800, now);
-        gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-        osc.start(now); osc.stop(now + 0.05);
-    } else if (type === 'shoot') {
-        osc.type = 'square'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
-        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-        osc.start(now); osc.stop(now + 0.15);
-    } else if (type === 'hit') {
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(10, now + 0.1);
-        gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-        osc.start(now); osc.stop(now + 0.1);
-    } else if (type === 'heal') {
-        osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); osc.frequency.linearRampToValueAtTime(600, now + 0.3);
-        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
-        osc.start(now); osc.stop(now + 0.3);
-    }
-}
+function initAudio() { if (!audioCtx && globalSettings.sfx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { console.log('Web Audio API not supported.'); } } }
 
 // V57 Visual FX Controllers
 function triggerShake() {
@@ -433,115 +450,14 @@ function triggerHitFlash(id) {
     }
 }
 
-const RELIC_POOL = [
-    { id: 'THERMAL_CORE', name: "Thermal Core", desc: "Energy attacks deal +30% DMG." },
-    { id: 'KINETIC_MESH', name: "Kinetic Mesh", desc: "Frontline position takes -25% Physical DMG." },
-    { id: 'BLOOD_VIAL', name: "Blood Vial", desc: "Bio attacks heal attacker for 5 HP." },
-    { id: 'SCRAP_MAGNET', name: "Scrap Magnet", desc: "Gain +15 Scrap after every combat." }
-];
-
-function addMomentum(val) {
-    if (!combatActive) return;
-    momentum = Math.min(100, momentum + val);
-    document.getElementById('momentum-fill').style.width = `${momentum}%`;
-    document.getElementById('momentum-txt').innerText = `MOMENTUM: ${momentum}%`;
-    if (momentum >= 100) document.getElementById('momentum-fill').style.boxShadow = "0 0 15px #ff44ff";
-    else document.getElementById('momentum-fill').style.boxShadow = "none";
-    if (momentum >= 100 && turnQueue[activeIndex] && turnQueue[activeIndex].isPlayer) renderCommandDeck();
-}
-
-const SECTOR_LAYOUT = [
-    [{type:'BOSS', elite:false}], 
-    [{type:'RAIDERS', elite:true}, {type:'BEASTS', elite:false}], 
-    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:false}],   
-    [{type:'EVENT', elite:false}, {type:'RAIDERS', elite:false}], 
-    [{type:'MECH', elite:false}, {type:'BEASTS', elite:false}], 
-    [{type:'CAMP', elite:false}, {type:'BEASTS', elite:false}, {type:'RAIDERS', elite:false}], 
-    [{type:'MECH', elite:false}, {type:'RAIDERS', elite:false}],   
-    [{type:'EVENT', elite:false}, {type:'CAMP', elite:false}], 
-    [{type:'BEASTS', elite:false}, {type:'RAIDERS', elite:false}], 
-    [{type:'RAIDERS', elite:false}] 
-];
-const TOTAL_TIERS = SECTOR_LAYOUT.length;
-
-function generateBounties() {
-    return [
-        { id: 'ELITE', desc: "Slayer: Defeat 2 Elites", target: 2, current: 0, reward: "50 Scrap & 1 Tech", claimed: false },
-        { id: 'CRAFT', desc: "Chemist: Craft 2 Items", target: 2, current: 0, reward: "2 Parts & 2 Chems", claimed: false },
-        { id: 'COMBO', desc: "Tactician: Trigger 3 Status Combos", target: 3, current: 0, reward: "75 Scrap", claimed: false }
-    ];
-}
-
-function checkBountyProgress(type, amount = 1) {
-    activeBounties.forEach(b => {
-        if (b.id === type && !b.claimed) {
-            b.current = Math.min(b.target, b.current + amount);
-            if (b.current >= b.target) {
-                b.claimed = true;
-                playSFX('heal');
-                if (b.id === 'ELITE') { scrap += 50; materials.tech += 1; log(`> BOUNTY COMPLETE: Slayer! Reward: 50 Scrap, 1 Tech`, "log-heal"); }
-                else if (b.id === 'CRAFT') { materials.parts += 2; materials.chems += 2; log(`> BOUNTY COMPLETE: Chemist! Reward: 2 Parts, 2 Chems`, "log-heal"); }
-                else if (b.id === 'COMBO') { scrap += 75; log(`> BOUNTY COMPLETE: Tactician! Reward: 75 Scrap`, "log-heal"); }
-            }
-        }
-    });
-}
-
-let activeEvent = null;
-const EVENT_POOL = [
-    { title: "WRECKED CARAVAN", desc: "You stumble upon a destroyed merchant rig. The engine block is sparking dangerously, but the cargo hold is partially intact.", choices: [ { label: "Salvage Cargo (+30 Scrap)", canAfford: () => true, execute: () => { scrap += 30; playSFX('heal'); return "Salvaged 30 Scrap from the wreckage."; } }, { label: "Gut the Engine (+1 Tech, +2 Parts, -15 HP to random unit)", canAfford: () => true, execute: () => { materials.tech += 1; materials.parts += 2; let active = playerRoster.filter(p => p.gridPos > 0 && p.hp > 0); let target = active[Math.floor(Math.random() * active.length)]; target.hp = Math.max(1, target.hp - 15); playSFX('hit'); triggerHitFlash(target.id); return `Extracted parts, but an electrical surge shocked ${target.name} for 15 DMG.`; } }, { label: "Leave it", canAfford: () => true, execute: () => { return "You move on safely without risking the sparks."; } } ] },
-    { title: "THE CHEM OASIS", desc: "A glowing pool of bio-luminescent fluid sits in a blast crater. It smells like synthetic ozone and iron.", choices: [ { label: "Extract Fluid (+2 Chems)", canAfford: () => true, execute: () => { materials.chems += 2; playSFX('heal'); return "Carefully extracted 2 Chems from the pool."; } }, { label: "Bathe Wounds (Heal All Deployed for 25 HP)", canAfford: () => true, execute: () => { playerRoster.forEach(p => { if(p.gridPos > 0 && p.hp > 0) p.hp = Math.min(p.maxHp, p.hp + 25); }); playSFX('heal'); return "The fluid burned, but the wounds sealed rapidly."; } } ] },
-    { title: "WANDERING TINKER", desc: "A hooded cyborg sits by a campfire. They gesture toward a pile of tactical gear and hold out a mechanical hand.", choices: [ { label: "Trade Scrap for Bomb (Cost: 40 Scrap)", canAfford: () => scrap >= 40 && inventory.length < metaUpgrades.invMax, execute: () => { scrap -= 40; inventory.push('SCRAP_BOMB'); checkBountyProgress('CRAFT'); playSFX('click'); return "Acquired 1 Scrap Bomb."; } }, { label: "Trade Parts for Tech (Cost: 2 Parts)", canAfford: () => materials.parts >= 2, execute: () => { materials.parts -= 2; materials.tech += 1; playSFX('click'); return "Traded 2 Parts for 1 Tech."; } }, { label: "Decline", canAfford: () => true, execute: () => { return "You nod respectfully and continue walking."; } } ] },
-    { title: "RADIATION STORM", desc: "The geiger counter screams. A violent wall of radioactive dust is rapidly approaching your position.", choices: [ { label: "Sprint Through (-10 HP to All Deployed)", canAfford: () => true, execute: () => { playerRoster.forEach(p => { if(p.gridPos > 0 && p.hp > 0) p.hp = Math.max(1, p.hp - 10); }); playSFX('hit'); triggerShake(); return "The squad powered through, but took heavy radiation burns."; } }, { label: "Deploy EMP Shield (-1 EMP Charge)", canAfford: () => inventory.includes('EMP_CHARGE'), execute: () => { inventory.splice(inventory.indexOf('EMP_CHARGE'), 1); playSFX('heal'); return "The EMP Charge detonated, creating a localized magnetic shield against the storm."; } } ] }
-];
-
-function initiateEvent() {
-    switchScreen('screen-event'); activeEvent = EVENT_POOL[Math.floor(Math.random() * EVENT_POOL.length)];
-    document.getElementById('event-title').innerText = activeEvent.title; document.getElementById('event-desc').innerText = activeEvent.desc;
-    let cHtml = ''; activeEvent.choices.forEach((c, idx) => { let canAfford = c.canAfford(); cHtml += `<button class="event-btn" ${!canAfford ? 'disabled' : ''} onclick="resolveEvent(${idx})">${c.label}</button>`; });
-    document.getElementById('event-choices').innerHTML = cHtml;
-}
-
-function resolveEvent(idx) {
-    let resultText = activeEvent.choices[idx].execute();
-    document.getElementById('event-choices').innerHTML = `<div style="color:#6B8E23; font-weight:bold; margin-bottom:15px;">> ${resultText}</div><button class="event-btn" style="border-color:#4488ff; color:#4488ff;" onclick="finishEvent()">CONTINUE EXPEDITION</button>`;
-}
-function finishEvent() { currentTier++; saveGameState(); renderMap(); }
-
-function initiateCamp() {
-    switchScreen('screen-camp');
-    let cHtml = '';
-    cHtml += `<button class="event-btn" onclick="resolveCamp('TRIAGE')">TRIAGE (Heal 35% HP to Deployed Squad)</button>`;
-    cHtml += `<button class="event-btn" onclick="resolveCamp('TUNEUP')">WEAPON TUNE-UP (+4 DMG for next 3 Battles)</button>`;
-    cHtml += `<button class="event-btn" onclick="resolveCamp('FORAGE')">FORAGE (+1 Parts, +1 Chems, +1 Tech)</button>`;
-    document.getElementById('camp-choices').innerHTML = cHtml;
-}
-
-function resolveCamp(type) {
-    if (type === 'TRIAGE') {
-        playerRoster.forEach(p => { if(p.gridPos > 0 && p.hp > 0) p.hp = Math.min(p.maxHp, p.hp + Math.floor(p.maxHp * 0.35)); });
-        playSFX('heal'); document.getElementById('camp-choices').innerHTML = `<div style="color:#6B8E23; font-weight:bold; margin-bottom:15px;">> Squad patched up and ready.</div><button class="event-btn" onclick="finishCamp()">CONTINUE EXPEDITION</button>`;
-    } else if (type === 'TUNEUP') {
-        tuneUpBattles = 3; playSFX('click');
-        document.getElementById('camp-choices').innerHTML = `<div style="color:#B8860B; font-weight:bold; margin-bottom:15px;">> Weapons cleaned and calibrated. (+4 Base DMG active)</div><button class="event-btn" onclick="finishCamp()">CONTINUE EXPEDITION</button>`;
-    } else if (type === 'FORAGE') {
-        materials.parts++; materials.chems++; materials.tech++; playSFX('click');
-        document.getElementById('camp-choices').innerHTML = `<div style="color:#4488ff; font-weight:bold; margin-bottom:15px;">> Salvaged valuable materials from the perimeter.</div><button class="event-btn" onclick="finishCamp()">CONTINUE EXPEDITION</button>`;
+function migrateOldSaves() {
+    for(let i=1; i<=3; i++) {
+        let oldSave = localStorage.getItem('wasteland_rpg_v37_slot_' + i);
+        if (oldSave && !localStorage.getItem(BASE_SAVE_KEY + i)) { localStorage.setItem(BASE_SAVE_KEY + i, oldSave); }
     }
+    let oldSettings = localStorage.getItem('wasteland_rpg_settings');
+    if (oldSettings && !localStorage.getItem(SETTINGS_KEY)) { localStorage.setItem(SETTINGS_KEY, oldSettings); }
 }
-function finishCamp() { currentTier++; saveGameState(); renderMap(); }
-
-const ROSTER_TEMPLATE = [
-    { id: 'p1', name: "Bruiser", classType: "BRUISER", maxHp: 80, hp: 80, speed: 8, armor: 0, isPlayer: true, dmgBase: 20, img: "hero_bruiser.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 1, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { heavy_wrench: 0, iron_guard: 0 } },
-    { id: 'p2', name: "Medic", classType: "MEDIC", maxHp: 50, hp: 50, speed: 12, armor: 0, isPlayer: true, dmgBase: 10, img: "hero_medic.png", scale: 1.6, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 2, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { cauterize: 0 } },
-    { id: 'p3', name: "Scavenger", classType: "SCAVENGER", maxHp: 45, hp: 45, speed: 15, armor: 0, isPlayer: true, dmgBase: 15, img: "hero_scavenger.png", scale: 1.25, hpDrop: -25, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 5 }, upgradeCount: 0, gridPos: 3, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { flashbang: 0 } },
-    { id: 'p4', name: "Pyro", classType: "PYROMANIAC", maxHp: 55, hp: 55, speed: 11, armor: 0, isPlayer: true, dmgBase: 12, img: "hero_pyro.png", scale: 1.1, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 10 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { molotov: 0 } },
-    { id: 'p5', name: "Breacher", classType: "SHOTGUNNER", maxHp: 65, hp: 65, speed: 9, armor: 5, isPlayer: true, dmgBase: 22, img: "hero_shotgunner.png", scale: 1.15, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 5, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { buckshot: 0 } },
-    { id: 'p6', name: "Ghost", classType: "SNIPER", maxHp: 40, hp: 40, speed: 16, armor: 0, isPlayer: true, dmgBase: 28, img: "hero_sniper.png", scale: 0.9, hpDrop: -10, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 0, bio: 0, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { deadeye: 0 } },
-    { id: 'p7', name: "War Hound", classType: "HOUND", maxHp: 35, hp: 35, speed: 19, armor: 0, isPlayer: true, dmgBase: 16, img: "hero_hound.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: -2, bio: 10, energy: 0 }, upgradeCount: 0, gridPos: 0, level: 1, xp: 0, xpToNext: 100, perkPoints: 0, trait: null, augments: [], quirk: null, cooldowns: { feral_bite: 0 } }
-];
-
-let playerRoster = []; let activeEntities = []; let turnQueue = []; let activeIndex = -1; let combatActive = false; let pendingAction = null;
 
 function initEngine() { 
     preloadAssets();
@@ -1044,7 +960,6 @@ function applyDamageHit(attacker, target, calcDmg, atkType, abilityStr) {
     let netDmg = Math.max(1, calcDmg - resistValue - armorCalc); if (resistValue >= 100) netDmg = 0; target.hp = Math.max(0, target.hp - netDmg);
     let logStyle = "log-dmg"; let logMsg = `> ${attacker.name} hits ${target.name} for ${netDmg}`;
     
-    // V57 Hit Flash Trigger
     triggerHitFlash(target.id);
 
     if (netDmg === 0 && resistValue >= 100) { logMsg += " (Immune)."; spawnFCT(target.id, "IMMUNE", "fct-status");
