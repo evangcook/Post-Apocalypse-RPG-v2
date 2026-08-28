@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V56.0 (Advanced Enemy AI)</title>
+<title>Wasteland RPG - Engine V56.1 (Spacing & Combos)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -124,7 +124,8 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 
 .intent-icon { position: absolute; top: -25px; font-size: 14px; background: #111; border: 1px solid #444; border-radius: 50%; width: 22px; height: 22px; display: flex; justify-content: center; align-items: center; z-index: 20; box-shadow: 0 2px 4px #000; }
 
-.battlefield { display: flex; justify-content: center; gap: 2vw; flex-grow: 1; align-items: flex-end; padding: 0 5px; box-sizing: border-box; margin-bottom: 12vh; }
+/* V56.1 Spacing Fix */
+.battlefield { display: flex; justify-content: center; gap: 15vw; flex-grow: 1; align-items: flex-end; padding: 0 5px; box-sizing: border-box; margin-bottom: 12vh; }
 .team { display: flex; align-items: flex-end; justify-content: center; }
 #player-team { flex-direction: row-reverse; } 
 #enemy-team { flex-direction: row; }
@@ -178,7 +179,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V56.0</div>
+        <div class="title-sub">ENGINE V56.1</div>
         <div class="title-menu" id="title-menu-container"></div>
         <div class="title-menu" id="difficulty-menu-container" style="display:none;">
             <button class="title-btn" style="border-color:#6B8E23; color:#6B8E23;" onclick="confirmNewGame(0.75)">[EASY] 0.75x STATS</button>
@@ -669,7 +670,6 @@ function medBay(charId, action) {
     saveGameState(); renderOutpost(); 
 }
 
-// V56.0 Advanced Enemy Intents
 function rollIntent(enemy) {
     let rand = Math.random();
     if (enemy.classType === 'BOSS') {
@@ -962,9 +962,13 @@ function resolveAction(targetId) {
         if (pendingAction === 'FERAL_BITE') { dmgMult = 1.2; actEnt.cooldowns.feral_bite = 3; }
         if (pendingAction === 'DEADEYE') { if (dist === livingEnemies.length - 1 && dist !== 0) dmgMult = 1.8; else dmgMult = 0.8; actEnt.cooldowns.deadeye = 2; }
         
-        if (pendingAction === 'BUCKSHOT') { 
-            if (dist === 0) dmgMult = 1.5; else dmgMult = 0.8; 
+        // V56.1 Combos (Buckshot + Molotov)
+        if (pendingAction === 'BUCKSHOT' || pendingAction === 'MOLOTOV') { 
             if (target.oiledTurns > 0) { dmgMult *= 2; target.oiledTurns = 0; isCombo = true; comboType = 'IGNITE!'; }
+        }
+        
+        if (pendingAction === 'BUCKSHOT') { 
+            if (dist === 0) dmgMult *= 1.5; else dmgMult *= 0.8; 
             actEnt.cooldowns.buckshot = 2; 
         }
 
@@ -1036,7 +1040,6 @@ function executeSelfAction(actionType) {
     checkWinState();
 }
 
-// V56.0 Advanced Enemy AI Hook
 function executeEnemyAi(enemy) {
     if (!combatActive) return;
     
@@ -1054,40 +1057,22 @@ function executeEnemyAi(enemy) {
 
     let intent = enemy.intent || { type: 'ATTACK' };
     
-    // DEFEND Resolution
     if (intent.type === 'DEFEND') {
-        enemy.armor += 15;
-        enemy.armorTurns = 2;
-        spawnFCT(enemy.id, "+ARMOR", "fct-heal");
-        log(`> ${enemy.name} took a defensive stance!`, "log-status");
-        playSFX('heal');
-        enemy.intent = rollIntent(enemy); 
-        checkWinState();
-        return;
+        enemy.armor += 15; enemy.armorTurns = 2; spawnFCT(enemy.id, "+ARMOR", "fct-heal"); log(`> ${enemy.name} took a defensive stance!`, "log-status"); playSFX('heal');
+        enemy.intent = rollIntent(enemy); checkWinState(); return;
     }
 
-    // AOE Resolution
     if (intent.type === 'AOE') {
-        playSFX('shoot');
-        log(`> ${enemy.name} unleashed an area attack!`, "log-dmg");
+        playSFX('shoot'); log(`> ${enemy.name} unleashed an area attack!`, "log-dmg");
         let rawDmg = Math.floor(enemy.dmgBase * 0.7); 
-        
         if (currentWeather === 'SANDSTORM') rawDmg = Math.floor(rawDmg * 0.75);
         if (currentWeather === 'BLOODLUST') rawDmg = Math.floor(rawDmg * 1.2);
-
-        validTargets.forEach(targ => {
-            applyDamageHit(enemy, targ, rawDmg, enemy.dmgType || 'phys', 'BASIC');
-        });
-        
-        enemy.intent = rollIntent(enemy); 
-        checkWinState();
-        return;
+        validTargets.forEach(targ => { applyDamageHit(enemy, targ, rawDmg, enemy.dmgType || 'phys', 'BASIC'); });
+        enemy.intent = rollIntent(enemy); checkWinState(); return;
     }
 
-    // Standard Attack / Heavy / Status Resolution
     if (target) {
         playSFX('shoot');
-        
         let t = enemy.dmgType || 'phys'; 
         let rawDmg = enemy.dmgBase + Math.floor(Math.random() * 5);
         
@@ -1096,10 +1081,7 @@ function executeEnemyAi(enemy) {
         if (currentWeather === 'SANDSTORM' && enemy.range === 'ranged') rawDmg = Math.floor(rawDmg * 0.75);
         if (currentWeather === 'BLOODLUST') rawDmg = Math.floor(rawDmg * 1.2);
 
-        // If intent is STATUS, damage is minimal, but applies debuff
-        if (intent.type === 'STATUS') {
-            rawDmg = Math.floor(rawDmg * 0.3);
-        }
+        if (intent.type === 'STATUS') { rawDmg = Math.floor(rawDmg * 0.3); }
 
         applyDamageHit(enemy, target, rawDmg, t, 'BASIC');
 
