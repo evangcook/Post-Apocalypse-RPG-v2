@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V56.3 (Boss Nerf)</title>
+<title>Wasteland RPG - Engine V57.0 (Kinetic VFX)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -160,6 +160,14 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .btn-overdrive { background: #2a002a; border-color: #ff44ff; color: #ff44ff; font-weight: bold; text-shadow: 0 0 5px #ff44ff; animation: pulseOD 1.5s infinite; }
 @keyframes pulseOD { 0% { box-shadow: 0 0 5px #ff44ff; } 50% { box-shadow: 0 0 15px #ff44ff; } 100% { box-shadow: 0 0 5px #ff44ff; } }
 
+/* V57 FX Animations */
+@keyframes fxShake { 0% { transform: translate(2px, 2px) rotate(0deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 40% { transform: translate(3px, -2px) rotate(-1deg); } 60% { transform: translate(-2px, 2px) rotate(0deg); } 80% { transform: translate(2px, -1px) rotate(1deg); } 100% { transform: translate(0px, 0px) rotate(0deg); } }
+.fx-shake { animation: fxShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes fxGlitch { 0% { filter: hue-rotate(0deg) invert(0%); transform: translate(0,0); } 10% { filter: hue-rotate(90deg) invert(30%); transform: translate(-5px, 5px); } 20% { filter: hue-rotate(-90deg) invert(0%); transform: translate(5px, -5px); } 30% { filter: hue-rotate(180deg) invert(30%); transform: translate(-5px, -5px); } 40% { filter: hue-rotate(0deg) invert(0%); transform: translate(0,0); } }
+.fx-glitch { animation: fxGlitch 0.4s linear both; }
+@keyframes fxFlash { 0% { filter: brightness(1) sepia(0); } 50% { filter: brightness(2.5) sepia(1) hue-rotate(-50deg) saturate(5); } 100% { filter: brightness(1) sepia(0); } }
+.fx-flash { animation: fxFlash 0.3s ease-out both !important; }
+
 .dashboard { height: 35vh; max-height: 250px; background: #050505; border: 2px solid #333; display: grid; grid-template-columns: 1fr 1fr; box-sizing: border-box; margin: 5px; }
 #command-deck { border-right: 2px solid #333; padding: 10px; display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; overflow-y: auto;}
 #log { padding: 10px; overflow-y: auto; font-size: clamp(10px, 3vw, 12px); color: #555; display: flex; flex-direction: column; }
@@ -178,7 +186,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V56.3</div>
+        <div class="title-sub">ENGINE V57.0</div>
         <div class="title-menu" id="title-menu-container"></div>
         <div class="title-menu" id="difficulty-menu-container" style="display:none;">
             <button class="title-btn" style="border-color:#6B8E23; color:#6B8E23;" onclick="confirmNewGame(0.75)">[EASY] 0.75x STATS</button>
@@ -398,6 +406,33 @@ function playSFX(type) {
     }
 }
 
+// V57 Visual FX Controllers
+function triggerShake() {
+    let el = document.getElementById('combat-sky-layer');
+    el.classList.remove('fx-shake');
+    void el.offsetWidth;
+    el.classList.add('fx-shake');
+}
+
+function triggerGlitch() {
+    let el = document.getElementById('engine');
+    el.classList.remove('fx-glitch');
+    void el.offsetWidth;
+    el.classList.add('fx-glitch');
+}
+
+function triggerHitFlash(id) {
+    let el = document.getElementById(id);
+    if(el) {
+        let img = el.querySelector('.portrait');
+        if(img) {
+            img.classList.remove('fx-flash');
+            void img.offsetWidth;
+            img.classList.add('fx-flash');
+        }
+    }
+}
+
 const RELIC_POOL = [
     { id: 'THERMAL_CORE', name: "Thermal Core", desc: "Energy attacks deal +30% DMG." },
     { id: 'KINETIC_MESH', name: "Kinetic Mesh", desc: "Frontline position takes -25% Physical DMG." },
@@ -454,10 +489,10 @@ function checkBountyProgress(type, amount = 1) {
 
 let activeEvent = null;
 const EVENT_POOL = [
-    { title: "WRECKED CARAVAN", desc: "You stumble upon a destroyed merchant rig. The engine block is sparking dangerously, but the cargo hold is partially intact.", choices: [ { label: "Salvage Cargo (+30 Scrap)", canAfford: () => true, execute: () => { scrap += 30; playSFX('heal'); return "Salvaged 30 Scrap from the wreckage."; } }, { label: "Gut the Engine (+1 Tech, +2 Parts, -15 HP to random unit)", canAfford: () => true, execute: () => { materials.tech += 1; materials.parts += 2; let active = playerRoster.filter(p => p.gridPos > 0 && p.hp > 0); let target = active[Math.floor(Math.random() * active.length)]; target.hp = Math.max(1, target.hp - 15); playSFX('hit'); return `Extracted parts, but an electrical surge shocked ${target.name} for 15 DMG.`; } }, { label: "Leave it", canAfford: () => true, execute: () => { return "You move on safely without risking the sparks."; } } ] },
+    { title: "WRECKED CARAVAN", desc: "You stumble upon a destroyed merchant rig. The engine block is sparking dangerously, but the cargo hold is partially intact.", choices: [ { label: "Salvage Cargo (+30 Scrap)", canAfford: () => true, execute: () => { scrap += 30; playSFX('heal'); return "Salvaged 30 Scrap from the wreckage."; } }, { label: "Gut the Engine (+1 Tech, +2 Parts, -15 HP to random unit)", canAfford: () => true, execute: () => { materials.tech += 1; materials.parts += 2; let active = playerRoster.filter(p => p.gridPos > 0 && p.hp > 0); let target = active[Math.floor(Math.random() * active.length)]; target.hp = Math.max(1, target.hp - 15); playSFX('hit'); triggerHitFlash(target.id); return `Extracted parts, but an electrical surge shocked ${target.name} for 15 DMG.`; } }, { label: "Leave it", canAfford: () => true, execute: () => { return "You move on safely without risking the sparks."; } } ] },
     { title: "THE CHEM OASIS", desc: "A glowing pool of bio-luminescent fluid sits in a blast crater. It smells like synthetic ozone and iron.", choices: [ { label: "Extract Fluid (+2 Chems)", canAfford: () => true, execute: () => { materials.chems += 2; playSFX('heal'); return "Carefully extracted 2 Chems from the pool."; } }, { label: "Bathe Wounds (Heal All Deployed for 25 HP)", canAfford: () => true, execute: () => { playerRoster.forEach(p => { if(p.gridPos > 0 && p.hp > 0) p.hp = Math.min(p.maxHp, p.hp + 25); }); playSFX('heal'); return "The fluid burned, but the wounds sealed rapidly."; } } ] },
     { title: "WANDERING TINKER", desc: "A hooded cyborg sits by a campfire. They gesture toward a pile of tactical gear and hold out a mechanical hand.", choices: [ { label: "Trade Scrap for Bomb (Cost: 40 Scrap)", canAfford: () => scrap >= 40 && inventory.length < metaUpgrades.invMax, execute: () => { scrap -= 40; inventory.push('SCRAP_BOMB'); checkBountyProgress('CRAFT'); playSFX('click'); return "Acquired 1 Scrap Bomb."; } }, { label: "Trade Parts for Tech (Cost: 2 Parts)", canAfford: () => materials.parts >= 2, execute: () => { materials.parts -= 2; materials.tech += 1; playSFX('click'); return "Traded 2 Parts for 1 Tech."; } }, { label: "Decline", canAfford: () => true, execute: () => { return "You nod respectfully and continue walking."; } } ] },
-    { title: "RADIATION STORM", desc: "The geiger counter screams. A violent wall of radioactive dust is rapidly approaching your position.", choices: [ { label: "Sprint Through (-10 HP to All Deployed)", canAfford: () => true, execute: () => { playerRoster.forEach(p => { if(p.gridPos > 0 && p.hp > 0) p.hp = Math.max(1, p.hp - 10); }); playSFX('hit'); return "The squad powered through, but took heavy radiation burns."; } }, { label: "Deploy EMP Shield (-1 EMP Charge)", canAfford: () => inventory.includes('EMP_CHARGE'), execute: () => { inventory.splice(inventory.indexOf('EMP_CHARGE'), 1); playSFX('heal'); return "The EMP Charge detonated, creating a localized magnetic shield against the storm."; } } ] }
+    { title: "RADIATION STORM", desc: "The geiger counter screams. A violent wall of radioactive dust is rapidly approaching your position.", choices: [ { label: "Sprint Through (-10 HP to All Deployed)", canAfford: () => true, execute: () => { playerRoster.forEach(p => { if(p.gridPos > 0 && p.hp > 0) p.hp = Math.max(1, p.hp - 10); }); playSFX('hit'); triggerShake(); return "The squad powered through, but took heavy radiation burns."; } }, { label: "Deploy EMP Shield (-1 EMP Charge)", canAfford: () => inventory.includes('EMP_CHARGE'), execute: () => { inventory.splice(inventory.indexOf('EMP_CHARGE'), 1); playSFX('heal'); return "The EMP Charge detonated, creating a localized magnetic shield against the storm."; } } ] }
 ];
 
 function initiateEvent() {
@@ -507,15 +542,6 @@ const ROSTER_TEMPLATE = [
 ];
 
 let playerRoster = []; let activeEntities = []; let turnQueue = []; let activeIndex = -1; let combatActive = false; let pendingAction = null;
-
-function migrateOldSaves() {
-    for(let i=1; i<=3; i++) {
-        let oldSave = localStorage.getItem('wasteland_rpg_v37_slot_' + i);
-        if (oldSave && !localStorage.getItem(BASE_SAVE_KEY + i)) { localStorage.setItem(BASE_SAVE_KEY + i, oldSave); }
-    }
-    let oldSettings = localStorage.getItem('wasteland_rpg_settings');
-    if (oldSettings && !localStorage.getItem(SETTINGS_KEY)) { localStorage.setItem(SETTINGS_KEY, oldSettings); }
-}
 
 function initEngine() { 
     preloadAssets();
@@ -692,7 +718,6 @@ function rollIntent(enemy) {
     }
 }
 
-// V56.3 Boss Scaling Override
 function generateEnemies(nodeType, mult, isEliteNode) {
     const pool = {
         'BEASTS': [
@@ -890,11 +915,11 @@ function resolveConsumableItem(targetId) {
     if (item === 'MED_STIM') { let heal = 30; target.hp = Math.min(target.maxHp, target.hp + heal); log(`> Used Med-Stim on ${target.name} for ${heal} HP.`, "log-heal"); spawnFCT(target.id, `+${heal}`, "fct-heal"); playSFX('heal');
     } else if (item === 'ADRENALINE') { target.stunnedTurns = 0; target.bleedingTurns = 0; log(`> Used Adrenaline on ${target.name}. Cleared effects!`, "log-heal"); spawnFCT(target.id, "CLEANSE", "fct-heal"); playSFX('heal');
     } else if (item === 'SCRAP_BOMB') {
-        inventory.splice(inventoryToConsume, 1); playSFX('shoot');
-        activeEntities.forEach(e => { if (!e.isPlayer && e.hp > 0) { let dmg = 25; e.hp = Math.max(0, e.hp - dmg); spawnFCT(e.id, `-${dmg}`, "fct-dmg"); } });
+        inventory.splice(inventoryToConsume, 1); playSFX('shoot'); triggerShake();
+        activeEntities.forEach(e => { if (!e.isPlayer && e.hp > 0) { let dmg = 25; e.hp = Math.max(0, e.hp - dmg); spawnFCT(e.id, `-${dmg}`, "fct-dmg"); triggerHitFlash(e.id); } });
         log(`> Threw Scrap Bomb for 25 AoE DMG!`, "log-dmg"); pendingAction = null; checkWinState(); return;
     } else if (item === 'EMP_CHARGE') {
-        target.armor = 0; target.armorTurns = 0; target.hp = Math.max(0, target.hp - 10); target.stunnedTurns = 1; playSFX('shoot');
+        target.armor = 0; target.armorTurns = 0; target.hp = Math.max(0, target.hp - 10); target.stunnedTurns = 1; playSFX('shoot'); triggerHitFlash(target.id);
         log(`> EMP Charge strips ${target.name}'s armor and stuns!`, "log-dmg"); spawnFCT(target.id, "EMP SHOCK", "fct-status");
     }
     inventory.splice(inventoryToConsume, 1); inventoryToConsume = -1; pendingAction = null; checkWinState();
@@ -910,10 +935,10 @@ function processTurn() {
 function applyTurnStartEffects(ent) {
     let chg = false; if (ent.isPlayer && ent.cooldowns) { for (let s in ent.cooldowns) { if (ent.cooldowns[s] > 0) { ent.cooldowns[s]--; chg = true; } } }
     
-    if (currentWeather === 'TOXIC_SMOG') { let sDmg = Math.floor(2 * (1 + ((currentTier - 1) * 0.4))); ent.hp = Math.max(0, ent.hp - sDmg); log(`> ${ent.name} choked by Smog for ${sDmg} DMG.`, "log-dmg"); spawnFCT(ent.id, `-${sDmg}`, "fct-status"); chg = true; addMomentum(5); }
-    if (currentWeather === 'SHRAPNEL_WINDS' && Math.random() < 0.3) { let shrapDmg = Math.floor(5 * (1 + ((currentTier - 1) * 0.4))); ent.hp = Math.max(0, ent.hp - shrapDmg); log(`> Shrapnel struck ${ent.name} for ${shrapDmg} DMG!`, "log-dmg"); spawnFCT(ent.id, `-${shrapDmg}`, "fct-dmg"); chg = true; addMomentum(5); }
+    if (currentWeather === 'TOXIC_SMOG') { let sDmg = Math.floor(2 * (1 + ((currentTier - 1) * 0.4))); ent.hp = Math.max(0, ent.hp - sDmg); log(`> ${ent.name} choked by Smog for ${sDmg} DMG.`, "log-dmg"); spawnFCT(ent.id, `-${sDmg}`, "fct-status"); chg = true; addMomentum(5); triggerHitFlash(ent.id); }
+    if (currentWeather === 'SHRAPNEL_WINDS' && Math.random() < 0.3) { let shrapDmg = Math.floor(5 * (1 + ((currentTier - 1) * 0.4))); ent.hp = Math.max(0, ent.hp - shrapDmg); log(`> Shrapnel struck ${ent.name} for ${shrapDmg} DMG!`, "log-dmg"); spawnFCT(ent.id, `-${shrapDmg}`, "fct-dmg"); chg = true; addMomentum(5); triggerHitFlash(ent.id); }
 
-    if (ent.bleedingTurns > 0) { let b = Math.max(1, Math.floor(ent.maxHp * 0.08)); ent.hp = Math.max(0, ent.hp - b); log(`> ${ent.name} bleeds for ${b}.`, "log-dmg"); spawnFCT(ent.id, `-${b}`, "fct-dmg"); ent.bleedingTurns--; chg = true; if(ent.isPlayer) addMomentum(5); }
+    if (ent.bleedingTurns > 0) { let b = Math.max(1, Math.floor(ent.maxHp * 0.08)); ent.hp = Math.max(0, ent.hp - b); log(`> ${ent.name} bleeds for ${b}.`, "log-dmg"); spawnFCT(ent.id, `-${b}`, "fct-dmg"); ent.bleedingTurns--; chg = true; if(ent.isPlayer) addMomentum(5); triggerHitFlash(ent.id); }
     if (ent.armorTurns > 0) { ent.armorTurns--; if (ent.armorTurns === 0) { ent.armor = 0; } chg = true; }
     if (ent.oiledTurns > 0) { ent.oiledTurns--; chg = true; }
     if (chg) renderField();
@@ -929,18 +954,18 @@ function resolveAction(targetId) {
     let dist = livingEnemies.findIndex(e => e.id === targetId);
 
     if (pendingAction === 'OVERDRIVE') {
-        momentum = 0; addMomentum(0); playSFX('shoot');
+        momentum = 0; addMomentum(0); playSFX('shoot'); triggerGlitch();
         log(`> ${actEnt.name} unleashed OVERDRIVE!`, "log-combo");
 
         if (actEnt.classType === 'BRUISER') { 
-            livingEnemies.forEach(e => { applyDamageHit(actEnt, e, actEnt.dmgBase * 1.5, 'phys', null); e.stunnedTurns = 1; spawnFCT(e.id, "STUNNED", "fct-status"); });
+            triggerShake(); livingEnemies.forEach(e => { applyDamageHit(actEnt, e, actEnt.dmgBase * 1.5, 'phys', null); e.stunnedTurns = 1; spawnFCT(e.id, "STUNNED", "fct-status"); });
         } else if (actEnt.classType === 'MEDIC') { 
             target.hp = Math.floor(target.maxHp * 0.5); target.stunnedTurns = 0; target.bleedingTurns = 0; 
             spawnFCT(target.id, "REVIVED", "fct-heal"); playSFX('heal');
         } else if (actEnt.classType === 'SCAVENGER') { 
-            livingEnemies.forEach(e => { applyDamageHit(actEnt, e, actEnt.dmgBase * 1.2, 'energy', null); });
+            triggerShake(); livingEnemies.forEach(e => { applyDamageHit(actEnt, e, actEnt.dmgBase * 1.2, 'energy', null); });
         } else if (actEnt.classType === 'PYROMANIAC') { 
-            livingEnemies.forEach(e => { applyDamageHit(actEnt, e, actEnt.dmgBase * 2.0, 'energy', null); e.oiledTurns = 3; e.bleedingTurns = 3; });
+            triggerShake(); livingEnemies.forEach(e => { applyDamageHit(actEnt, e, actEnt.dmgBase * 2.0, 'energy', null); e.oiledTurns = 3; e.bleedingTurns = 3; });
         } else if (actEnt.classType === 'SHOTGUNNER') { 
             target.armor = 0; target.armorTurns = 0; applyDamageHit(actEnt, target, actEnt.dmgBase * 3.0, 'phys', null);
         } else if (actEnt.classType === 'SNIPER') { 
@@ -987,7 +1012,7 @@ function resolveAction(targetId) {
         if (isCombo) { 
             log(`> COMBO ACTIVATED: ${comboType}`, "log-combo"); 
             setTimeout(() => spawnFCT(target.id, comboType, "fct-combo"), 200); 
-            checkBountyProgress('COMBO'); addMomentum(25);
+            checkBountyProgress('COMBO'); addMomentum(25); triggerShake();
         }
 
         applyDamageHit(actEnt, target, Math.floor(baseDmg * dmgMult), atkType, pendingAction);
@@ -1003,7 +1028,7 @@ function resolveAction(targetId) {
         }
 
         if (pendingAction === 'FLARE_GUN') { target.oiledTurns = 3; log(`> ${target.name} is coated in oil!`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "OILED", "fct-weak"), 400); }
-        if (pendingAction === 'MOLOTOV') { actEnt.cooldowns.molotov = 3; let secondaries = livingEnemies.filter(e => e.id !== targetId); if (secondaries.length > 0) { let sTarg = secondaries[Math.floor(Math.random() * secondaries.length)]; applyDamageHit(actEnt, sTarg, Math.floor(baseDmg * 0.7), atkType, null); } }
+        if (pendingAction === 'MOLOTOV') { actEnt.cooldowns.molotov = 3; triggerShake(); let secondaries = livingEnemies.filter(e => e.id !== targetId); if (secondaries.length > 0) { let sTarg = secondaries[Math.floor(Math.random() * secondaries.length)]; applyDamageHit(actEnt, sTarg, Math.floor(baseDmg * 0.7), atkType, null); } }
     }
     pendingAction = null; checkWinState();
 }
@@ -1018,6 +1043,9 @@ function applyDamageHit(attacker, target, calcDmg, atkType, abilityStr) {
 
     let netDmg = Math.max(1, calcDmg - resistValue - armorCalc); if (resistValue >= 100) netDmg = 0; target.hp = Math.max(0, target.hp - netDmg);
     let logStyle = "log-dmg"; let logMsg = `> ${attacker.name} hits ${target.name} for ${netDmg}`;
+    
+    // V57 Hit Flash Trigger
+    triggerHitFlash(target.id);
 
     if (netDmg === 0 && resistValue >= 100) { logMsg += " (Immune)."; spawnFCT(target.id, "IMMUNE", "fct-status");
     } else if (resistValue > 5) { logMsg += " (Resisted)."; spawnFCT(target.id, `-${netDmg}`, "fct-dmg");
@@ -1046,7 +1074,7 @@ function executeEnemyAi(enemy) {
     if (!combatActive) return;
     
     if (enemy.classType === 'BOSS' && enemy.phase === 1 && enemy.hp <= (enemy.maxHp / 2)) {
-        enemy.phase = 2; log(`> WARLORD ENRAGED!`, "log-dmg"); spawnFCT(enemy.id, "ENRAGED!", "fct-status"); enemy.dmgBase = Math.floor(enemy.dmgBase * 1.5); playSFX('hit');
+        enemy.phase = 2; log(`> WARLORD ENRAGED!`, "log-dmg"); spawnFCT(enemy.id, "ENRAGED!", "fct-status"); enemy.dmgBase = Math.floor(enemy.dmgBase * 1.5); playSFX('hit'); triggerShake();
         const m = 1 + ((currentTier - 1) * 0.4); const d = { name: "War Hound", classType: "BEAST", range: 'melee', maxHp: Math.floor(30*m), hp: Math.floor(30*m), speed: 18, armor: 0, isPlayer: false, dmgBase: Math.floor(12*m), img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } };
         for(let i = 0; i < 2; i++) { let n = JSON.parse(JSON.stringify(d)); n.id = `summon_${Date.now()}_${i}`; activeEntities.push(n); turnQueue.push(n); }
         enemy.intent = rollIntent(enemy); renderField(); setTimeout(nextTurn, 1000 * globalSettings.combatSpeed); return;
@@ -1065,7 +1093,7 @@ function executeEnemyAi(enemy) {
     }
 
     if (intent.type === 'AOE') {
-        playSFX('shoot'); log(`> ${enemy.name} unleashed an area attack!`, "log-dmg");
+        playSFX('shoot'); triggerShake(); log(`> ${enemy.name} unleashed an area attack!`, "log-dmg");
         let rawDmg = Math.floor(enemy.dmgBase * 0.7); 
         if (currentWeather === 'SANDSTORM') rawDmg = Math.floor(rawDmg * 0.75);
         if (currentWeather === 'BLOODLUST') rawDmg = Math.floor(rawDmg * 1.2);
@@ -1078,7 +1106,7 @@ function executeEnemyAi(enemy) {
         let t = enemy.dmgType || 'phys'; 
         let rawDmg = enemy.dmgBase + Math.floor(Math.random() * 5);
         
-        if (intent.type === 'HEAVY') rawDmg = Math.floor(rawDmg * 1.5);
+        if (intent.type === 'HEAVY') { rawDmg = Math.floor(rawDmg * 1.5); triggerShake(); }
 
         if (currentWeather === 'SANDSTORM' && enemy.range === 'ranged') rawDmg = Math.floor(rawDmg * 0.75);
         if (currentWeather === 'BLOODLUST') rawDmg = Math.floor(rawDmg * 1.2);
