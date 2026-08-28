@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V56.2 (Boss Scaling)</title>
+<title>Wasteland RPG - Engine V56.3 (Boss Nerf)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -178,7 +178,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V56.2</div>
+        <div class="title-sub">ENGINE V56.3</div>
         <div class="title-menu" id="title-menu-container"></div>
         <div class="title-menu" id="difficulty-menu-container" style="display:none;">
             <button class="title-btn" style="border-color:#6B8E23; color:#6B8E23;" onclick="confirmNewGame(0.75)">[EASY] 0.75x STATS</button>
@@ -692,6 +692,7 @@ function rollIntent(enemy) {
     }
 }
 
+// V56.3 Boss Scaling Override
 function generateEnemies(nodeType, mult, isEliteNode) {
     const pool = {
         'BEASTS': [
@@ -712,8 +713,10 @@ function generateEnemies(nodeType, mult, isEliteNode) {
         ]
     };
 
-    let bossBaseHp = currentSector === 1 ? 200 : 400;
-    if (nodeType === 'BOSS') return [{ id: 'b1', name: "Warlord", classType: "BOSS", range: 'melee', maxHp: Math.floor(bossBaseHp*mult), hp: Math.floor(bossBaseHp*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: Math.floor(40*mult), img: "enemy_boss.png", scale: 2.2, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 }, phase: 1, intent: {type:'ATTACK', icon:'⚔️'} }];
+    let bossBaseHp = currentSector === 1 ? 100 : 400;
+    let bossBaseDmg = currentSector === 1 ? 30 : 40;
+    
+    if (nodeType === 'BOSS') return [{ id: 'b1', name: "Warlord", classType: "BOSS", range: 'melee', maxHp: Math.floor(bossBaseHp*mult), hp: Math.floor(bossBaseHp*mult), speed: 9, armor: 15, isPlayer: false, dmgBase: Math.floor(bossBaseDmg*mult), img: "enemy_boss.png", scale: 2.2, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, oiledTurns: 0, resistances: { phys: 10, bio: 5, energy: 5 }, phase: 1, intent: {type:'ATTACK', icon:'⚔️'} }];
     
     let validEnemies = pool[nodeType].filter(e => currentSector > 1 || currentTier >= e.minTier);
     if(validEnemies.length === 0) validEnemies = pool[nodeType]; 
