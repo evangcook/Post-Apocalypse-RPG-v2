@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V52.0 (Expedition Bounties)</title>
+<title>Wasteland RPG - Engine V45.0 (Momentum & Overdrive)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -33,7 +33,6 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .outpost-btn { background: #0a110a; border: 1px solid #6B8E23; color: #6B8E23; font-weight: bold; padding: 15px; margin-bottom: 15px; font-family: monospace; font-size: 14px; cursor: pointer; text-align: center; border-radius: 4px; transition: 0.2s; flex-shrink: 0;}
 .outpost-btn:hover { background: #6B8E23; color: #000; }
 
-/* V52 Bounty Tracker Panel */
 .bounty-panel { background: #0a0a0a; border: 1px solid #4488ff; padding: 10px; margin-bottom: 15px; font-size: 11px; display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
 .bounty-title { color: #4488ff; font-weight: bold; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 3px; }
 .bounty-item { display: flex; justify-content: space-between; color: #aaa; }
@@ -153,11 +152,19 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .fct { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); font-weight: bold; font-size: clamp(14px, 4vw, 20px); text-shadow: 2px 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; animation: floatUp 1s ease-out forwards; pointer-events: none; z-index: 20; white-space: nowrap; }
 .fct-dmg { color: #ff4444; } .fct-heal { color: #6B8E23; } .fct-status { color: #B8860B; } .fct-weak { color: #ffaa00; font-size: clamp(18px, 5vw, 24px); } .fct-combo { color: #ff44ff; font-size: clamp(20px, 6vw, 28px); }
 
+/* V45 Overdrive Styles */
+#momentum-container { background: #111; height: 12px; width: 100%; border-top: 2px solid #333; position: relative; border-bottom: 2px solid #000; }
+#momentum-fill { background: linear-gradient(90deg, #4488ff, #ff44ff); height: 100%; width: 0%; transition: width 0.3s ease-in-out; }
+#momentum-txt { position: absolute; top: 0px; left: 50%; transform: translateX(-50%); font-size: 9px; font-weight: bold; color: #fff; text-shadow: 1px 1px 1px #000; letter-spacing: 1px; }
+
+.btn-overdrive { background: #2a002a; border-color: #ff44ff; color: #ff44ff; font-weight: bold; text-shadow: 0 0 5px #ff44ff; animation: pulseOD 1.5s infinite; }
+@keyframes pulseOD { 0% { box-shadow: 0 0 5px #ff44ff; } 50% { box-shadow: 0 0 15px #ff44ff; } 100% { box-shadow: 0 0 5px #ff44ff; } }
+
 .dashboard { height: 35vh; max-height: 250px; background: #050505; border: 2px solid #333; display: grid; grid-template-columns: 1fr 1fr; box-sizing: border-box; margin: 5px; }
-#command-deck { border-right: 2px solid #333; padding: 10px; display: flex; flex-direction: column; justify-content: center; gap: 8px; overflow-y: auto;}
+#command-deck { border-right: 2px solid #333; padding: 10px; display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; overflow-y: auto;}
 #log { padding: 10px; overflow-y: auto; font-size: clamp(10px, 3vw, 12px); color: #555; display: flex; flex-direction: column; }
 .log-turn { color: #aaa; margin-top: 5px; } .log-heal { color: #6B8E23; } .log-dmg { color: #8B0000; } .log-status { color: #B8860B; } .log-combo { color: #ff44ff; font-weight: bold; }
-button { background: #111; color: #ccc; border: 1px solid #444; padding: clamp(10px, 3vh, 15px); font-family: monospace; font-size: clamp(10px, 3vw, 13px); cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+button { background: #111; color: #ccc; border: 1px solid #444; padding: clamp(10px, 3vh, 15px); font-family: monospace; font-size: clamp(10px, 3vw, 13px); cursor: pointer; text-transform: uppercase; transition: 0.2s; flex-shrink:0;}
 button:hover:not(:disabled) { background: #222; border-color: #888; }
 button:active { background: #000; }
 button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
@@ -171,7 +178,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V52.0</div>
+        <div class="title-sub">ENGINE V45.0</div>
         <div class="title-menu" id="title-menu-container"></div>
         <div class="title-menu" id="difficulty-menu-container" style="display:none;">
             <button class="title-btn" style="border-color:#6B8E23; color:#6B8E23;" onclick="confirmNewGame(0.75)">[EASY] 0.75x STATS</button>
@@ -223,7 +230,6 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
             <span>SCRAP: <span id="scrap-display">0</span></span>
         </div>
         
-        <!-- V52 Bounty Panel -->
         <div id="bounty-panel" class="bounty-panel">
             <div class="bounty-title">ACTIVE BOUNTIES</div>
             <div id="bounty-list"></div>
@@ -312,6 +318,13 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
                 <div class="team" id="enemy-team"></div>
             </div>
         </div>
+        
+        <!-- V45 Momentum Gauge -->
+        <div id="momentum-container">
+            <div id="momentum-fill"></div>
+            <div id="momentum-txt">MOMENTUM: 0%</div>
+        </div>
+
         <div class="dashboard">
             <div id="command-deck"></div>
             <div id="log"></div>
@@ -332,7 +345,8 @@ let bossSkulls = 0; let metaUpgrades = { startScrap: 0, startLevel: 1, invMax: 4
 let scrap = 0; let currentTier = 1; let currentSector = 1; let difficultyMult = 1.0; 
 let inventory = []; let materials = { parts: 0, chems: 0, tech: 0 }; 
 let tuneUpBattles = 0; 
-let activeBounties = []; // V52 State Hook
+let activeBounties = []; 
+let momentum = 0; // V45 State Hook
 
 let outpostTab = 'ROSTER'; let activePosSelector = null; let activePerkSelector = null; let currentWeather = 'CLEAR'; let currentNodeType = '';
 let isCurrentNodeElite = false;
@@ -366,6 +380,19 @@ function playSFX(type) {
     }
 }
 
+// V45 Momentum UI Updater
+function addMomentum(val) {
+    if (!combatActive) return;
+    momentum = Math.min(100, momentum + val);
+    document.getElementById('momentum-fill').style.width = `${momentum}%`;
+    document.getElementById('momentum-txt').innerText = `MOMENTUM: ${momentum}%`;
+    if (momentum >= 100) document.getElementById('momentum-fill').style.boxShadow = "0 0 15px #ff44ff";
+    else document.getElementById('momentum-fill').style.boxShadow = "none";
+    
+    // Refresh deck if it crosses 100 on enemy turn
+    if (momentum >= 100 && turnQueue[activeIndex].isPlayer) renderCommandDeck();
+}
+
 const SECTOR_LAYOUT = [
     [{type:'BOSS', elite:false}], 
     [{type:'RAIDERS', elite:true}, {type:'BEASTS', elite:false}], 
@@ -380,7 +407,6 @@ const SECTOR_LAYOUT = [
 ];
 const TOTAL_TIERS = SECTOR_LAYOUT.length;
 
-// V52 Bounty Generator
 function generateBounties() {
     let pool = [
         { id: 'ELITE', desc: "Slayer: Defeat 2 Elites", target: 2, current: 0, reward: "50 Scrap & 1 Tech", claimed: false },
@@ -502,16 +528,16 @@ function renderTitleScreen() {
 function selectSlot(slotNum, exists) { currentSlot = slotNum; if (exists) { continueGame(); } else { document.getElementById('title-menu-container').style.display = 'none'; document.getElementById('difficulty-menu-container').style.display = 'flex'; } }
 
 function confirmNewGame(diff) {
-    difficultyMult = diff; currentSector = 1; currentTier = 1; tuneUpBattles = 0;
+    difficultyMult = diff; currentSector = 1; currentTier = 1; tuneUpBattles = 0; momentum = 0;
     scrap = metaUpgrades.startScrap || 0; inventory = ['MED_STIM']; materials = { parts: 0, chems: 0, tech: 0 }; bossSkulls = 0; metaUpgrades = { startScrap: 0, startLevel: 1, invMax: 4 }; playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
-    activeBounties = generateBounties(); // V52
+    activeBounties = generateBounties();
     playerRoster.forEach(p => { p.level = metaUpgrades.startLevel; p.perkPoints = metaUpgrades.startLevel - 1; p.xpToNext = Math.floor(100 * Math.pow(1.5, metaUpgrades.startLevel - 1)); });
     saveGameState(); renderMap(); 
 }
 
 function continueGame() { loadGameState(); renderMap(); }
-function saveGameState() { localStorage.setItem(BASE_SAVE_KEY + currentSlot, JSON.stringify({ scrap, tier: currentTier, currentSector, difficultyMult, roster: playerRoster, inventory, materials, bossSkulls, metaUpgrades, tuneUpBattles, activeBounties })); }
-function loadGameState() { let d = JSON.parse(localStorage.getItem(BASE_SAVE_KEY + currentSlot)); if (d) { scrap = d.scrap || 0; currentTier = d.tier || 1; currentSector = d.currentSector || 1; difficultyMult = d.difficultyMult || 1.0; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); inventory = d.inventory || ['MED_STIM']; materials = d.materials || { parts: 0, chems: 0, tech: 0 }; bossSkulls = d.bossSkulls || 0; metaUpgrades = d.metaUpgrades || { startScrap: 0, startLevel: 1, invMax: 4 }; tuneUpBattles = d.tuneUpBattles || 0; activeBounties = d.activeBounties || generateBounties(); } }
+function saveGameState() { localStorage.setItem(BASE_SAVE_KEY + currentSlot, JSON.stringify({ scrap, tier: currentTier, currentSector, difficultyMult, roster: playerRoster, inventory, materials, bossSkulls, metaUpgrades, tuneUpBattles, activeBounties, momentum })); }
+function loadGameState() { let d = JSON.parse(localStorage.getItem(BASE_SAVE_KEY + currentSlot)); if (d) { scrap = d.scrap || 0; currentTier = d.tier || 1; currentSector = d.currentSector || 1; difficultyMult = d.difficultyMult || 1.0; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); inventory = d.inventory || ['MED_STIM']; materials = d.materials || { parts: 0, chems: 0, tech: 0 }; bossSkulls = d.bossSkulls || 0; metaUpgrades = d.metaUpgrades || { startScrap: 0, startLevel: 1, invMax: 4 }; tuneUpBattles = d.tuneUpBattles || 0; activeBounties = d.activeBounties || generateBounties(); momentum = d.momentum || 0; } }
 
 function renderCitadel() { switchScreen('screen-citadel'); document.getElementById('citadel-skulls').innerText = `${bossSkulls} 💀`; document.getElementById('meta-lbl-scrap').innerText = `LVL ${metaUpgrades.startScrap / 50}`; document.getElementById('meta-lbl-level').innerText = `LVL ${metaUpgrades.startLevel - 1}`; document.getElementById('meta-lbl-inv').innerText = `LVL ${metaUpgrades.invMax - 4}`; }
 function buyMetaUpgrade(type) { if (type === 'SCRAP' && bossSkulls >= 1) { bossSkulls -= 1; metaUpgrades.startScrap += 50; } else if (type === 'LEVEL' && bossSkulls >= 2) { bossSkulls -= 2; metaUpgrades.startLevel += 1; } else if (type === 'INV' && bossSkulls >= 3) { bossSkulls -= 3; metaUpgrades.invMax += 1; } saveGameState(); renderCitadel(); }
@@ -521,7 +547,6 @@ function renderMap() {
     document.getElementById('scrap-display').innerText = scrap; 
     document.getElementById('map-sector-lbl').innerText = `SECTOR ${currentSector}`;
     
-    // Render Bounties UI
     let bHtml = '';
     if(!activeBounties || activeBounties.length === 0) activeBounties = generateBounties();
     activeBounties.forEach(b => {
@@ -725,17 +750,21 @@ function renderQueue() {
 function renderField() {
     renderQueue(); const pTeam = document.getElementById('player-team'); const eTeam = document.getElementById('enemy-team'); pTeam.innerHTML = ''; eTeam.innerHTML = '';
     activeEntities.forEach(ent => {
-        const isDead = ent.hp <= 0; const isAct = (!isDead && turnQueue.length > 0 && turnQueue[activeIndex]?.id === ent.id) ? 'active' : ''; const dCls = isDead ? 'dead' : '';
+        let isDead = ent.hp <= 0; const isAct = (!isDead && turnQueue.length > 0 && turnQueue[activeIndex]?.id === ent.id) ? 'active' : ''; const dCls = isDead ? 'dead' : '';
         let tCls = ''; let clk = '';
-        if (pendingAction && !isDead) {
-            if (pendingAction === 'CAUTERIZE' && ent.isPlayer) { tCls = 'targetable-ally'; clk = `onclick="resolveAction('${ent.id}')"`; } 
-            else if (['ITEM_MED', 'ITEM_BOMB', 'ITEM_ADRENALINE', 'ITEM_EMP'].includes(pendingAction)) {
-                if (pendingAction === 'ITEM_MED' && ent.isPlayer) { tCls = 'targetable-ally'; clk = `onclick="resolveConsumableItem('${ent.id}')"`; }
-                else if (pendingAction === 'ITEM_ADRENALINE' && ent.isPlayer) { tCls = 'targetable-ally'; clk = `onclick="resolveConsumableItem('${ent.id}')"`; }
-                else if (pendingAction === 'ITEM_BOMB' && !ent.isPlayer) { tCls = 'targetable-enemy'; clk = `onclick="resolveConsumableItem('${ent.id}')"`; }
-                else if (pendingAction === 'ITEM_EMP' && !ent.isPlayer) { tCls = 'targetable-enemy'; clk = `onclick="resolveConsumableItem('${ent.id}')"`; }
+        if (pendingAction) {
+            if (pendingAction === 'OVERDRIVE' && turnQueue[activeIndex].classType === 'MEDIC' && ent.isPlayer) {
+                tCls = 'targetable-ally'; clk = `onclick="resolveAction('${ent.id}')"`;
+            } else if (!isDead) {
+                if (pendingAction === 'CAUTERIZE' && ent.isPlayer) { tCls = 'targetable-ally'; clk = `onclick="resolveAction('${ent.id}')"`; } 
+                else if (['ITEM_MED', 'ITEM_BOMB', 'ITEM_ADRENALINE', 'ITEM_EMP'].includes(pendingAction)) {
+                    if (pendingAction === 'ITEM_MED' && ent.isPlayer) { tCls = 'targetable-ally'; clk = `onclick="resolveConsumableItem('${ent.id}')"`; }
+                    else if (pendingAction === 'ITEM_ADRENALINE' && ent.isPlayer) { tCls = 'targetable-ally'; clk = `onclick="resolveConsumableItem('${ent.id}')"`; }
+                    else if (pendingAction === 'ITEM_BOMB' && !ent.isPlayer) { tCls = 'targetable-enemy'; clk = `onclick="resolveConsumableItem('${ent.id}')"`; }
+                    else if (pendingAction === 'ITEM_EMP' && !ent.isPlayer) { tCls = 'targetable-enemy'; clk = `onclick="resolveConsumableItem('${ent.id}')"`; }
+                }
+                else if (pendingAction !== 'CAUTERIZE' && !ent.isPlayer) { tCls = 'targetable-enemy'; clk = `onclick="resolveAction('${ent.id}')"`; }
             }
-            else if (pendingAction !== 'CAUTERIZE' && !ent.isPlayer) { tCls = 'targetable-enemy'; clk = `onclick="resolveAction('${ent.id}')"`; }
         }
         let eff = ''; if (ent.bleedingTurns > 0 && !isDead) eff += `💧`; if (ent.stunnedTurns > 0 && !isDead) eff += `💫`; if (ent.armorTurns > 0 && !isDead) eff += `🛡️`; if (ent.oiledTurns > 0 && !isDead) eff += `🛢️`;
         let hoverCls = ent.isHovering && !isDead ? 'hovering' : '';
@@ -762,6 +791,14 @@ function renderCommandDeck() {
     if (aE.stunnedTurns > 0) { d.innerHTML = `<div class="dash-msg">STUNNED</div><button onclick="skipStunnedTurn()">Skip Turn</button>`; return; }
 
     let cds = aE.cooldowns; let deckHtml = '';
+    
+    // V45 Overdrive Injection
+    if (momentum >= 100) {
+        let odName = 'ULTIMATE';
+        if (aE.classType === 'BRUISER') odName = 'EARTHSHAKER'; else if (aE.classType === 'MEDIC') odName = 'FIELD REVIVE'; else if (aE.classType === 'SCAVENGER') odName = 'SCRAP STORM'; else if (aE.classType === 'PYROMANIAC') odName = 'HELLFIRE'; else if (aE.classType === 'SHOTGUNNER') odName = 'BREACH CHARGE'; else if (aE.classType === 'SNIPER') odName = 'HEADSHOT'; else if (aE.classType === 'HOUND') odName = 'APEX PREDATOR';
+        deckHtml += `<button class="title-btn btn-overdrive" onclick="queueAction('OVERDRIVE')">OVERDRIVE: ${odName}</button>`;
+    }
+
     if (aE.classType === 'BRUISER') {
         deckHtml += `<button onclick="queueAction('SCRAP_BLADE')">Scrap Blade</button>`;
         deckHtml += `<button ${cds.heavy_wrench > 0 ? 'disabled' : ''} onclick="queueAction('HEAVY_WRENCH')">Heavy Wrench ${cds.heavy_wrench > 0 ? `[${cds.heavy_wrench}]` : ''}</button>`;
@@ -791,10 +828,91 @@ function renderCommandDeck() {
     d.innerHTML = deckHtml;
 }
 
+function openInventoryMenu() {
+    const d = document.getElementById('command-deck');
+    let h = `<div class="dash-msg" style="color:#B8860B; font-weight:bold;">SELECT ITEM:</div>`;
+    inventory.forEach((item, idx) => {
+        let name = item === 'MED_STIM' ? 'Med-Stim' : item === 'SCRAP_BOMB' ? 'Scrap Bomb' : item === 'ADRENALINE' ? 'Adrenaline' : 'EMP Charge';
+        h += `<button onclick="triggerItem(${idx})">${name}</button>`;
+    });
+    h += `<button onclick="renderCommandDeck()">BACK</button>`; d.innerHTML = h;
+}
+
+function triggerItem(invIndex) {
+    let item = inventory[invIndex];
+    if (item === 'MED_STIM') { pendingAction = 'ITEM_MED'; inventoryToConsume = invIndex; log("> Select ally for Med-Stim.", "log-status"); renderField(); }
+    else if (item === 'ADRENALINE') { pendingAction = 'ITEM_ADRENALINE'; inventoryToConsume = invIndex; log("> Select ally for Adrenaline.", "log-status"); renderField(); }
+    else if (item === 'SCRAP_BOMB') { pendingAction = 'ITEM_BOMB'; inventoryToConsume = invIndex; log("> Select enemy target for Scrap Bomb.", "log-status"); renderField(); }
+    else if (item === 'EMP_CHARGE') { pendingAction = 'ITEM_EMP'; inventoryToConsume = invIndex; log("> Select enemy for EMP Charge.", "log-status"); renderField(); }
+}
+
+let inventoryToConsume = -1;
+function resolveConsumableItem(targetId) {
+    let target = activeEntities.find(e => e.id === targetId); let item = inventory[inventoryToConsume];
+    if (item === 'MED_STIM') { let heal = 30; target.hp = Math.min(target.maxHp, target.hp + heal); log(`> Used Med-Stim on ${target.name} for ${heal} HP.`, "log-heal"); spawnFCT(target.id, `+${heal}`, "fct-heal"); playSFX('heal');
+    } else if (item === 'ADRENALINE') { target.stunnedTurns = 0; target.bleedingTurns = 0; log(`> Used Adrenaline on ${target.name}. Cleared effects!`, "log-heal"); spawnFCT(target.id, "CLEANSE", "fct-heal"); playSFX('heal');
+    } else if (item === 'SCRAP_BOMB') {
+        inventory.splice(inventoryToConsume, 1); playSFX('shoot');
+        activeEntities.forEach(e => { if (!e.isPlayer && e.hp > 0) { let dmg = 25; e.hp = Math.max(0, e.hp - dmg); spawnFCT(e.id, `-${dmg}`, "fct-dmg"); } });
+        log(`> Threw Scrap Bomb for 25 AoE DMG!`, "log-dmg"); pendingAction = null; checkWinState(); return;
+    } else if (item === 'EMP_CHARGE') {
+        target.armor = 0; target.armorTurns = 0; target.hp = Math.max(0, target.hp - 10); target.stunnedTurns = 1; playSFX('shoot');
+        log(`> EMP Charge strips ${target.name}'s armor and stuns!`, "log-dmg"); spawnFCT(target.id, "EMP SHOCK", "fct-status");
+    }
+    inventory.splice(inventoryToConsume, 1); inventoryToConsume = -1; pendingAction = null; checkWinState();
+}
+
+function processTurn() {
+    if (!combatActive) return; pendingAction = null; let aE = turnQueue[activeIndex]; if (aE.hp <= 0) { nextTurn(); return; }
+    renderField(); applyTurnStartEffects(aE); if (!combatActive) return; if (!aE.hp > 0) return checkWinState(); 
+    if (aE.stunnedTurns > 0) { if (!aE.isPlayer) { log(`> ${aE.name} stunned.`, "log-status"); spawnFCT(aE.id, "STUNNED", "fct-status"); aE.stunnedTurns--; setTimeout(nextTurn, 1000 * globalSettings.combatSpeed); return; } else return; }
+    if (!aE.isPlayer) setTimeout(() => executeEnemyAi(aE), 1000 * globalSettings.combatSpeed);
+}
+
+function applyTurnStartEffects(ent) {
+    let chg = false; if (ent.isPlayer && ent.cooldowns) { for (let s in ent.cooldowns) { if (ent.cooldowns[s] > 0) { ent.cooldowns[s]--; chg = true; } } }
+    
+    if (currentWeather === 'TOXIC_SMOG') { let sDmg = Math.floor(2 * (1 + ((currentTier - 1) * 0.4))); ent.hp = Math.max(0, ent.hp - sDmg); log(`> ${ent.name} choked by Smog for ${sDmg} DMG.`, "log-dmg"); spawnFCT(ent.id, `-${sDmg}`, "fct-status"); chg = true; addMomentum(5); }
+    if (currentWeather === 'SHRAPNEL_WINDS' && Math.random() < 0.3) { let shrapDmg = Math.floor(5 * (1 + ((currentTier - 1) * 0.4))); ent.hp = Math.max(0, ent.hp - shrapDmg); log(`> Shrapnel struck ${ent.name} for ${shrapDmg} DMG!`, "log-dmg"); spawnFCT(ent.id, `-${shrapDmg}`, "fct-dmg"); chg = true; addMomentum(5); }
+
+    if (ent.bleedingTurns > 0) { let b = Math.max(1, Math.floor(ent.maxHp * 0.08)); ent.hp = Math.max(0, ent.hp - b); log(`> ${ent.name} bleeds for ${b}.`, "log-dmg"); spawnFCT(ent.id, `-${b}`, "fct-dmg"); ent.bleedingTurns--; chg = true; if(ent.isPlayer) addMomentum(5); }
+    if (ent.armorTurns > 0) { ent.armorTurns--; if (ent.armorTurns === 0) { ent.armor = 0; } chg = true; }
+    if (ent.oiledTurns > 0) { ent.oiledTurns--; chg = true; }
+    if (chg) renderField();
+}
+
+function skipStunnedTurn() { turnQueue[activeIndex].stunnedTurns--; renderField(); setTimeout(nextTurn, 500 * globalSettings.combatSpeed); }
+function queueAction(a) { pendingAction = a; renderField(); }
+function cancelAction() { pendingAction = null; renderField(); }
+
 function resolveAction(targetId) {
     let actEnt = turnQueue[activeIndex]; let target = activeEntities.find(e => e.id === targetId);
     let livingEnemies = activeEntities.filter(e => !e.isPlayer && e.hp > 0);
     let dist = livingEnemies.findIndex(e => e.id === targetId);
+
+    // V45 Overdrive Resolution
+    if (pendingAction === 'OVERDRIVE') {
+        momentum = 0; addMomentum(0); playSFX('shoot');
+        log(`> ${actEnt.name} unleashed OVERDRIVE!`, "log-combo");
+
+        if (actEnt.classType === 'BRUISER') { 
+            livingEnemies.forEach(e => { applyDamageHit(actEnt, e, actEnt.dmgBase * 1.5, 'phys', null); e.stunnedTurns = 1; spawnFCT(e.id, "STUNNED", "fct-status"); });
+        } else if (actEnt.classType === 'MEDIC') { 
+            target.hp = Math.floor(target.maxHp * 0.5); target.stunnedTurns = 0; target.bleedingTurns = 0; 
+            spawnFCT(target.id, "REVIVED", "fct-heal"); playSFX('heal');
+        } else if (actEnt.classType === 'SCAVENGER') { 
+            livingEnemies.forEach(e => { applyDamageHit(actEnt, e, actEnt.dmgBase * 1.2, 'energy', null); });
+        } else if (actEnt.classType === 'PYROMANIAC') { 
+            livingEnemies.forEach(e => { applyDamageHit(actEnt, e, actEnt.dmgBase * 2.0, 'energy', null); e.oiledTurns = 3; e.bleedingTurns = 3; });
+        } else if (actEnt.classType === 'SHOTGUNNER') { 
+            target.armor = 0; target.armorTurns = 0; applyDamageHit(actEnt, target, actEnt.dmgBase * 3.0, 'phys', null);
+        } else if (actEnt.classType === 'SNIPER') { 
+            let d = target.classType === 'BOSS' ? actEnt.dmgBase * 4.0 : target.maxHp; applyDamageHit(actEnt, target, d, 'phys', null);
+        } else if (actEnt.classType === 'HOUND') { 
+            actEnt.hp = actEnt.maxHp; applyDamageHit(actEnt, target, actEnt.dmgBase * 2.5, 'bio', null); target.bleedingTurns = 3;
+        }
+        pendingAction = null; checkWinState(); return;
+    }
 
     if (pendingAction === 'CAUTERIZE') {
         let heal = 20 + Math.floor(Math.random() * 10); target.hp = Math.min(target.maxHp, target.hp + heal); actEnt.cooldowns.cauterize = 3; 
@@ -826,7 +944,7 @@ function resolveAction(targetId) {
         if (isCombo) { 
             log(`> COMBO ACTIVATED: ${comboType}`, "log-combo"); 
             setTimeout(() => spawnFCT(target.id, comboType, "fct-combo"), 200); 
-            checkBountyProgress('COMBO');
+            checkBountyProgress('COMBO'); addMomentum(25);
         }
 
         applyDamageHit(actEnt, target, Math.floor(baseDmg * dmgMult), atkType, pendingAction);
@@ -850,6 +968,8 @@ function applyDamageHit(attacker, target, calcDmg, atkType, abilityStr) {
     
     log(logMsg, logStyle);
 
+    if (target.hp <= 0) { addMomentum(15); } else if (target.isPlayer) { addMomentum(5); }
+
     if (abilityStr === 'RAD_SHOT' || abilityStr === 'FERAL_BITE') {
         if (Math.random() < (abilityStr === 'FERAL_BITE' ? 0.9 : 0.6)) { target.bleedingTurns = 3; log(`> ${target.name} bleeding!`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300 * globalSettings.combatSpeed); }
     } else if (abilityStr === 'HEAVY_WRENCH' || abilityStr === 'FLASHBANG') {
@@ -858,19 +978,14 @@ function applyDamageHit(attacker, target, calcDmg, atkType, abilityStr) {
     }
 }
 
-function executeSelfAction(actionType) {
-    let actEnt = turnQueue[activeIndex];
-    if (actionType === 'IRON_GUARD') { actEnt.armor += 20; actEnt.armorTurns = 2; actEnt.cooldowns.iron_guard = 4; spawnFCT(actEnt.id, "+ARMOR", "fct-heal"); playSFX('heal'); }
-    checkWinState();
-}
-
 function executeEnemyAi(enemy) {
     if (!combatActive) return;
+    
     if (enemy.classType === 'BOSS' && enemy.phase === 1 && enemy.hp <= (enemy.maxHp / 2)) {
         enemy.phase = 2; log(`> WARLORD ENRAGED!`, "log-dmg"); spawnFCT(enemy.id, "ENRAGED!", "fct-status"); enemy.dmgBase = Math.floor(enemy.dmgBase * 1.5); playSFX('hit');
         const m = 1 + ((currentTier - 1) * 0.4); const d = { name: "War Hound", classType: "BEAST", range: 'melee', maxHp: Math.floor(30*m), hp: Math.floor(30*m), speed: 18, armor: 0, isPlayer: false, dmgBase: Math.floor(12*m), img: "enemy_dog.png", scale: 0.8, hpDrop: 0, stunnedTurns: 0, bleedingTurns: 0, armorTurns: 0, resistances: { phys: -2, bio: 0, energy: 0 } };
         for(let i = 0; i < 2; i++) { let n = JSON.parse(JSON.stringify(d)); n.id = `summon_${Date.now()}_${i}`; activeEntities.push(n); turnQueue.push(n); }
-        renderField(); setTimeout(nextTurn, 1000 * globalSettings.combatSpeed); return;
+        enemy.intent = rollIntent(enemy); renderField(); setTimeout(nextTurn, 1000 * globalSettings.combatSpeed); return;
     }
 
     let validTargets = activeEntities.filter(e => e.isPlayer && e.hp > 0); 
@@ -881,9 +996,10 @@ function executeEnemyAi(enemy) {
     if (target) {
         playSFX('shoot');
         let intent = enemy.intent || { type: 'ATTACK' };
-        let t = enemy.dmgType || 'phys'; let rawDmg = enemy.dmgBase + Math.floor(Math.random() * 5);
+        
+        let t = enemy.dmgType || 'phys'; 
+        let rawDmg = enemy.dmgBase + Math.floor(Math.random() * 5);
         if (intent.type === 'HEAVY') rawDmg = Math.floor(rawDmg * 1.5);
-
         if (currentWeather === 'SANDSTORM' && enemy.range === 'ranged') rawDmg = Math.floor(rawDmg * 0.75);
         if (currentWeather === 'BLOODLUST') rawDmg = Math.floor(rawDmg * 1.2);
 
@@ -891,18 +1007,21 @@ function executeEnemyAi(enemy) {
         let posStr = target.gridPos === 1 ? 'Front' : target.gridPos === 2 ? 'Mid' : 'Back';
         log(`> ${enemy.name} hits ${target.name} [${posStr}] for ${net}`, "log-dmg"); spawnFCT(target.id, `-${net}`, "fct-dmg"); setTimeout(()=>playSFX('hit'), 150);
 
+        addMomentum(5); 
+
         if (enemy.eliteType === 'VAMPIRIC') { let heal = Math.max(1, Math.floor(net * 0.5)); enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal); setTimeout(() => spawnFCT(enemy.id, `+${heal}`, "fct-heal"), 300); }
+
         if (intent.type === 'STATUS' || ["Mutant", "Attack Dog", "War Hound", "Chem Fiend"].includes(enemy.name)) { 
             if (Math.random() < 0.5) { target.bleedingTurns = 2; setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300 * globalSettings.combatSpeed); }
             else { target.stunnedTurns = 1; setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300 * globalSettings.combatSpeed); }
         }
     }
-    enemy.intent = rollIntent(enemy);
-    checkWinState();
+    
+    enemy.intent = rollIntent(enemy); checkWinState();
 }
 
 function handleSquadWipe() { 
-    currentTier = 1; tuneUpBattles = 0;
+    currentTier = 1; tuneUpBattles = 0; momentum = 0;
     playerRoster.forEach(char => { char.hp = char.maxHp; char.stunnedTurns = 0; char.bleedingTurns = 0; char.armor = 0; char.armorTurns = 0; if(char.cooldowns) { for (let s in char.cooldowns) char.cooldowns[s] = 0; } }); 
     saveGameState(); renderMap(); 
 }
@@ -934,9 +1053,6 @@ function checkWinState() {
     } 
     else { if (pendingAction === null) setTimeout(nextTurn, 800 * globalSettings.combatSpeed); }
 }
-
-function collectLoot(a) { scrap += a; currentTier++; playerRoster.forEach(p => p.armor = 0); saveGameState(); renderMap(); }
-function nextTurn() { activeIndex++; if (activeIndex >= turnQueue.length) activeIndex = 0; processTurn(); }
 
 initEngine();
 </script>
