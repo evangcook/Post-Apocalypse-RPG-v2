@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wasteland RPG - Engine V45.0 (Momentum & Overdrive)</title>
+<title>Wasteland RPG - Engine V54.0 (Squad Relics)</title>
 <style>
 body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; align-items: center; overflow: hidden; }
 #engine { width: 100%; max-width: 900px; height: 100dvh; background: #000; position: relative; display: flex; flex-direction: column; }
@@ -37,6 +37,7 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .bounty-title { color: #4488ff; font-weight: bold; letter-spacing: 1px; border-bottom: 1px solid #222; padding-bottom: 3px; }
 .bounty-item { display: flex; justify-content: space-between; color: #aaa; }
 .bounty-complete { color: #6B8E23; text-decoration: line-through; }
+.relic-item { color: #ffaa00; font-weight: bold; display: flex; justify-content: space-between; margin-top: 2px;}
 
 .map-viewport { flex-grow: 1; border: 1px solid #222; background: linear-gradient(rgba(15,15,15,0.9), rgba(5,5,5,0.9)), repeating-linear-gradient(0deg, transparent, transparent 19px, #1a1a1a 19px, #1a1a1a 20px), repeating-linear-gradient(90deg, transparent, transparent 19px, #1a1a1a 19px, #1a1a1a 20px); overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 30px 0; position: relative; }
 .map-track { display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -152,7 +153,6 @@ body { background-color: #000; color: #c0c0c0; font-family: monospace; margin: 0
 .fct { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); font-weight: bold; font-size: clamp(14px, 4vw, 20px); text-shadow: 2px 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; animation: floatUp 1s ease-out forwards; pointer-events: none; z-index: 20; white-space: nowrap; }
 .fct-dmg { color: #ff4444; } .fct-heal { color: #6B8E23; } .fct-status { color: #B8860B; } .fct-weak { color: #ffaa00; font-size: clamp(18px, 5vw, 24px); } .fct-combo { color: #ff44ff; font-size: clamp(20px, 6vw, 28px); }
 
-/* V45 Overdrive Styles */
 #momentum-container { background: #111; height: 12px; width: 100%; border-top: 2px solid #333; position: relative; border-bottom: 2px solid #000; }
 #momentum-fill { background: linear-gradient(90deg, #4488ff, #ff44ff); height: 100%; width: 0%; transition: width 0.3s ease-in-out; }
 #momentum-txt { position: absolute; top: 0px; left: 50%; transform: translateX(-50%); font-size: 9px; font-weight: bold; color: #fff; text-shadow: 1px 1px 1px #000; letter-spacing: 1px; }
@@ -178,7 +178,7 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
 
     <div id="screen-title">
         <div class="title-header">Wasteland<br>Protocol</div>
-        <div class="title-sub">ENGINE V45.0</div>
+        <div class="title-sub">ENGINE V54.0</div>
         <div class="title-menu" id="title-menu-container"></div>
         <div class="title-menu" id="difficulty-menu-container" style="display:none;">
             <button class="title-btn" style="border-color:#6B8E23; color:#6B8E23;" onclick="confirmNewGame(0.75)">[EASY] 0.75x STATS</button>
@@ -233,6 +233,9 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
         <div id="bounty-panel" class="bounty-panel">
             <div class="bounty-title">ACTIVE BOUNTIES</div>
             <div id="bounty-list"></div>
+            
+            <div class="bounty-title" style="margin-top: 8px;">SQUAD RELICS</div>
+            <div id="relic-list" style="margin-top: 4px;"></div>
         </div>
 
         <button class="outpost-btn" onclick="renderOutpost()">⛺ OUTPOST COMMAND</button>
@@ -319,7 +322,6 @@ button:disabled { opacity: 0.2; cursor: not-allowed; border-color: #222; }
             </div>
         </div>
         
-        <!-- V45 Momentum Gauge -->
         <div id="momentum-container">
             <div id="momentum-fill"></div>
             <div id="momentum-txt">MOMENTUM: 0%</div>
@@ -346,7 +348,8 @@ let scrap = 0; let currentTier = 1; let currentSector = 1; let difficultyMult = 
 let inventory = []; let materials = { parts: 0, chems: 0, tech: 0 }; 
 let tuneUpBattles = 0; 
 let activeBounties = []; 
-let momentum = 0; // V45 State Hook
+let momentum = 0;
+let activeRelics = []; // V54 State Hook
 
 let outpostTab = 'ROSTER'; let activePosSelector = null; let activePerkSelector = null; let currentWeather = 'CLEAR'; let currentNodeType = '';
 let isCurrentNodeElite = false;
@@ -380,7 +383,14 @@ function playSFX(type) {
     }
 }
 
-// V45 Momentum UI Updater
+// V54 Relic Pool Constant
+const RELIC_POOL = [
+    { id: 'THERMAL_CORE', name: "Thermal Core", desc: "Energy attacks deal +30% DMG." },
+    { id: 'KINETIC_MESH', name: "Kinetic Mesh", desc: "Frontline position takes -25% Physical DMG." },
+    { id: 'BLOOD_VIAL', name: "Blood Vial", desc: "Bio attacks heal attacker for 5 HP." },
+    { id: 'SCRAP_MAGNET', name: "Scrap Magnet", desc: "Gain +15 Scrap after every combat." }
+];
+
 function addMomentum(val) {
     if (!combatActive) return;
     momentum = Math.min(100, momentum + val);
@@ -388,8 +398,6 @@ function addMomentum(val) {
     document.getElementById('momentum-txt').innerText = `MOMENTUM: ${momentum}%`;
     if (momentum >= 100) document.getElementById('momentum-fill').style.boxShadow = "0 0 15px #ff44ff";
     else document.getElementById('momentum-fill').style.boxShadow = "none";
-    
-    // Refresh deck if it crosses 100 on enemy turn
     if (momentum >= 100 && turnQueue[activeIndex].isPlayer) renderCommandDeck();
 }
 
@@ -408,12 +416,11 @@ const SECTOR_LAYOUT = [
 const TOTAL_TIERS = SECTOR_LAYOUT.length;
 
 function generateBounties() {
-    let pool = [
+    return [
         { id: 'ELITE', desc: "Slayer: Defeat 2 Elites", target: 2, current: 0, reward: "50 Scrap & 1 Tech", claimed: false },
         { id: 'CRAFT', desc: "Chemist: Craft 2 Items", target: 2, current: 0, reward: "2 Parts & 2 Chems", claimed: false },
         { id: 'COMBO', desc: "Tactician: Trigger 3 Status Combos", target: 3, current: 0, reward: "75 Scrap", claimed: false }
     ];
-    return pool;
 }
 
 function checkBountyProgress(type, amount = 1) {
@@ -530,14 +537,14 @@ function selectSlot(slotNum, exists) { currentSlot = slotNum; if (exists) { cont
 function confirmNewGame(diff) {
     difficultyMult = diff; currentSector = 1; currentTier = 1; tuneUpBattles = 0; momentum = 0;
     scrap = metaUpgrades.startScrap || 0; inventory = ['MED_STIM']; materials = { parts: 0, chems: 0, tech: 0 }; bossSkulls = 0; metaUpgrades = { startScrap: 0, startLevel: 1, invMax: 4 }; playerRoster = JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); 
-    activeBounties = generateBounties();
+    activeBounties = generateBounties(); activeRelics = [];
     playerRoster.forEach(p => { p.level = metaUpgrades.startLevel; p.perkPoints = metaUpgrades.startLevel - 1; p.xpToNext = Math.floor(100 * Math.pow(1.5, metaUpgrades.startLevel - 1)); });
     saveGameState(); renderMap(); 
 }
 
 function continueGame() { loadGameState(); renderMap(); }
-function saveGameState() { localStorage.setItem(BASE_SAVE_KEY + currentSlot, JSON.stringify({ scrap, tier: currentTier, currentSector, difficultyMult, roster: playerRoster, inventory, materials, bossSkulls, metaUpgrades, tuneUpBattles, activeBounties, momentum })); }
-function loadGameState() { let d = JSON.parse(localStorage.getItem(BASE_SAVE_KEY + currentSlot)); if (d) { scrap = d.scrap || 0; currentTier = d.tier || 1; currentSector = d.currentSector || 1; difficultyMult = d.difficultyMult || 1.0; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); inventory = d.inventory || ['MED_STIM']; materials = d.materials || { parts: 0, chems: 0, tech: 0 }; bossSkulls = d.bossSkulls || 0; metaUpgrades = d.metaUpgrades || { startScrap: 0, startLevel: 1, invMax: 4 }; tuneUpBattles = d.tuneUpBattles || 0; activeBounties = d.activeBounties || generateBounties(); momentum = d.momentum || 0; } }
+function saveGameState() { localStorage.setItem(BASE_SAVE_KEY + currentSlot, JSON.stringify({ scrap, tier: currentTier, currentSector, difficultyMult, roster: playerRoster, inventory, materials, bossSkulls, metaUpgrades, tuneUpBattles, activeBounties, momentum, activeRelics })); }
+function loadGameState() { let d = JSON.parse(localStorage.getItem(BASE_SAVE_KEY + currentSlot)); if (d) { scrap = d.scrap || 0; currentTier = d.tier || 1; currentSector = d.currentSector || 1; difficultyMult = d.difficultyMult || 1.0; playerRoster = d.roster || JSON.parse(JSON.stringify(ROSTER_TEMPLATE)); inventory = d.inventory || ['MED_STIM']; materials = d.materials || { parts: 0, chems: 0, tech: 0 }; bossSkulls = d.bossSkulls || 0; metaUpgrades = d.metaUpgrades || { startScrap: 0, startLevel: 1, invMax: 4 }; tuneUpBattles = d.tuneUpBattles || 0; activeBounties = d.activeBounties || generateBounties(); momentum = d.momentum || 0; activeRelics = d.activeRelics || []; } }
 
 function renderCitadel() { switchScreen('screen-citadel'); document.getElementById('citadel-skulls').innerText = `${bossSkulls} 💀`; document.getElementById('meta-lbl-scrap').innerText = `LVL ${metaUpgrades.startScrap / 50}`; document.getElementById('meta-lbl-level').innerText = `LVL ${metaUpgrades.startLevel - 1}`; document.getElementById('meta-lbl-inv').innerText = `LVL ${metaUpgrades.invMax - 4}`; }
 function buyMetaUpgrade(type) { if (type === 'SCRAP' && bossSkulls >= 1) { bossSkulls -= 1; metaUpgrades.startScrap += 50; } else if (type === 'LEVEL' && bossSkulls >= 2) { bossSkulls -= 2; metaUpgrades.startLevel += 1; } else if (type === 'INV' && bossSkulls >= 3) { bossSkulls -= 3; metaUpgrades.invMax += 1; } saveGameState(); renderCitadel(); }
@@ -549,12 +556,13 @@ function renderMap() {
     
     let bHtml = '';
     if(!activeBounties || activeBounties.length === 0) activeBounties = generateBounties();
-    activeBounties.forEach(b => {
-        let cls = b.claimed ? 'bounty-complete' : '';
-        bHtml += `<div class="bounty-item ${cls}"><span>${b.desc}</span><span>[${b.current}/${b.target}]</span></div>`;
-    });
-    document.getElementById('bounty-list').innerText = '';
+    activeBounties.forEach(b => { let cls = b.claimed ? 'bounty-complete' : ''; bHtml += `<div class="bounty-item ${cls}"><span>${b.desc}</span><span>[${b.current}/${b.target}]</span></div>`; });
     document.getElementById('bounty-list').innerHTML = bHtml;
+
+    let rHtml = '';
+    if (activeRelics.length === 0) { rHtml = `<div class="bounty-item"><span>No Relics Acquired</span></div>`; }
+    else { activeRelics.forEach(r => { rHtml += `<div class="relic-item" title="${r.desc}">♦ ${r.name}</div>`; }); }
+    document.getElementById('relic-list').innerHTML = rHtml;
 
     const mapC = document.getElementById('map-nodes');
     if (currentTier > TOTAL_TIERS) { 
@@ -568,16 +576,9 @@ function renderMap() {
         m += `<div class="map-row">`;
         SECTOR_LAYOUT[i].forEach(n => {
             let icon = '🎯'; let lbl = 'RAIDERS';
-            if (n.type === 'BOSS') { icon = '💀'; lbl = 'WARLORD'; } 
-            else if (n.type === 'BEASTS') { icon = '☣️'; lbl = 'BEASTS'; } 
-            else if (n.type === 'MECH') { icon = '⚙️'; lbl = 'MECH'; }
-            else if (n.type === 'EVENT') { icon = '❓'; lbl = 'UNKNOWN'; }
-            else if (n.type === 'CAMP') { icon = '⛺'; lbl = 'CAMP'; }
-            
-            let eCls = n.elite ? 'elite-node' : (n.type === 'EVENT' ? 'event-node' : n.type === 'CAMP' ? 'camp-node' : ''); 
-            let eLbl = n.elite ? ' (ELITE)' : '';
+            if (n.type === 'BOSS') { icon = '💀'; lbl = 'WARLORD'; } else if (n.type === 'BEASTS') { icon = '☣️'; lbl = 'BEASTS'; } else if (n.type === 'MECH') { icon = '⚙️'; lbl = 'MECH'; } else if (n.type === 'EVENT') { icon = '❓'; lbl = 'UNKNOWN'; } else if (n.type === 'CAMP') { icon = '⛺'; lbl = 'CAMP'; }
+            let eCls = n.elite ? 'elite-node' : (n.type === 'EVENT' ? 'event-node' : n.type === 'CAMP' ? 'camp-node' : ''); let eLbl = n.elite ? ' (ELITE)' : '';
             let clickAction = n.type === 'EVENT' ? `initiateEvent()` : n.type === 'CAMP' ? `initiateCamp()` : `initiateCombat('${n.type}', ${n.elite})`;
-            
             m += `<button class="map-node node-${rowStatus} ${eCls} ${(n.type === 'BOSS' && t === currentTier) ? 'boss-node' : ''}" ${dis} onclick="${clickAction}"><span class="node-icon">${icon}</span><span class="node-lbl">${lbl}${eLbl}</span></button>`;
         });
         m += `</div>`; if (t > 1) m += `<div class="map-connector ${(t <= currentTier) ? 'connector-cleared' : ''}"></div>`;
@@ -792,7 +793,6 @@ function renderCommandDeck() {
 
     let cds = aE.cooldowns; let deckHtml = '';
     
-    // V45 Overdrive Injection
     if (momentum >= 100) {
         let odName = 'ULTIMATE';
         if (aE.classType === 'BRUISER') odName = 'EARTHSHAKER'; else if (aE.classType === 'MEDIC') odName = 'FIELD REVIVE'; else if (aE.classType === 'SCAVENGER') odName = 'SCRAP STORM'; else if (aE.classType === 'PYROMANIAC') odName = 'HELLFIRE'; else if (aE.classType === 'SHOTGUNNER') odName = 'BREACH CHARGE'; else if (aE.classType === 'SNIPER') odName = 'HEADSHOT'; else if (aE.classType === 'HOUND') odName = 'APEX PREDATOR';
@@ -890,7 +890,6 @@ function resolveAction(targetId) {
     let livingEnemies = activeEntities.filter(e => !e.isPlayer && e.hp > 0);
     let dist = livingEnemies.findIndex(e => e.id === targetId);
 
-    // V45 Overdrive Resolution
     if (pendingAction === 'OVERDRIVE') {
         momentum = 0; addMomentum(0); playSFX('shoot');
         log(`> ${actEnt.name} unleashed OVERDRIVE!`, "log-combo");
@@ -936,6 +935,9 @@ function resolveAction(targetId) {
         if (pendingAction === 'PIPE_RIFLE' && target.bleedingTurns > 0) { dmgMult *= 1.5; isCombo = true; comboType = 'EXPLOIT!'; }
         if (pendingAction === 'SCRAP_BLADE' && target.stunnedTurns > 0) { dmgMult *= 1.5; isCombo = true; comboType = 'EXECUTE!'; }
 
+        // V54: Thermal Core Logic
+        if (activeRelics.some(r => r.id === 'THERMAL_CORE') && atkType === 'energy') { dmgMult *= 1.3; }
+
         const rangedMoves = ['PISTOL', 'RAD_SHOT', 'PIPE_RIFLE', 'FLASHBANG', 'FLARE_GUN', 'QUICK_SHOT', 'DEADEYE'];
         if (currentWeather === 'SANDSTORM' && rangedMoves.includes(pendingAction)) { dmgMult *= 0.75; }
         if (currentWeather === 'BLOODLUST') { dmgMult *= 1.2; }
@@ -949,6 +951,12 @@ function resolveAction(targetId) {
 
         applyDamageHit(actEnt, target, Math.floor(baseDmg * dmgMult), atkType, pendingAction);
 
+        // V54: Blood Vial Logic
+        if (activeRelics.some(r => r.id === 'BLOOD_VIAL') && atkType === 'bio') {
+            actEnt.hp = Math.min(actEnt.maxHp, actEnt.hp + 5);
+            spawnFCT(actEnt.id, "+5", "fct-heal");
+        }
+
         if (pendingAction === 'FLARE_GUN') { target.oiledTurns = 3; log(`> ${target.name} is coated in oil!`, "log-dmg"); setTimeout(() => spawnFCT(target.id, "OILED", "fct-weak"), 400); }
         if (pendingAction === 'MOLOTOV') { actEnt.cooldowns.molotov = 3; let secondaries = livingEnemies.filter(e => e.id !== targetId); if (secondaries.length > 0) { let sTarg = secondaries[Math.floor(Math.random() * secondaries.length)]; applyDamageHit(actEnt, sTarg, Math.floor(baseDmg * 0.7), atkType, null); } }
     }
@@ -958,6 +966,12 @@ function resolveAction(targetId) {
 function applyDamageHit(attacker, target, calcDmg, atkType, abilityStr) {
     if (target.hp <= 0) return; let resistValue = target.resistances[atkType] || 0; let armorCalc = abilityStr === 'FERAL_BITE' ? 0 : target.armor;
     if (target.oiledTurns > 0 && atkType === 'energy') resistValue -= 15; 
+    
+    // V54: Kinetic Mesh Logic
+    if (activeRelics.some(r => r.id === 'KINETIC_MESH') && target.isPlayer && target.gridPos === 1 && atkType === 'phys') {
+        calcDmg = Math.floor(calcDmg * 0.75);
+    }
+
     let netDmg = Math.max(1, calcDmg - resistValue - armorCalc); if (resistValue >= 100) netDmg = 0; target.hp = Math.max(0, target.hp - netDmg);
     let logStyle = "log-dmg"; let logMsg = `> ${attacker.name} hits ${target.name} for ${netDmg}`;
 
@@ -976,6 +990,12 @@ function applyDamageHit(attacker, target, calcDmg, atkType, abilityStr) {
         let sc = (abilityStr === 'FLASHBANG') ? 0.35 : 0.2; if (abilityStr === 'FLASHBANG' && target.resistances.energy < 0) sc *= 2;
         if (Math.random() < sc) { target.stunnedTurns = 1; log(`> ${target.name} stunned!`, "log-status"); setTimeout(() => spawnFCT(target.id, "STUNNED", "fct-status"), 300 * globalSettings.combatSpeed); }
     }
+}
+
+function executeSelfAction(actionType) {
+    let actEnt = turnQueue[activeIndex];
+    if (actionType === 'IRON_GUARD') { actEnt.armor += 20; actEnt.armorTurns = 2; actEnt.cooldowns.iron_guard = 4; spawnFCT(actEnt.id, "+ARMOR", "fct-heal"); playSFX('heal'); }
+    checkWinState();
 }
 
 function executeEnemyAi(enemy) {
@@ -999,17 +1019,15 @@ function executeEnemyAi(enemy) {
         
         let t = enemy.dmgType || 'phys'; 
         let rawDmg = enemy.dmgBase + Math.floor(Math.random() * 5);
+        
         if (intent.type === 'HEAVY') rawDmg = Math.floor(rawDmg * 1.5);
+
         if (currentWeather === 'SANDSTORM' && enemy.range === 'ranged') rawDmg = Math.floor(rawDmg * 0.75);
         if (currentWeather === 'BLOODLUST') rawDmg = Math.floor(rawDmg * 1.2);
 
-        let res = target.resistances[t] || 0; let net = Math.max(1, rawDmg - res - target.armor); target.hp = Math.max(0, target.hp - net);
-        let posStr = target.gridPos === 1 ? 'Front' : target.gridPos === 2 ? 'Mid' : 'Back';
-        log(`> ${enemy.name} hits ${target.name} [${posStr}] for ${net}`, "log-dmg"); spawnFCT(target.id, `-${net}`, "fct-dmg"); setTimeout(()=>playSFX('hit'), 150);
+        applyDamageHit(enemy, target, rawDmg, t, 'BASIC');
 
-        addMomentum(5); 
-
-        if (enemy.eliteType === 'VAMPIRIC') { let heal = Math.max(1, Math.floor(net * 0.5)); enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal); setTimeout(() => spawnFCT(enemy.id, `+${heal}`, "fct-heal"), 300); }
+        if (enemy.eliteType === 'VAMPIRIC') { let heal = Math.max(1, Math.floor(rawDmg * 0.5)); enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal); setTimeout(() => spawnFCT(enemy.id, `+${heal}`, "fct-heal"), 300); }
 
         if (intent.type === 'STATUS' || ["Mutant", "Attack Dog", "War Hound", "Chem Fiend"].includes(enemy.name)) { 
             if (Math.random() < 0.5) { target.bleedingTurns = 2; setTimeout(() => spawnFCT(target.id, "BLEED", "fct-status"), 300 * globalSettings.combatSpeed); }
@@ -1021,7 +1039,7 @@ function executeEnemyAi(enemy) {
 }
 
 function handleSquadWipe() { 
-    currentTier = 1; tuneUpBattles = 0; momentum = 0;
+    currentTier = 1; tuneUpBattles = 0; momentum = 0; activeRelics = [];
     playerRoster.forEach(char => { char.hp = char.maxHp; char.stunnedTurns = 0; char.bleedingTurns = 0; char.armor = 0; char.armorTurns = 0; if(char.cooldowns) { for (let s in char.cooldowns) char.cooldowns[s] = 0; } }); 
     saveGameState(); renderMap(); 
 }
@@ -1032,12 +1050,22 @@ function checkWinState() {
     if (!pA) { document.getElementById('command-deck').innerHTML = `<button onclick="handleSquadWipe()">EXPEDITION FAILED - RESTART</button>`; combatActive = false; } 
     else if (!eA) { 
         if (currentNodeType === 'BOSS') { bossSkulls++; log(`> VICTORY! Warlord Skull acquired!`, "log-heal"); }
-        if (isCurrentNodeElite) checkBountyProgress('ELITE');
+        if (isCurrentNodeElite) {
+            checkBountyProgress('ELITE');
+            // V54 Relic Drop Math
+            let availableRelics = RELIC_POOL.filter(r => !activeRelics.some(ar => ar.id === r.id));
+            if (availableRelics.length > 0) {
+                let rDrop = availableRelics[Math.floor(Math.random() * availableRelics.length)];
+                activeRelics.push(rDrop);
+                log(`> RELIC ACQUIRED: ${rDrop.name}!`, "log-combo");
+            }
+        }
 
         if (tuneUpBattles > 0) tuneUpBattles--; 
 
         let scrapMult = isCurrentNodeElite ? 2 : 1;
         let s = (Math.floor(Math.random() * 30) + (currentTier * 20)) * scrapMult; 
+        if (activeRelics.some(r => r.id === 'SCRAP_MAGNET')) s += 15; // V54 Scrap Magnet
         
         playerRoster.forEach(char => {
             if (char.gridPos > 0 && char.hp > 0) {
@@ -1053,6 +1081,9 @@ function checkWinState() {
     } 
     else { if (pendingAction === null) setTimeout(nextTurn, 800 * globalSettings.combatSpeed); }
 }
+
+function collectLoot(a) { scrap += a; currentTier++; playerRoster.forEach(p => p.armor = 0); saveGameState(); renderMap(); }
+function nextTurn() { activeIndex++; if (activeIndex >= turnQueue.length) activeIndex = 0; processTurn(); }
 
 initEngine();
 </script>
